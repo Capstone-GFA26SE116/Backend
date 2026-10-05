@@ -1,0 +1,6 @@
+@METANOIA_HostAddress = http://localhost:5036
+
+GET {{METANOIA_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

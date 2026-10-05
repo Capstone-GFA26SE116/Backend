@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="METANOIA.Application/METANOIA.Application.csproj" />
+  <Project Path="METANOIA.Domain/METANOIA.Domain.csproj" />
+  <Project Path="METANOIA.Infrastructure/METANOIA.Infrastructure.csproj" />
+  <Project Path="METANOIA.Test/METANOIA.Test.csproj" />
+  <Project Path="METANOIA/METANOIA.csproj" />
+</Solution>

@@ -1,0 +1,51 @@
+.vs/
+# Ignore build results
+bin/
+obj/
+
+# Ignore Visual Studio files
+.vscode/
+*.user
+*.suo
+
+# Ignore build outputs
+*.exe
+*.dll
+*.pdb
+*.cache
+
+# Ignore Rider/JetBrains files
+.idea/
+
+# Ignore temporary files
+*.log
+*.tmp
+
+# Ignore NuGet packages
+packages/
+project.lock.json
+*.nupkg
+*.snupkg
+
+# Ignore generated files
+*.generated.cs
+
+# Ignore user secrets
+secrets.json
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+appsettings.json
+**/bin/
+**/obj/
+*.dll
+*.exe
+*.pdb
+
