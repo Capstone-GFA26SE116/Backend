@@ -76,9 +76,7 @@ namespace METANOIA.Infrastructure.Services
 
             connection.AccessTokenEncrypted = _tokenProtector.Protect(Encoding.UTF8.GetBytes(tokens.AccessToken));
             connection.RefreshTokenEncrypted = _tokenProtector.Protect(Encoding.UTF8.GetBytes(tokens.RefreshToken!));
-            // Cột timestamp không có time zone: Npgsql từ chối DateTime có Kind = Utc
-            connection.TokenExpiresAt = DateTime.SpecifyKind(
-                DateTime.UtcNow.AddSeconds(tokens.ExpiresIn), DateTimeKind.Unspecified);
+            connection.TokenExpiresAt = DateTime.UtcNow.AddSeconds(tokens.ExpiresIn);
             connection.Status = "Active";
             connection.LastSyncError = null;
 

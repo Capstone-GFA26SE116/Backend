@@ -8,11 +8,16 @@ namespace METANOIA.MiddleWare
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<GlobalExceptionHandlerMiddleware> _logger;
+        private readonly IHostEnvironment _environment;
 
-        public GlobalExceptionHandlerMiddleware(RequestDelegate next, ILogger<GlobalExceptionHandlerMiddleware> logger)
+        public GlobalExceptionHandlerMiddleware(
+            RequestDelegate next,
+            ILogger<GlobalExceptionHandlerMiddleware> logger,
+            IHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -46,7 +51,8 @@ namespace METANOIA.MiddleWare
                 _logger.LogError(ex, "An unhandled exception occurred");
                 await WriteResponseAsync(context, HttpStatusCode.InternalServerError, new
                 {
-                    message = "An unexpected error occurred. Please try again later."
+                    message = "An unexpected error occurred. Please try again later.",
+                    detail = _environment.IsDevelopment() ? $"{ex.GetType().Name}: {ex.Message}" : null
                 });
             }
         }

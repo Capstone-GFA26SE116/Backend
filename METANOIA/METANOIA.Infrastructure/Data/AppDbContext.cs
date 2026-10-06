@@ -90,7 +90,10 @@ public partial class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseNpgsql(GetConnectionString());
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseNpgsql(GetConnectionString());
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
