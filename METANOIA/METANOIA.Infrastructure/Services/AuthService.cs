@@ -52,7 +52,14 @@ namespace METANOIA.Infrastructure.Services
                     FullName = googleUser.FullName,
                     GoogleSubjectId = googleUser.Subject,
                     RoleId = defaultRole.Id,
-                    Role = defaultRole
+                    Role = defaultRole,
+                    TimeZone = "Asia/Ho_Chi_Minh",
+                    WorkDayStart = new TimeOnly(8, 0),
+                    WorkDayEnd = new TimeOnly(18, 0),
+                    WorksOnWeekend = false,
+                    DefaultBufferMinutes = 15,
+                    ReminderLeadMinutes = 15,
+                    OnboardingCompleted = false
                 };
 
                 await _userRepository.AddAsync(user, cancellationToken);

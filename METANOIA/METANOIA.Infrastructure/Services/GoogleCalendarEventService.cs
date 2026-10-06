@@ -1,16 +1,14 @@
 using System.Net;
-using System.Text;
 using Google;
-using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
-using Google.Apis.Services;
 using METANOIA.Application.Dto;
 using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
-using Microsoft.AspNetCore.DataProtection;
+using METANOIA.Domain.Entities;
 using GoogleEvent = Google.Apis.Calendar.v3.Data.Event;
+using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
 {
@@ -18,28 +16,25 @@ namespace METANOIA.Infrastructure.Services
     {
         private const string CalendarId = "primary";
 
-        private readonly IGoogleConnectionRepository _connectionRepository;
+        private readonly GoogleCalendarClientProvider _provider;
+        private readonly IGoogleCalendarEventRepository _eventRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly GoogleOAuthClient _oauthClient;
-        private readonly IDataProtector _tokenProtector;
 
         public GoogleCalendarEventService(
-            IGoogleConnectionRepository connectionRepository,
-            IUnitOfWork unitOfWork,
-            GoogleOAuthClient oauthClient,
-            IDataProtectionProvider dataProtectionProvider)
+            GoogleCalendarClientProvider provider,
+            IGoogleCalendarEventRepository eventRepository,
+            IUnitOfWork unitOfWork)
         {
-            _connectionRepository = connectionRepository;
+            _provider = provider;
+            _eventRepository = eventRepository;
             _unitOfWork = unitOfWork;
-            _oauthClient = oauthClient;
-            _tokenProtector = dataProtectionProvider.CreateProtector("GoogleCalendar.Tokens");
         }
 
         public async Task<IReadOnlyList<CalendarEventDto>> GetEventsAsync(Guid userId, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
         {
-            var service = await CreateCalendarServiceAsync(userId, cancellationToken);
+            var session = await _provider.OpenAsync(userId, cancellationToken);
 
-            var request = service.Events.List(CalendarId);
+            var request = session.Service.Events.List(CalendarId);
             request.TimeMinDateTimeOffset = from;
             request.TimeMaxDateTimeOffset = to;
             request.SingleEvents = true;
@@ -51,8 +46,8 @@ namespace METANOIA.Infrastructure.Services
 
         public async Task<CalendarEventDto> GetEventAsync(Guid userId, string eventId, CancellationToken cancellationToken = default)
         {
-            var service = await CreateCalendarServiceAsync(userId, cancellationToken);
-            var googleEvent = await ExecuteAsync(() => service.Events.Get(CalendarId, eventId).ExecuteAsync(cancellationToken));
+            var session = await _provider.OpenAsync(userId, cancellationToken);
+            var googleEvent = await ExecuteAsync(() => session.Service.Events.Get(CalendarId, eventId).ExecuteAsync(cancellationToken));
             return ToDto(googleEvent);
         }
 
@@ -60,8 +55,12 @@ namespace METANOIA.Infrastructure.Services
         {
             ValidateRequest(request);
 
-            var service = await CreateCalendarServiceAsync(userId, cancellationToken);
-            var created = await service.Events.Insert(ToGoogleEvent(request), CalendarId).ExecuteAsync(cancellationToken);
+            var session = await _provider.OpenAsync(userId, cancellationToken);
+            var created = await ExecuteAsync(() => session.Service.Events.Insert(ToGoogleEvent(request), CalendarId).ExecuteAsync(cancellationToken));
+
+            await UpsertLocalAsync(session.Connection, created, isCreatedByMetanoia: true, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return ToDto(created);
         }
 
@@ -69,59 +68,47 @@ namespace METANOIA.Infrastructure.Services
         {
             ValidateRequest(request);
 
-            var service = await CreateCalendarServiceAsync(userId, cancellationToken);
+            var session = await _provider.OpenAsync(userId, cancellationToken);
             var updated = await ExecuteAsync(() =>
-                service.Events.Update(ToGoogleEvent(request), CalendarId, eventId).ExecuteAsync(cancellationToken));
+                session.Service.Events.Update(ToGoogleEvent(request), CalendarId, eventId).ExecuteAsync(cancellationToken));
+
+            await UpsertLocalAsync(session.Connection, updated, isCreatedByMetanoia: false, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
             return ToDto(updated);
         }
 
         public async Task DeleteEventAsync(Guid userId, string eventId, CancellationToken cancellationToken = default)
         {
-            var service = await CreateCalendarServiceAsync(userId, cancellationToken);
-            await ExecuteAsync(() => service.Events.Delete(CalendarId, eventId).ExecuteAsync(cancellationToken));
-        }
+            var session = await _provider.OpenAsync(userId, cancellationToken);
+            await ExecuteAsync(() => session.Service.Events.Delete(CalendarId, eventId).ExecuteAsync(cancellationToken));
 
-        private async Task<CalendarService> CreateCalendarServiceAsync(Guid userId, CancellationToken cancellationToken)
-        {
-            var accessToken = await GetValidAccessTokenAsync(userId, cancellationToken);
-
-            return new CalendarService(new BaseClientService.Initializer
+            var local = await _eventRepository.GetByGoogleEventIdAsync(session.Connection.Id, eventId, cancellationToken);
+            if (local is not null)
             {
-                HttpClientInitializer = GoogleCredential.FromAccessToken(accessToken),
-                ApplicationName = "METANOIA"
-            });
-        }
-
-        private async Task<string> GetValidAccessTokenAsync(Guid userId, CancellationToken cancellationToken)
-        {
-            var connection = await _connectionRepository.GetByUserIdAsync(userId, cancellationToken);
-            if (connection is null || connection.Status != "Active")
-            {
-                throw new GoogleCalendarNotConnectedException();
-            }
-
-            if (connection.TokenExpiresAt > DateTime.UtcNow.AddMinutes(1))
-            {
-                return Encoding.UTF8.GetString(_tokenProtector.Unprotect(connection.AccessTokenEncrypted));
-            }
-
-            var refreshToken = Encoding.UTF8.GetString(_tokenProtector.Unprotect(connection.RefreshTokenEncrypted));
-            var refreshed = await _oauthClient.RefreshAccessTokenAsync(refreshToken, cancellationToken);
-            if (refreshed is null)
-            {
-                connection.Status = "Revoked";
-                connection.LastSyncError = "Google từ chối refresh token, có thể user đã thu hồi quyền.";
+                local.IsCancelled = true;
+                local.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
-                throw new GoogleCalendarNotConnectedException();
+            }
+        }
+
+        // isCreatedByMetanoia chỉ dùng khi tạo dòng mới; dòng đã có giữ nguyên cờ
+        private async Task UpsertLocalAsync(GoogleConnection connection, GoogleEvent googleEvent, bool isCreatedByMetanoia, CancellationToken cancellationToken)
+        {
+            var local = await _eventRepository.GetByGoogleEventIdAsync(connection.Id, googleEvent.Id, cancellationToken);
+            if (local is null)
+            {
+                local = new GoogleCalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    GoogleConnectionId = connection.Id,
+                    GoogleEventId = googleEvent.Id,
+                    IsCreatedByMetanoia = isCreatedByMetanoia
+                };
+                await _eventRepository.AddAsync(local, cancellationToken);
             }
 
-            connection.AccessTokenEncrypted = _tokenProtector.Protect(Encoding.UTF8.GetBytes(refreshed.AccessToken));
-            // Cột timestamp không có time zone: Npgsql từ chối DateTime có Kind = Utc
-            connection.TokenExpiresAt = DateTime.SpecifyKind(
-                DateTime.UtcNow.AddSeconds(refreshed.ExpiresIn), DateTimeKind.Unspecified);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return refreshed.AccessToken;
+            GoogleEventMapping.Apply(local, googleEvent);
         }
 
         private static async Task<T> ExecuteAsync<T>(Func<Task<T>> call)
@@ -133,6 +120,12 @@ namespace METANOIA.Infrastructure.Services
             catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
             {
                 throw new NotFoundException("Không tìm thấy sự kiện trên Google Calendar.", ex);
+            }
+            catch (GoogleApiException ex)
+            {
+                throw new UserFriendlyException(
+                    $"Google Calendar trả lỗi {(int)ex.HttpStatusCode}: {ex.Message}. " +
+                    "Kiểm tra Google Calendar API đã được bật cho project và tài khoản đã cấp đủ quyền.", ex);
             }
         }
 

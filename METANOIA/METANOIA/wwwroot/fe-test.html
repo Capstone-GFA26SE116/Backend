@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>METANOIA - FE test client</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1d1d1f; }
+    main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+    h1 { font-size: 22px; margin: 0 0 16px; }
+    section { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    label { display: block; font-size: 13px; color: #555; margin-top: 8px; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; margin-top: 3px; border: 1px solid #ccd0d6; border-radius: 6px; font: inherit; }
+    button { margin: 8px 6px 0 0; padding: 7px 14px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; cursor: pointer; font: inherit; }
+    button.secondary { background: #6b7280; }
+    button.danger { background: #d93025; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+    .item { border-top: 1px solid #eceef1; padding: 10px 0; }
+    .item small { color: #666; }
+    .notice { padding: 8px 12px; border-radius: 6px; background: #eef4ff; margin-bottom: 8px; display: none; }
+    .notice.error { background: #fdecea; }
+    .notice.ok { background: #e6f4ea; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; max-height: 260px; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>METANOIA - FE test client</h1>
+  <div id="notice" class="notice"></div>
+
+  <section>
+    <h2>1. Cấu hình & đăng nhập Google</h2>
+    <p class="muted">Dán Google Client ID (cùng ID đang đặt trong appsettings) rồi bấm tải nút đăng nhập.</p>
+    <label>Google Client ID
+      <input id="clientId" placeholder="xxxx.apps.googleusercontent.com" />
+    </label>
+    <button onclick="renderGoogleButton()">Tải nút đăng nhập</button>
+    <div id="googleButton" style="margin-top:12px"></div>
+    <p id="session" class="muted"></p>
+    <button class="secondary" onclick="logout()">Đăng xuất</button>
+  </section>
+
+  <section>
+    <h2>2. Google Calendar</h2>
+    <p class="muted">Bấm Kết nối sẽ chuyển sang Google để cấp quyền, xong quay lại trang này.</p>
+    <button onclick="calendarStatus()">Kiểm tra trạng thái</button>
+    <button onclick="connectCalendar()">Kết nối Google Calendar</button>
+    <p id="calendarStatus" class="muted"></p>
+  </section>
+
+  <section>
+    <h2>3. Sự kiện Google Calendar</h2>
+    <div class="row">
+      <div>
+        <label>Tiêu đề <input id="evTitle" /></label>
+        <label>Bắt đầu <input id="evStart" type="datetime-local" /></label>
+        <label>Kết thúc <input id="evEnd" type="datetime-local" /></label>
+      </div>
+      <div>
+        <label>Địa điểm <input id="evLocation" /></label>
+        <label>Mô tả <textarea id="evDescription" rows="3"></textarea></label>
+      </div>
+    </div>
+    <button onclick="createEvent()">Tạo sự kiện</button>
+    <button class="secondary" onclick="loadEvents()">Tải sự kiện 7 ngày tới</button>
+    <div id="events"></div>
+  </section>
+
+  <section>
+    <h2>4. Dự án</h2>
+    <div class="row">
+      <div>
+        <label>Tên dự án <input id="prjName" /></label>
+        <label>Mô tả <input id="prjDescription" /></label>
+      </div>
+      <div>
+        <label>Ngày bắt đầu <input id="prjStart" type="date" /></label>
+        <label>Deadline <input id="prjDeadline" type="date" /></label>
+      </div>
+    </div>
+    <button onclick="createProject()">Tạo dự án</button>
+    <label><input type="checkbox" id="includeArchived" style="width:auto" onchange="loadProjects()" /> Hiện cả dự án đã lưu trữ</label>
+    <div id="projects"></div>
+  </section>
+
+  <section>
+    <h2>Nhật ký request</h2>
+    <pre id="log">Chưa có request nào.</pre>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function notify(message, type = 'info') {
+    const box = $('notice');
+    box.textContent = message;
+    box.className = `notice ${type === 'error' ? 'error' : type === 'ok' ? 'ok' : ''}`;
+    box.style.display = 'block';
+  }
+
+  function logRequest(method, path, status, data) {
+    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $('log').textContent = `${method} ${path} → ${status}\n${text}`;
+  }
+
+  async function api(method, path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = sessionStorage.getItem('accessToken');
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+    const text = await response.text();
+    let data = text;
+    try { data = text ? JSON.parse(text) : null; } catch { /* không phải JSON */ }
+
+    logRequest(method, path, response.status, data);
+    if (response.status === 401) notify('Phiên đăng nhập đã hết hạn hoặc chưa đăng nhập. Hãy đăng nhập lại.', 'error');
+    return { ok: response.ok, status: response.status, data };
+  }
+
+  function renderSession() {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    $('session').textContent = user
+      ? `Đã đăng nhập: ${user.fullName} (${user.email}), vai trò ${user.role}`
+      : 'Chưa đăng nhập.';
+  }
+
+  function logout() {
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('user');
+    renderSession();
+    notify('Đã đăng xuất khỏi trang test.', 'ok');
+  }
+
+  function renderGoogleButton() {
+    const clientId = $('clientId').value.trim();
+    if (!clientId) return notify('Nhập Google Client ID trước.', 'error');
+    if (!window.google) return notify('Chưa tải được script Google, kiểm tra kết nối mạng.', 'error');
+
+    localStorage.setItem('googleClientId', clientId);
+    google.accounts.id.initialize({ client_id: clientId, callback: onGoogleCredential });
+    google.accounts.id.renderButton($('googleButton'), { theme: 'outline', size: 'large' });
+  }
+
+  async function onGoogleCredential(response) {
+    const result = await api('POST', '/api/auth/google', { idToken: response.credential });
+    if (!result.ok) return notify(result.data.message || 'Đăng nhập thất bại.', 'error');
+
+    sessionStorage.setItem('accessToken', result.data.accessToken);
+    sessionStorage.setItem('user', JSON.stringify({
+      fullName: result.data.fullName,
+      email: result.data.email,
+      role: result.data.role
+    }));
+    renderSession();
+    notify('Đăng nhập thành công.', 'ok');
+  }
+
+  async function calendarStatus() {
+    const result = await api('GET', '/api/google-calendar/status');
+    if (!result.ok) return;
+    $('calendarStatus').textContent = result.data.isConnected
+      ? `Đã kết nối (trạng thái: ${result.data.status}, token hết hạn lúc ${result.data.tokenExpiresAt}).`
+      : 'Chưa kết nối Google Calendar.';
+  }
+
+  async function connectCalendar() {
+    const result = await api('GET', '/api/google-calendar/connect');
+    if (result.ok) window.location.href = result.data.authorizationUrl;
+  }
+
+  function showCalendarResultFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('calendar');
+    if (!status) return;
+
+    const message = params.get('message');
+    if (status === 'connected') notify('Đã kết nối Google Calendar thành công.', 'ok');
+    else notify(`Kết nối Google Calendar không thành công (${status}). ${message || ''}`, 'error');
+
+    history.replaceState(null, '', window.location.pathname);
+  }
+
+  function toIso(localValue) {
+    return new Date(localValue).toISOString();
+  }
+
+  async function createEvent() {
+    const result = await api('POST', '/api/google-calendar/events', {
+      title: $('evTitle').value,
+      description: $('evDescription').value || null,
+      location: $('evLocation').value || null,
+      start: toIso($('evStart').value),
+      end: toIso($('evEnd').value)
+    });
+    if (result.ok) {
+      notify('Đã tạo sự kiện.', 'ok');
+      loadEvents();
+    }
+  }
+
+  async function loadEvents() {
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const result = await api('GET', `/api/google-calendar/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
+    if (!result.ok) return;
+
+    const container = $('events');
+    container.replaceChildren();
+    if (result.data.length === 0) container.append(muted('Không có sự kiện nào trong 7 ngày tới.'));
+
+    result.data.forEach((event) => {
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.append(strong(event.title), document.createElement('br'),
+        small(`${new Date(event.start).toLocaleString('vi-VN')} → ${new Date(event.end).toLocaleString('vi-VN')}${event.location ? ' • ' + event.location : ''}`));
+      item.append(button('Sửa tiêu đề', () => editEventTitle(event)), button('Xóa', () => deleteEvent(event.id), 'danger'));
+      container.append(item);
+    });
+  }
+
+  async function editEventTitle(event) {
+    const title = prompt('Tiêu đề mới', event.title);
+    if (!title) return;
+    const result = await api('PUT', `/api/google-calendar/events/${encodeURIComponent(event.id)}`, {
+      title,
+      description: event.description,
+      location: event.location,
+      start: event.start,
+      end: event.end
+    });
+    if (result.ok) loadEvents();
+  }
+
+  async function deleteEvent(eventId) {
+    if (!confirm('Xóa sự kiện này?')) return;
+    const result = await api('DELETE', `/api/google-calendar/events/${encodeURIComponent(eventId)}`);
+    if (result.ok || result.status === 204) loadEvents();
+  }
+
+  async function createProject() {
+    const result = await api('POST', '/api/projects', {
+      name: $('prjName').value,
+      description: $('prjDescription').value || null,
+      startDate: $('prjStart').value || null,
+      deadline: $('prjDeadline').value || null,
+      clientId: null
+    });
+    if (result.ok) {
+      notify('Đã tạo dự án.', 'ok');
+      loadProjects();
+    }
+  }
+
+  async function loadProjects() {
+    const includeArchived = $('includeArchived').checked;
+    const result = await api('GET', `/api/projects?includeArchived=${includeArchived}`);
+    if (!result.ok) return;
+
+    const container = $('projects');
+    container.replaceChildren();
+    if (result.data.length === 0) container.append(muted('Chưa có dự án nào.'));
+
+    result.data.forEach((project) => {
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.append(strong(project.name), document.createElement('br'),
+        small(`Trạng thái: ${project.status}${project.deadline ? ' • Deadline: ' + project.deadline : ''}`));
+      item.append(button('Tiến độ', () => showProgress(project.id)));
+      item.append(project.status === 'Archived'
+        ? button('Khôi phục', () => setArchived(project.id, 'restore'), 'secondary')
+        : button('Lưu trữ', () => setArchived(project.id, 'archive'), 'secondary'));
+      const detail = document.createElement('div');
+      detail.id = `progress-${project.id}`;
+      item.append(detail);
+      container.append(item);
+    });
+  }
+
+  async function showProgress(projectId) {
+    const result = await api('GET', `/api/projects/${projectId}/progress`);
+    if (!result.ok) return;
+    const p = result.data;
+    $(`progress-${projectId}`).replaceChildren(small(
+      `Hoàn thành ${p.completedTasks}/${p.totalTasks} task (${p.progressPercent}%) • ` +
+      `Dự kiến ${p.estimatedMinutes} phút, thực tế ${p.actualMinutes} phút, chênh lệch ${p.varianceMinutes} phút`));
+  }
+
+  async function setArchived(projectId, action) {
+    const result = await api('POST', `/api/projects/${projectId}/${action}`);
+    if (result.ok) loadProjects();
+  }
+
+  function strong(text) { const el = document.createElement('strong'); el.textContent = text; return el; }
+  function small(text) { const el = document.createElement('small'); el.textContent = text; return el; }
+  function muted(text) { const el = document.createElement('p'); el.className = 'muted'; el.textContent = text; return el; }
+  function button(label, onClick, style) {
+    const el = document.createElement('button');
+    el.textContent = label;
+    if (style) el.className = style;
+    el.onclick = onClick;
+    return el;
+  }
+
+  $('clientId').value = localStorage.getItem('googleClientId') || '';
+  renderSession();
+  showCalendarResultFromUrl();
+</script>
+</body>
+</html>

@@ -13,13 +13,22 @@ namespace METANOIA.Controllers
     {
         private readonly IGoogleCalendarConnectionService _connectionService;
         private readonly IGoogleCalendarEventService _eventService;
+        private readonly IGoogleCalendarSyncService _syncService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<GoogleCalendarController> _logger;
 
         public GoogleCalendarController(
             IGoogleCalendarConnectionService connectionService,
-            IGoogleCalendarEventService eventService)
+            IGoogleCalendarEventService eventService,
+            IGoogleCalendarSyncService syncService,
+            IConfiguration configuration,
+            ILogger<GoogleCalendarController> logger)
         {
             _connectionService = connectionService;
             _eventService = eventService;
+            _syncService = syncService;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -35,7 +44,7 @@ namespace METANOIA.Controllers
         [HttpGet("connect")]
         public IActionResult Connect()
         {
-            return Redirect(_connectionService.BuildAuthorizationUrl(CurrentUserId));
+            return Ok(new { authorizationUrl = _connectionService.BuildAuthorizationUrl(CurrentUserId) });
         }
 
         [HttpGet("callback")]
@@ -47,16 +56,36 @@ namespace METANOIA.Controllers
         {
             if (!string.IsNullOrEmpty(error))
             {
-                throw new UserFriendlyException("Bạn đã từ chối cấp quyền truy cập Google Calendar.");
+                return RedirectToFrontend("denied", "Bạn đã từ chối cấp quyền truy cập Google Calendar.");
             }
 
             if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
             {
-                throw new UserFriendlyException("Thiếu tham số code hoặc state từ Google.");
+                return RedirectToFrontend("error", "Thiếu tham số code hoặc state từ Google.");
             }
 
-            await _connectionService.ConnectAsync(code, state, cancellationToken);
-            return Ok(new { message = "Đã kết nối Google Calendar thành công." });
+            try
+            {
+                await _connectionService.ConnectAsync(code, state, cancellationToken);
+            }
+            catch (UserFriendlyException ex)
+            {
+                return RedirectToFrontend("error", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Google Calendar callback failed");
+                return RedirectToFrontend("error", $"Lỗi hệ thống: {ex.GetType().Name} - {ex.Message}");
+            }
+
+            return RedirectToFrontend("connected", null);
+        }
+
+        [Authorize]
+        [HttpPost("sync")]
+        public async Task<ActionResult<GoogleCalendarSyncResultDto>> Sync(CancellationToken cancellationToken)
+        {
+            return Ok(await _syncService.SyncAsync(CurrentUserId, cancellationToken));
         }
 
         [Authorize]
@@ -102,6 +131,21 @@ namespace METANOIA.Controllers
         {
             await _eventService.DeleteEventAsync(CurrentUserId, eventId, cancellationToken);
             return NoContent();
+        }
+
+        private IActionResult RedirectToFrontend(string status, string? message)
+        {
+            var baseUrl = _configuration["Frontend:CalendarConnectedRedirectUri"]
+                ?? throw new InvalidOperationException("Cấu hình 'Frontend:CalendarConnectedRedirectUri' chưa được thiết lập.");
+
+            var query = $"calendar={status}";
+            if (message is not null)
+            {
+                query += $"&message={Uri.EscapeDataString(message)}";
+            }
+
+            var separator = baseUrl.Contains('?') ? "&" : "?";
+            return Redirect($"{baseUrl}{separator}{query}");
         }
     }
 }

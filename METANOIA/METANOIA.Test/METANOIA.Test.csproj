@@ -4,6 +4,18 @@
     <ProjectReference Include="..\METANOIA.Domain\METANOIA.Domain.csproj" />
     <ProjectReference Include="..\METANOIA.Application\METANOIA.Application.csproj" />
     <ProjectReference Include="..\METANOIA.Infrastructure\METANOIA.Infrastructure.csproj" />
+    <ProjectReference Include="..\METANOIA\METANOIA.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <PropertyGroup>
