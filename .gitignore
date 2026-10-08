@@ -1,51 +1,40 @@
+# Visual Studio / IDE
 .vs/
-# Ignore build results
-**/bin/
-**/obj/
-
-# Ignore Visual Studio files
 .vscode/
+.idea/
 *.user
 *.suo
 
-# Ignore build outputs
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Build artifacts
 *.exe
 *.dll
 *.pdb
 *.cache
 
-# Ignore Rider/JetBrains files
-.idea/
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
 
-# Ignore temporary files
+# Generated files
+*.generated.cs
+
+# Logs / temp
 *.log
 *.tmp
 
-# Ignore NuGet packages
-packages/
-project.lock.json
-*.nupkg
-*.snupkg
-
-# Ignore generated files
-*.generated.cs
-
-# Ignore user secrets
+# Secrets / local configuration
 secrets.json
+appsettings.json
+appsettings.*.json
+appsettings.Development.json
+!appsettings.example.json
 
-# Ignore OS-specific files
+# OS
 .DS_Store
 Thumbs.db
-bin/
-obj/
-*.dll
-*.exe
-*.pdb
-*.cache
-appsettings.json
-**/bin/
-**/obj/
-*.dll
-*.exe
-*.pdb
-
