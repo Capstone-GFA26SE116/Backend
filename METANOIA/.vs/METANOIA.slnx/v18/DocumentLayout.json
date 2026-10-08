@@ -1,200 +1,196 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\",
+  "WorkspaceRootPath": "D:\\Capstone\\META\\Backend\\METANOIA\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\services\\googlecalendareventservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\googlecalendareventservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\services\\googlecalendarconnectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\googlecalendarconnectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\repositories\\googleconnectionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\repositories\\googleconnectionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\repositories\\googleconnectionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\repositories\\authrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\googlecalendareventservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\googlecalendareventservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\googlecalendarconnectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\googlecalendarconnectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\repositories\\authrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\repositories\\authrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\repositories\\projectrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\repositories\\projectrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\repositories\\projectrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\controllers\\googlecalendarcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\controllers\\googlecalendarcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\controllers\\googlecalendarcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\services\\googletokenvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\googletokenvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\googletokenvalidator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\controllers\\projectscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\services\\jwttokengenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\jwttokengenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\jwttokengenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|solutionrelative:metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.application\\interfaces\\repositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.application\\interfaces\\repositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|solutionrelative:metanoia.application\\interfaces\\repositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.infrastructure\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\data\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\task.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\task.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\task.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\usersubscription.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\usersubscription.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\usersubscription.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\userdomainprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\userdomainprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\userdomainprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\usercircadianprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\usercircadianprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\usercircadianprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\taskexecutionmemory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\taskexecutionmemory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\taskexecutionmemory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\subtask.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\subtask.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\subtask.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\subscriptionplan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\subscriptionplan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\subscriptionplan.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\scheduleslot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\scheduleslot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\scheduleslot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\scheduleproposal.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\scheduleproposal.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\scheduleproposal.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\schedulechangelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\schedulechangelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\schedulechangelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\projectdocument.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\projectdocument.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\projectdocument.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\project.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\project.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\project.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\paymenttransaction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\paymenttransaction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\paymenttransaction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\notification.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\notification.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\notification.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\milestone.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\milestone.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\milestone.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\kbiasupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\kbiasupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\kbiasupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\invoice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\invoice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\invoice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\googleconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\googleconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\googleconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\googlecalendarevent.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\googlecalendarevent.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\googlecalendarevent.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\focustrack.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\focustrack.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\focustrack.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\focussession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\focussession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\focussession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\domain.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\domain.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\domain.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\client.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\circadianupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\circadianupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\circadianupdatelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\chatmessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\chatmessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\chatmessage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\chatconversation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\chatconversation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\chatconversation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\blindtestsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\blindtestsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\blindtestsession.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\aiusagelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\aiusagelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\aiusagelog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia.domain\\entities\\adminactionlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.domain\\entities\\adminactionlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{85B8D038-B99D-98A1-7DBB-1985344D3600}|METANOIA.Domain\\METANOIA.Domain.csproj|solutionrelative:metanoia.domain\\entities\\adminactionlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Capstone\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\middleware\\globalexceptionhandlermiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\middleware\\globalexceptionhandlermiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\middleware\\globalexceptionhandlermiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\metanoia\\backend\\metanoia\\metanoia\\metanoia.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\metanoia.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\metanoia.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
@@ -214,21 +210,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 207,
+          "SelectedChildIndex": 204,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\appsettings.json",
-              "RelativeDocumentMoniker": "METANOIA\\appsettings.json",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\appsettings.json",
-              "RelativeToolTip": "METANOIA\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAWAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-09-17T02:34:04.559Z",
-              "IsPinned": true
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:138:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
@@ -1047,23 +1030,24 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "GoogleConnectionRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T11:57:52.847Z"
+              "WhenOpened": "2026-10-05T11:57:52.847Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
               "Title": "AuthRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
               "ViewState": "AgIAABEAAAAAAAAAAAA3wCQAAABLAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1071,24 +1055,23 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "GoogleCalendarEventService.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
-              "ViewState": "AgIAAFYAAAAAAAAAAAAWwGUAAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAFAAAAAAAAAAAIA0wGUAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T11:58:05.537Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-05T11:58:05.537Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "GoogleCalendarConnectionService.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
               "ViewState": "AgIAAFUAAAAAAAAAAAAiwFcAAAAzAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1098,9 +1081,9 @@
               "$type": "Document",
               "DocumentIndex": 4,
               "Title": "ProjectRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
               "ViewState": "AgIAABsAAAAAAAAAAAAkwC4AAABMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1110,9 +1093,9 @@
               "$type": "Document",
               "DocumentIndex": 5,
               "Title": "GoogleCalendarController.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\GoogleCalendarController.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\GoogleCalendarController.cs",
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\GoogleCalendarController.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\GoogleCalendarController.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\GoogleCalendarController.cs",
               "RelativeToolTip": "METANOIA\\Controllers\\GoogleCalendarController.cs",
               "ViewState": "AgIAADAAAAAAAAAAAAAIwEEAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1122,9 +1105,9 @@
               "$type": "Document",
               "DocumentIndex": 6,
               "Title": "GoogleTokenValidator.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
               "ViewState": "AgIAAB4AAAAAAAAAAAAYwA4AAAA4AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1132,11 +1115,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 7,
               "Title": "ProjectsController.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\ProjectsController.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\ProjectsController.cs",
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\ProjectsController.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\ProjectsController.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\ProjectsController.cs",
               "RelativeToolTip": "METANOIA\\Controllers\\ProjectsController.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1144,11 +1127,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 8,
               "Title": "JwtTokenGenerator.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
               "ViewState": "AgIAABQAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1156,11 +1139,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 10,
               "Title": "AuthController.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\AuthController.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
               "RelativeToolTip": "METANOIA\\Controllers\\AuthController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAABJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1168,11 +1151,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 9,
               "Title": "AuthService.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\AuthService.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Services\\AuthService.cs",
               "ViewState": "AgIAACgAAAAAAAAAAAAwwDYAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1180,11 +1163,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 11,
               "Title": "IUserService.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
               "RelativeDocumentMoniker": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
               "RelativeToolTip": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1192,11 +1175,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 12,
               "Title": "IUserRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
               "RelativeToolTip": "METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1204,11 +1187,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 15,
               "Title": "UserSubscription.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserSubscription.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserSubscription.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserSubscription.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserSubscription.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserSubscription.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\UserSubscription.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1216,11 +1199,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 16,
               "Title": "UserDomainProfile.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserDomainProfile.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserDomainProfile.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserDomainProfile.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserDomainProfile.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserDomainProfile.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\UserDomainProfile.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1228,11 +1211,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 17,
               "Title": "UserCircadianProfile.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1240,11 +1223,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 18,
               "Title": "User.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\User.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\User.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\User.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\User.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\User.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\User.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1252,11 +1235,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 13,
               "Title": "AppDbContext.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Data\\AppDbContext.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Data\\AppDbContext.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Data\\AppDbContext.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Infrastructure\\Data\\AppDbContext.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Data\\AppDbContext.cs",
               "RelativeToolTip": "METANOIA.Infrastructure\\Data\\AppDbContext.cs",
               "ViewState": "AgIAAI4AAAAAAAAAAAAwwAoBAAALAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1264,11 +1247,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 19,
               "Title": "TaskExecutionMemory.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1276,11 +1259,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 14,
               "Title": "Task.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Task.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Task.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Task.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Task.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Task.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Task.cs",
               "ViewState": "AgIAABwAAAAAAAAAAAAcwAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1288,11 +1271,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 20,
               "Title": "SubTask.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubTask.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubTask.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\SubTask.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubTask.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubTask.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\SubTask.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1300,11 +1283,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 21,
               "Title": "SubscriptionPlan.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1312,11 +1295,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 22,
               "Title": "ScheduleSlot.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleSlot.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleSlot.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleSlot.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleSlot.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleSlot.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ScheduleSlot.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1324,11 +1307,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 23,
               "Title": "ScheduleProposal.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleProposal.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleProposal.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleProposal.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleProposal.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleProposal.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ScheduleProposal.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1336,11 +1319,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 24,
               "Title": "ScheduleChangeLog.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1348,11 +1331,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 25,
               "Title": "Role.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Role.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Role.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Role.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Role.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Role.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Role.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1360,11 +1343,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 26,
               "Title": "ProjectDocument.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ProjectDocument.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ProjectDocument.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ProjectDocument.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ProjectDocument.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ProjectDocument.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ProjectDocument.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1372,11 +1355,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 27,
               "Title": "Project.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Project.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Project.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Project.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Project.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Project.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Project.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1384,11 +1367,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 28,
               "Title": "PaymentTransaction.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\PaymentTransaction.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\PaymentTransaction.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\PaymentTransaction.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\PaymentTransaction.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\PaymentTransaction.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\PaymentTransaction.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1396,11 +1379,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 29,
               "Title": "Notification.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Notification.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Notification.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Notification.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Notification.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Notification.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Notification.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1408,11 +1391,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 30,
               "Title": "Milestone.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Milestone.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Milestone.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Milestone.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Milestone.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Milestone.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Milestone.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1420,11 +1403,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 31,
               "Title": "KbiasUpdateLog.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1432,11 +1415,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 32,
               "Title": "Invoice.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Invoice.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Invoice.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Invoice.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Invoice.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Invoice.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Invoice.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1444,11 +1427,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 33,
               "Title": "GoogleConnection.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleConnection.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleConnection.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\GoogleConnection.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleConnection.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleConnection.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\GoogleConnection.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1456,11 +1439,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 34,
               "Title": "GoogleCalendarEvent.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1468,11 +1451,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 35,
               "Title": "FocusTrack.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusTrack.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusTrack.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\FocusTrack.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusTrack.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusTrack.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\FocusTrack.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1480,11 +1463,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 36,
               "Title": "FocusSession.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusSession.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusSession.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\FocusSession.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusSession.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusSession.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\FocusSession.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1492,11 +1475,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 37,
               "Title": "Domain.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Domain.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Domain.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Domain.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Domain.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Domain.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Domain.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1504,11 +1487,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 38,
               "Title": "Client.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Client.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Client.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Client.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Client.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Client.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\Client.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1516,11 +1499,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 39,
               "Title": "CircadianUpdateLog.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1528,11 +1511,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 40,
               "Title": "ChatMessage.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatMessage.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatMessage.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ChatMessage.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatMessage.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatMessage.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ChatMessage.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1540,11 +1523,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 41,
               "Title": "ChatConversation.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatConversation.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatConversation.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ChatConversation.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatConversation.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatConversation.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\ChatConversation.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1552,11 +1535,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 42,
               "Title": "BlindTestSession.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\BlindTestSession.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\BlindTestSession.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\BlindTestSession.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\BlindTestSession.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\BlindTestSession.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\BlindTestSession.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1564,11 +1547,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 43,
               "Title": "AiusageLog.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AiusageLog.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AiusageLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\AiusageLog.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AiusageLog.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AiusageLog.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\AiusageLog.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1576,11 +1559,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 44,
               "Title": "AdminActionLog.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AdminActionLog.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AdminActionLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\AdminActionLog.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AdminActionLog.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AdminActionLog.cs",
               "RelativeToolTip": "METANOIA.Domain\\Entities\\AdminActionLog.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1588,23 +1571,23 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 45,
               "Title": "GlobalExceptionMiddleware.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
-              "RelativeDocumentMoniker": "..\\..\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
               "ToolTip": "D:\\Capstone\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
-              "RelativeToolTip": "..\\..\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
+              "RelativeToolTip": "..\\..\\..\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-09-17T02:32:16.233Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 46,
               "Title": "GlobalExceptionHandlerMiddleware.cs",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
               "RelativeDocumentMoniker": "METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
               "RelativeToolTip": "METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -1612,11 +1595,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 47,
               "Title": "METANOIA.csproj",
-              "DocumentMoniker": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\METANOIA.csproj",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\METANOIA.csproj",
               "RelativeDocumentMoniker": "METANOIA\\METANOIA.csproj",
-              "ToolTip": "D:\\Capstone\\METANOIA\\Backend\\METANOIA\\METANOIA\\METANOIA.csproj",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\METANOIA.csproj",
               "RelativeToolTip": "METANOIA\\METANOIA.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
@@ -1624,36 +1607,36 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 48,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Test\\Class1.cs",
-              "RelativeDocumentMoniker": "..\\..\\METANOIA.Test\\Class1.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Test\\Class1.cs",
               "ToolTip": "D:\\Capstone\\METANOIA\\METANOIA.Test\\Class1.cs",
-              "RelativeToolTip": "..\\..\\METANOIA.Test\\Class1.cs",
+              "RelativeToolTip": "..\\..\\..\\METANOIA\\METANOIA.Test\\Class1.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-09-17T01:14:04.939Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 49,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Domain\\Class1.cs",
-              "RelativeDocumentMoniker": "..\\..\\METANOIA.Domain\\Class1.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Domain\\Class1.cs",
               "ToolTip": "D:\\Capstone\\METANOIA\\METANOIA.Domain\\Class1.cs",
-              "RelativeToolTip": "..\\..\\METANOIA.Domain\\Class1.cs",
+              "RelativeToolTip": "..\\..\\..\\METANOIA\\METANOIA.Domain\\Class1.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-09-17T01:12:37.47Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 50,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Application\\Class1.cs",
-              "RelativeDocumentMoniker": "..\\..\\METANOIA.Application\\Class1.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Application\\Class1.cs",
               "ToolTip": "D:\\Capstone\\METANOIA\\METANOIA.Application\\Class1.cs",
-              "RelativeToolTip": "..\\..\\METANOIA.Application\\Class1.cs",
+              "RelativeToolTip": "..\\..\\..\\METANOIA\\METANOIA.Application\\Class1.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-09-17T01:10:59.911Z"
