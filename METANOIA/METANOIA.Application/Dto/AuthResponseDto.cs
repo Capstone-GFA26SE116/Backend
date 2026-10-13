@@ -13,5 +13,10 @@ namespace METANOIA.Application.Dto
         public string AccessToken { get; set; } = null!;
 
         public DateTime ExpiresAtUtc { get; set; }
+
+        // Dùng với POST /api/auth/refresh khi AccessToken hết hạn. Chỉ trả ra đúng một lần, server chỉ giữ bản băm
+        public string RefreshToken { get; set; } = null!;
+
+        public DateTime RefreshTokenExpiresAtUtc { get; set; }
     }
 }

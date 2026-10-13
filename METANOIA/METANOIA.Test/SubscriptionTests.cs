@@ -24,6 +24,16 @@ namespace METANOIA.Test
             await factory.SeedUserWithRoleAsync("admin-1", "Admin");
             var (admin, _) = await TestHelpers.LoginAsync(factory, "admin-1");
             var (user, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+
+            // User mới luôn được cấp sẵn gói Miễn phí Active; các test dưới đây tự tạo gói nên bỏ gói đó đi trước
+            await factory.SeedAsync(db =>
+            {
+                foreach (var subscription in db.UserSubscriptions.Where(s => s.UserId == auth.UserId))
+                {
+                    subscription.Status = "Expired";
+                }
+            });
+
             var plan = await (await admin.PostAsJsonAsync("/api/subscription-plans", NewPlan()))
                 .Content.ReadFromJsonAsync<SubscriptionPlanDto>();
             return (admin, user, auth.UserId, plan!.Id);
@@ -98,7 +108,8 @@ namespace METANOIA.Test
             var (stranger, _) = await TestHelpers.LoginAsync(factory, "stranger");
             var strangerView = await stranger.GetAsync($"/api/user-subscriptions/{created!.Id}");
 
-            Assert.Single(mine!);
+            Assert.Contains(mine!, s => s.Id == created.Id);
+            Assert.All(mine!, s => Assert.Equal(userId, s.UserId));
             Assert.Equal(HttpStatusCode.NotFound, strangerView.StatusCode);
         }
 

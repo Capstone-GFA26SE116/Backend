@@ -6,7 +6,9 @@ using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
 using Microsoft.AspNetCore.DataProtection;
+using Google.Apis.Calendar.v3.Data;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
@@ -23,14 +25,22 @@ namespace METANOIA.Infrastructure.Services
         private readonly IDataProtector _tokenProtector;
         private readonly string _clientId;
         private readonly string _redirectUri;
+        private readonly GoogleCalendarClientProvider _clientProvider;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<GoogleCalendarConnectionService> _logger;
 
         public GoogleCalendarConnectionService(
             IGoogleConnectionRepository connectionRepository,
             IUnitOfWork unitOfWork,
             GoogleOAuthClient oauthClient,
             IDataProtectionProvider dataProtectionProvider,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            GoogleCalendarClientProvider clientProvider,
+            ILogger<GoogleCalendarConnectionService> logger)
         {
+            _clientProvider = clientProvider;
+            _configuration = configuration;
+            _logger = logger;
             _connectionRepository = connectionRepository;
             _unitOfWork = unitOfWork;
             _oauthClient = oauthClient;
@@ -81,6 +91,86 @@ namespace METANOIA.Infrastructure.Services
             connection.LastSyncError = null;
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await TryStartWatchAsync(userId, cancellationToken);
+        }
+
+        public async Task DisconnectAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var connection = await _connectionRepository.GetWithEventsByUserIdAsync(userId, cancellationToken);
+            if (connection is null)
+            {
+                return;
+            }
+
+            string? refreshToken = null;
+            try
+            {
+                refreshToken = Encoding.UTF8.GetString(_tokenProtector.Unprotect(connection.RefreshTokenEncrypted));
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogWarning(ex, "Không giải mã được refresh token của user {UserId}, bỏ qua bước thu hồi ở Google.", userId);
+            }
+
+            // Xóa trước: dù Google có phản hồi hay không thì liên kết trong hệ thống vẫn được hủy
+            _connectionRepository.Remove(connection);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (refreshToken is not null)
+            {
+                try
+                {
+                    await _oauthClient.RevokeAsync(refreshToken, cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Không thu hồi được quyền Google của user {UserId}.", userId);
+                }
+            }
+        }
+
+        // Đăng ký kênh Watch để Google gọi POST /api/google-calendar/webhook khi lịch đổi. Chỉ chạy khi có cấu hình
+        // Google:WebhookUrl (URL https công khai). Lỗi ở đây không làm hỏng việc kết nối: lịch vẫn đồng bộ thủ công được.
+        private async Task TryStartWatchAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            var webhookUrl = _configuration["Google:WebhookUrl"];
+            if (string.IsNullOrWhiteSpace(webhookUrl))
+            {
+                return;
+            }
+
+            if (!webhookUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Google:WebhookUrl phải là URL https công khai, bỏ qua việc đăng ký kênh Watch.");
+                return;
+            }
+
+            try
+            {
+                var secret = _configuration["Jwt:Key"]
+                    ?? throw new InvalidOperationException("Cấu hình 'Jwt:Key' chưa được thiết lập.");
+                var session = await _clientProvider.OpenAsync(userId, cancellationToken);
+                var channelId = Guid.NewGuid().ToString();
+
+                var channel = await session.Service.Events.Watch(new Channel
+                {
+                    Id = channelId,
+                    Type = "web_hook",
+                    Address = webhookUrl,
+                    Token = GoogleWebhookToken.Create(channelId, secret)
+                }, "primary").ExecuteAsync(cancellationToken);
+
+                session.Connection.WatchChannelId = channelId;
+                session.Connection.WatchExpiresAt = channel.Expiration is { } expiration
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(expiration).UtcDateTime
+                    : null;
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Không đăng ký được kênh Watch Google Calendar cho user {UserId}.", userId);
+            }
         }
 
         public async Task<GoogleCalendarStatusDto> GetStatusAsync(Guid userId, CancellationToken cancellationToken = default)

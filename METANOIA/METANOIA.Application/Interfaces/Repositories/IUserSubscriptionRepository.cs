@@ -21,6 +21,16 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         Task<bool> HasAiUsageAsync(Guid subscriptionId, CancellationToken cancellationToken = default);
 
+        Task<UserSubscription?> GetActiveByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        Task<UserSubscription?> GetByPaymentIdAsync(Guid paymentId, CancellationToken cancellationToken = default);
+
+        // Gói Scheduled đầu tiên của user đã đến ngày bắt đầu
+        Task<UserSubscription?> GetDueScheduledForUserAsync(Guid userId, DateTime now, CancellationToken cancellationToken = default);
+
+        // Gói Active đã quá EndAt
+        Task<IReadOnlyList<UserSubscription>> GetExpiredActiveAsync(DateTime now, int take, CancellationToken cancellationToken = default);
+
         Task AddAsync(UserSubscription subscription, CancellationToken cancellationToken = default);
 
         void Remove(UserSubscription subscription);

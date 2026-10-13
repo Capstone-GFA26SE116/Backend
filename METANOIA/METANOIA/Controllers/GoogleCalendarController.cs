@@ -81,6 +81,32 @@ namespace METANOIA.Controllers
             return RedirectToFrontend("connected", null);
         }
 
+        // Hủy liên kết: xóa kết nối và các event đã đồng bộ, thu hồi quyền ở Google. Gọi khi chưa kết nối vẫn trả 204
+        [Authorize]
+        [HttpDelete("disconnect")]
+        public async Task<IActionResult> Disconnect(CancellationToken cancellationToken)
+        {
+            await _connectionService.DisconnectAsync(CurrentUserId, cancellationToken);
+            return NoContent();
+        }
+
+        // Google gọi vào khi lịch thay đổi (kênh Watch). Không có JWT; bảo mật bằng X-Goog-Channel-Token.
+        // Trả 200 cho mọi thông báo hợp lệ (kể cả bỏ qua) để Google không gửi lại.
+        [AllowAnonymous]
+        [HttpPost("webhook")]
+        public async Task<IActionResult> Webhook(
+            [FromServices] IGoogleCalendarWebhookService webhookService,
+            CancellationToken cancellationToken)
+        {
+            var result = await webhookService.HandleAsync(
+                Request.Headers["X-Goog-Channel-ID"].FirstOrDefault(),
+                Request.Headers["X-Goog-Channel-Token"].FirstOrDefault(),
+                Request.Headers["X-Goog-Resource-State"].FirstOrDefault(),
+                cancellationToken);
+
+            return result == GoogleWebhookResult.Unauthorized ? StatusCode(StatusCodes.Status403Forbidden) : Ok();
+        }
+
         [Authorize]
         [HttpPost("sync")]
         public async Task<ActionResult<GoogleCalendarSyncResultDto>> Sync(CancellationToken cancellationToken)

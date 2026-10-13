@@ -82,6 +82,11 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Giao dịch đã có hóa đơn nên không thể xóa.");
             }
 
+            if (await _paymentRepository.HasRefundAsync(paymentId, cancellationToken))
+            {
+                throw new UserFriendlyException("Giao dịch đã có yêu cầu hoàn tiền nên không thể xóa.");
+            }
+
             if (await _paymentRepository.HasSubscriptionAsync(paymentId, cancellationToken))
             {
                 throw new UserFriendlyException("Giao dịch đã gắn với một gói đăng ký nên không thể xóa. Hãy đổi trạng thái thay thế.");
@@ -154,7 +159,7 @@ namespace METANOIA.Infrastructure.Services
             payment.WebhookReceivedAt = request.WebhookReceivedAt?.UtcDateTime;
         }
 
-        private static PaymentTransactionDto ToDto(PaymentTransaction payment)
+        internal static PaymentTransactionDto ToDto(PaymentTransaction payment)
         {
             return new PaymentTransactionDto
             {

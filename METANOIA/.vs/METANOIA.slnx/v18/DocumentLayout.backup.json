@@ -3,6 +3,38 @@
   "WorkspaceRootPath": "D:\\Capstone\\META\\Backend\\METANOIA\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\scheduleslotservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\scheduleslotservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\utctime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\utctime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D07B0D3B-7A4B-F51E-70C0-D26E77760037}|METANOIA.Test\\METANOIA.Test.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.test\\meandinitializationtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D07B0D3B-7A4B-F51E-70C0-D26E77760037}|METANOIA.Test\\METANOIA.Test.csproj|solutionrelative:metanoia.test\\meandinitializationtests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\userbackfillrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\userbackfillrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|solutionrelative:metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\repositories\\googleconnectionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\repositories\\googleconnectionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -37,18 +69,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\jwttokengenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\jwttokengenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{69E7665E-C1DB-31E0-E807-1A250471F2DA}|METANOIA.Infrastructure\\METANOIA.Infrastructure.csproj|solutionrelative:metanoia.infrastructure\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5BDBBAE1-22B4-F47F-B8FB-242ADD39411F}|METANOIA\\METANOIA.csproj|solutionrelative:metanoia\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|solutionrelative:metanoia.application\\interfaces\\services\\iuserservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{30B690C0-4C4E-DA3B-EF89-A49C944D4F89}|METANOIA.Application\\METANOIA.Application.csproj|d:\\capstone\\meta\\backend\\metanoia\\metanoia.application\\interfaces\\repositories\\iuserrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -210,7 +230,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 204,
+          "SelectedChildIndex": 203,
           "Children": [
             {
               "$type": "Bookmark",
@@ -1025,12 +1045,74 @@
               "Name": "ST:38:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             },
             {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\appsettings.json",
+              "RelativeDocumentMoniker": "METANOIA\\appsettings.json",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\appsettings.json*",
+              "RelativeToolTip": "METANOIA\\appsettings.json*",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAAC0AAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-10-13T02:37:17.982Z",
+              "EditorCaption": ""
+            },
+            {
               "$type": "Bookmark",
               "Name": "ST:40:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
+              "Title": "ScheduleSlotService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ScheduleSlotService.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\ScheduleSlotService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ScheduleSlotService.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\ScheduleSlotService.cs",
+              "ViewState": "AgIAAL8AAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T14:43:40.45Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "UtcTime.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\UtcTime.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\UtcTime.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\UtcTime.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\UtcTime.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T14:41:31.289Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MeAndInitializationTests.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Test\\MeAndInitializationTests.cs",
+              "RelativeDocumentMoniker": "METANOIA.Test\\MeAndInitializationTests.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Test\\MeAndInitializationTests.cs",
+              "RelativeToolTip": "METANOIA.Test\\MeAndInitializationTests.cs",
+              "ViewState": "AgIAAIIAAAAAAAAAAAAwwIkAAABMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T04:24:07.913Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "UserBackfillRunner.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\UserBackfillRunner.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\UserBackfillRunner.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\UserBackfillRunner.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\UserBackfillRunner.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T04:23:51.363Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "GoogleConnectionRepository.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
@@ -1038,24 +1120,11 @@
               "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\GoogleConnectionRepository.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAABIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T11:57:52.847Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-05T11:57:52.847Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "AuthRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
-              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
-              "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
-              "ViewState": "AgIAABEAAAAAAAAAAAA3wCQAAABLAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T03:18:24.6Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 9,
               "Title": "GoogleCalendarEventService.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleCalendarEventService.cs",
@@ -1067,7 +1136,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 10,
               "Title": "GoogleCalendarConnectionService.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleCalendarConnectionService.cs",
@@ -1079,7 +1148,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 12,
               "Title": "ProjectRepository.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
@@ -1091,7 +1160,55 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "METANOIA\\Controllers\\AuthController.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "METANOIA\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAoAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-05T03:26:49.093Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "IUserService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "RelativeDocumentMoniker": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "RelativeToolTip": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-05T03:17:49.646Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 5,
+              "Title": "AuthService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\AuthService.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAAAcwEwAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-05T03:19:01.48Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "AuthRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\AuthRepository.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAA3wCQAAABLAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-05T03:18:24.6Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
               "Title": "GoogleCalendarController.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\GoogleCalendarController.cs",
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\GoogleCalendarController.cs",
@@ -1103,7 +1220,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 14,
               "Title": "GoogleTokenValidator.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\GoogleTokenValidator.cs",
@@ -1115,7 +1232,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 15,
               "Title": "ProjectsController.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\ProjectsController.cs",
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\ProjectsController.cs",
@@ -1127,7 +1244,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 16,
               "Title": "JwtTokenGenerator.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\JwtTokenGenerator.cs",
@@ -1139,43 +1256,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "AuthController.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
-              "RelativeDocumentMoniker": "METANOIA\\Controllers\\AuthController.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\AuthController.cs",
-              "RelativeToolTip": "METANOIA\\Controllers\\AuthController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAABJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T03:26:49.093Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "AuthService.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
-              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\AuthService.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\AuthService.cs",
-              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\AuthService.cs",
-              "ViewState": "AgIAACgAAAAAAAAAAAAwwDYAAAAfAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T03:19:01.48Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "IUserService.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
-              "RelativeDocumentMoniker": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
-              "RelativeToolTip": "METANOIA.Application\\Interfaces\\Services\\IUserService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T03:17:49.646Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 17,
               "Title": "IUserRepository.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
               "RelativeDocumentMoniker": "METANOIA.Application\\Interfaces\\Repositories\\IUserRepository.cs",
@@ -1187,7 +1268,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 20,
               "Title": "UserSubscription.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserSubscription.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserSubscription.cs",
@@ -1199,7 +1280,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 21,
               "Title": "UserDomainProfile.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserDomainProfile.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserDomainProfile.cs",
@@ -1211,7 +1292,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 22,
               "Title": "UserCircadianProfile.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\UserCircadianProfile.cs",
@@ -1223,7 +1304,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 23,
               "Title": "User.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\User.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\User.cs",
@@ -1235,7 +1316,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 18,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Data\\AppDbContext.cs",
               "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Data\\AppDbContext.cs",
@@ -1247,7 +1328,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 24,
               "Title": "TaskExecutionMemory.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\TaskExecutionMemory.cs",
@@ -1259,7 +1340,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 19,
               "Title": "Task.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Task.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Task.cs",
@@ -1271,7 +1352,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 25,
               "Title": "SubTask.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubTask.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\SubTask.cs",
@@ -1283,7 +1364,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 26,
               "Title": "SubscriptionPlan.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\SubscriptionPlan.cs",
@@ -1295,7 +1376,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 27,
               "Title": "ScheduleSlot.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleSlot.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleSlot.cs",
@@ -1307,7 +1388,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 28,
               "Title": "ScheduleProposal.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleProposal.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleProposal.cs",
@@ -1319,7 +1400,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 29,
               "Title": "ScheduleChangeLog.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ScheduleChangeLog.cs",
@@ -1331,7 +1412,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 30,
               "Title": "Role.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Role.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Role.cs",
@@ -1343,7 +1424,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 31,
               "Title": "ProjectDocument.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ProjectDocument.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ProjectDocument.cs",
@@ -1355,7 +1436,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 32,
               "Title": "Project.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Project.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Project.cs",
@@ -1367,7 +1448,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 33,
               "Title": "PaymentTransaction.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\PaymentTransaction.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\PaymentTransaction.cs",
@@ -1379,7 +1460,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 34,
               "Title": "Notification.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Notification.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Notification.cs",
@@ -1391,7 +1472,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 35,
               "Title": "Milestone.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Milestone.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Milestone.cs",
@@ -1403,7 +1484,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 36,
               "Title": "KbiasUpdateLog.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\KbiasUpdateLog.cs",
@@ -1415,7 +1496,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 37,
               "Title": "Invoice.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Invoice.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Invoice.cs",
@@ -1427,7 +1508,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 38,
               "Title": "GoogleConnection.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleConnection.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\GoogleConnection.cs",
@@ -1439,7 +1520,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 39,
               "Title": "GoogleCalendarEvent.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\GoogleCalendarEvent.cs",
@@ -1451,7 +1532,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 40,
               "Title": "FocusTrack.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusTrack.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\FocusTrack.cs",
@@ -1463,7 +1544,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 41,
               "Title": "FocusSession.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\FocusSession.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\FocusSession.cs",
@@ -1475,7 +1556,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 42,
               "Title": "Domain.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Domain.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Domain.cs",
@@ -1487,7 +1568,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 43,
               "Title": "Client.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\Client.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\Client.cs",
@@ -1499,7 +1580,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 44,
               "Title": "CircadianUpdateLog.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\CircadianUpdateLog.cs",
@@ -1511,7 +1592,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 45,
               "Title": "ChatMessage.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatMessage.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ChatMessage.cs",
@@ -1523,7 +1604,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 46,
               "Title": "ChatConversation.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\ChatConversation.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\ChatConversation.cs",
@@ -1535,7 +1616,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 47,
               "Title": "BlindTestSession.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\BlindTestSession.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\BlindTestSession.cs",
@@ -1547,7 +1628,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
+              "DocumentIndex": 48,
               "Title": "AiusageLog.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AiusageLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\AiusageLog.cs",
@@ -1559,7 +1640,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 49,
               "Title": "AdminActionLog.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Domain\\Entities\\AdminActionLog.cs",
               "RelativeDocumentMoniker": "METANOIA.Domain\\Entities\\AdminActionLog.cs",
@@ -1571,7 +1652,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 50,
               "Title": "GlobalExceptionMiddleware.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionMiddleware.cs",
@@ -1583,7 +1664,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 51,
               "Title": "GlobalExceptionHandlerMiddleware.cs",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
               "RelativeDocumentMoniker": "METANOIA\\MiddleWare\\GlobalExceptionHandlerMiddleware.cs",
@@ -1595,7 +1676,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 52,
               "Title": "METANOIA.csproj",
               "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\METANOIA.csproj",
               "RelativeDocumentMoniker": "METANOIA\\METANOIA.csproj",
@@ -1607,7 +1688,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 53,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Test\\Class1.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Test\\Class1.cs",
@@ -1619,7 +1700,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 54,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Domain\\Class1.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Domain\\Class1.cs",
@@ -1631,7 +1712,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 55,
               "Title": "Class1.cs",
               "DocumentMoniker": "D:\\Capstone\\METANOIA\\METANOIA.Application\\Class1.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\METANOIA\\METANOIA.Application\\Class1.cs",

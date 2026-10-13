@@ -50,9 +50,13 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<PaymentRefund> PaymentRefunds { get; set; }
+
     public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
     public virtual DbSet<Project> Projects { get; set; }
+
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public virtual DbSet<ProjectDocument> ProjectDocuments { get; set; }
 
@@ -487,6 +491,34 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("Notification_UserId_fkey");
         });
 
+        modelBuilder.Entity<PaymentRefund>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PaymentRefund_pkey");
+
+            entity.ToTable("PaymentRefund");
+
+            entity.HasIndex(e => e.Status, "IX_PaymentRefund_Status");
+
+            entity.HasIndex(e => e.PaymentTransactionId, "UX_PaymentRefund_OneOpenPerPayment")
+                .IsUnique()
+                .HasFilter("((\"Status\")::text <> 'Rejected'::text)");
+
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.AdminNote).HasMaxLength(500);
+            entity.Property(e => e.BankReference).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.Source).HasMaxLength(10);
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'Requested'::character varying");
+
+            entity.HasOne(d => d.PaymentTransaction).WithMany(p => p.PaymentRefunds)
+                .HasForeignKey(d => d.PaymentTransactionId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("PaymentRefund_PaymentTransactionId_fkey");
+        });
+
         modelBuilder.Entity<PaymentTransaction>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PaymentTransaction_pkey");
@@ -571,6 +603,26 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.Project).WithMany(p => p.ProjectDocuments)
                 .HasForeignKey(d => d.ProjectId)
                 .HasConstraintName("ProjectDocument_ProjectId_fkey");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("RefreshToken_pkey");
+
+            entity.ToTable("RefreshToken");
+
+            entity.HasIndex(e => e.UserId, "IX_RefreshToken_UserId");
+
+            entity.HasIndex(e => e.TokenHash, "RefreshToken_TokenHash_key").IsUnique();
+
+            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.TokenHash).HasMaxLength(64);
+
+            entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("RefreshToken_UserId_fkey");
         });
 
         modelBuilder.Entity<Role>(entity =>

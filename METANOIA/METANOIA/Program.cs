@@ -1,6 +1,11 @@
+using System.Security.Claims;
 using System.Text;
 using METANOIA.Application;
+using METANOIA.Application.Interfaces.Repositories;
+using METANOIA.Application.Interfaces.Services;
+using METANOIA.Auditing;
 using METANOIA.Infrastructure;
+using METANOIA.Infrastructure.Services;
 using METANOIA.MiddleWare;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -10,7 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<AdminAuditFilter>());
+builder.Services.AddHttpContextAccessor();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -40,6 +46,9 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Cho tầng dữ liệu biết khi nào đang xử lý thao tác ghi của Admin để ghi AdminActionLog
+builder.Services.AddScoped<IAdminAuditContext, HttpAdminAuditContext>();
+
 var allowedOrigins = builder.Configuration.GetSection("Frontend:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy => policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
@@ -58,9 +67,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSection["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!))
         };
+
+        // Token còn hạn nhưng chủ tài khoản đã xóa (DELETE /api/me) thì bị từ chối ngay, không chờ token hết hạn
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+
+                if (!Guid.TryParse(userIdValue, out var userId)
+                    || !await users.IsActiveAsync(userId, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("Tài khoản không tồn tại hoặc đã bị xóa.");
+                }
+            }
+        };
     });
 
 var app = builder.Build();
+
+// Lệnh chạy một lần cho user cũ: dotnet run --project METANOIA/METANOIA -- --backfill-user-data
+// Bù project "Cá nhân", gói Miễn phí và 24 dòng circadian còn thiếu rồi thoát (không khởi động web server).
+if (args.Contains(UserBackfillRunner.CommandLineFlag))
+{
+    var result = await UserBackfillRunner.RunAsync(app.Services);
+    Console.WriteLine($"Backfill xong: {result.Total} user cần bù, {result.Initialized} thành công, {result.Failed} lỗi.");
+    return result.Failed == 0 ? 0 : 1;
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -81,6 +115,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+return 0;
 
 public partial class Program
 {
