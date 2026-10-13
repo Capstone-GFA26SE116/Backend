@@ -23,5 +23,26 @@ namespace METANOIA.Controllers
             var result = await _userService.LoginWithGoogleAsync(request.IdToken, cancellationToken);
             return Ok(result);
         }
+
+        // Đổi refresh token lấy access token mới (và refresh token mới, token cũ hết tác dụng). Không cần JWT vì access token
+        // thường đã hết hạn lúc gọi; refresh token chính là thông tin xác thực. Sai/hết hạn/bị thu hồi thì 401 INVALID_REFRESH_TOKEN.
+        [HttpPost("refresh")]
+        public async Task<ActionResult<AuthResponseDto>> Refresh(
+            [FromBody] RefreshRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Ok(await _userService.RefreshAsync(request.RefreshToken, cancellationToken));
+        }
+
+        // Thu hồi refresh token. allDevices = true thì đăng xuất mọi thiết bị. Luôn trả 204. Access token hiện tại vẫn dùng được
+        // đến khi hết hạn (tối đa Jwt:ExpiryMinutes); client nên xóa nó ngay.
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout(
+            [FromBody] LogoutRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            await _userService.LogoutAsync(request.RefreshToken, request.AllDevices, cancellationToken);
+            return NoContent();
+        }
     }
 }

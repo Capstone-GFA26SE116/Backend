@@ -46,6 +46,51 @@ namespace METANOIA.Infrastructure.Repositories
             return _context.PaymentTransactions.AnyAsync(p => p.OrderCode == orderCode && p.Id != excludeId, cancellationToken);
         }
 
+        public Task<PaymentTransaction?> GetByOrderCodeAsync(long orderCode, CancellationToken cancellationToken = default)
+        {
+            return _context.PaymentTransactions.FirstOrDefaultAsync(p => p.OrderCode == orderCode, cancellationToken);
+        }
+
+        public Task<SubscriptionPlan?> GetPlanAsync(Guid planId, CancellationToken cancellationToken = default)
+        {
+            return _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == planId, cancellationToken);
+        }
+
+        public Task<PaymentTransaction?> FindOpenPendingAsync(Guid userId, Guid planId, DateTime now, CancellationToken cancellationToken = default)
+        {
+            return _context.PaymentTransactions
+                .Where(p => p.UserId == userId && p.PlanId == planId && p.Status == "Pending" && p.ExpiresAt > now)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Guid>> GetStalePendingIdsAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default)
+        {
+            return await _context.PaymentTransactions
+                .Where(p => p.Status == "Pending" && p.CreatedAt <= createdBefore)
+                .OrderBy(p => p.CreatedAt)
+                .Select(p => p.Id)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Guid>> GetSucceededWithoutSubscriptionIdsAsync(int take, CancellationToken cancellationToken = default)
+        {
+            return await _context.PaymentTransactions
+                .Where(p => p.Status == "Succeeded"
+                    && !_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
+                    && !_context.PaymentRefunds.Any(r => r.PaymentTransactionId == p.Id && r.Status != "Rejected"))
+                .OrderBy(p => p.CreatedAt)
+                .Select(p => p.Id)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
+        public Task<bool> HasRefundAsync(Guid paymentId, CancellationToken cancellationToken = default)
+        {
+            return _context.PaymentRefunds.AnyAsync(r => r.PaymentTransactionId == paymentId, cancellationToken);
+        }
+
         public Task<bool> HasInvoiceAsync(Guid paymentId, CancellationToken cancellationToken = default)
         {
             return _context.Invoices.AnyAsync(i => i.PaymentTransactionId == paymentId, cancellationToken);

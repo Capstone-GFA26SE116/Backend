@@ -31,6 +31,15 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "A user-friendly exception occurred");
                 await WriteResponseAsync(context, HttpStatusCode.BadRequest, new { message = ex.Message });
             }
+            catch (InvalidRefreshTokenException ex)
+            {
+                _logger.LogWarning(ex, "Invalid refresh token");
+                await WriteResponseAsync(context, HttpStatusCode.Unauthorized, new
+                {
+                    message = ex.Message,
+                    code = "INVALID_REFRESH_TOKEN"
+                });
+            }
             catch (NotFoundException ex)
             {
                 _logger.LogWarning(ex, "Resource not found");
@@ -44,6 +53,15 @@ namespace METANOIA.MiddleWare
                     message = ex.Message,
                     code = "GOOGLE_CALENDAR_NOT_CONNECTED",
                     connectUrl = "/api/google-calendar/connect"
+                });
+            }
+            catch (PaymentGatewayException ex)
+            {
+                _logger.LogWarning(ex, "Payment gateway unavailable");
+                await WriteResponseAsync(context, HttpStatusCode.ServiceUnavailable, new
+                {
+                    message = ex.Message,
+                    code = "PAYMENT_GATEWAY_UNAVAILABLE"
                 });
             }
             catch (Exception ex)

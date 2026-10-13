@@ -6,6 +6,7 @@ using METANOIA.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace METANOIA.Infrastructure
 {
@@ -13,10 +14,31 @@ namespace METANOIA.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            // Mặc định không ghi AdminActionLog; web project thay bằng bản đọc HttpContext
+            services.TryAddScoped<IAdminAuditContext, NullAdminAuditContext>();
+            services.AddScoped<AdminAuditSaveChangesInterceptor>();
+            services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                    .AddInterceptors(serviceProvider.GetRequiredService<AdminAuditSaveChangesInterceptor>()));
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.Configure<SubscriptionOptions>(configuration.GetSection("Subscription"));
+            services.AddScoped<IUserSetupRepository, UserSetupRepository>();
+            services.AddScoped<IUserInitializationService, UserInitializationService>();
+            services.AddScoped<IMeService, MeService>();
+            services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+            services.AddScoped<IAdminUserService, AdminUserService>();
+            services.AddScoped<IAiUsageRepository, AiUsageRepository>();
+            services.AddScoped<IAiUsageReportService, AiUsageReportService>();
+            services.AddScoped<IFocusTrackRepository, FocusTrackRepository>();
+            services.AddScoped<IFocusTrackService, FocusTrackService>();
+            services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
+            services.AddScoped<IAdminAuditLogService, AdminAuditLogService>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            services.AddSingleton<GoogleSyncGate>();
+            services.AddScoped<IGoogleCalendarWebhookService, GoogleCalendarWebhookService>();
+            services.AddScoped<ICalendarRepository, CalendarRepository>();
+            services.AddScoped<ICalendarService, CalendarViewService>();
             services.AddScoped<IUserRepository, AuthRepository>();
             services.AddScoped<IUserService, AuthService>();
             services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
@@ -53,6 +75,13 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
             services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
             services.AddScoped<IPaymentTransactionService, PaymentTransactionService>();
+            services.AddScoped<IPaymentRefundRepository, PaymentRefundRepository>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IRefundService, RefundService>();
+            services.Configure<PayOSOptions>(configuration.GetSection("PayOS"));
+            services.Configure<PaymentOptions>(configuration.GetSection("Payments"));
+            services.AddHttpClient<IPayOSClient, PayOSClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
+            services.AddHostedService<PaymentReconciliationWorker>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
             services.AddScoped<IInvoiceService, InvoiceService>();
             services.AddHttpClient();

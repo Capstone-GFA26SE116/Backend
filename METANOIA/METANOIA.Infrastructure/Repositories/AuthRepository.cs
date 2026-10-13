@@ -22,6 +22,13 @@ namespace METANOIA.Infrastructure.Repositories
                 .FirstOrDefaultAsync(u => u.GoogleSubjectId == googleSubjectId, cancellationToken);
         }
 
+        public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        }
+
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             return _context.Users
@@ -32,6 +39,11 @@ namespace METANOIA.Infrastructure.Repositories
         public Task<Role?> GetRoleByNameAsync(string roleName, CancellationToken cancellationToken = default)
         {
             return _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName, cancellationToken);
+        }
+
+        public Task<bool> IsActiveAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.Users.AnyAsync(u => u.Id == userId && u.DeletedAt == null, cancellationToken);
         }
 
         public async Task AddAsync(User user, CancellationToken cancellationToken = default)

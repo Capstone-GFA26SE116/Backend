@@ -10,6 +10,7 @@ namespace METANOIA.Infrastructure.Services
     public class GoogleOAuthClient
     {
         private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
+        private const string RevokeEndpoint = "https://oauth2.googleapis.com/revoke";
 
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly string _clientId;
@@ -59,6 +60,15 @@ namespace METANOIA.Infrastructure.Services
             }
 
             return new GoogleTokenResult(payload.AccessToken, null, payload.ExpiresIn);
+        }
+
+        // Thu hồi quyền đã cấp cho METANOIA. Chỉ cố gắng hết sức: trả false nếu Google từ chối (ví dụ token đã bị thu hồi)
+        public async Task<bool> RevokeAsync(string token, CancellationToken cancellationToken)
+        {
+            var client = _httpClientFactory.CreateClient();
+            using var content = new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = token });
+            using var response = await client.PostAsync(RevokeEndpoint, content, cancellationToken);
+            return response.IsSuccessStatusCode;
         }
 
         private async Task<GoogleTokenPayload?> PostTokenRequestAsync(Dictionary<string, string> form, CancellationToken cancellationToken)

@@ -1,5 +1,7 @@
+using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
+using METANOIA.Infrastructure.Services;
 using METANOIA.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,6 +17,13 @@ namespace METANOIA.Test.Infrastructure
     {
         public const string FrontendOrigin = "http://localhost:5173";
         public const string CalendarRedirectUri = "https://localhost/fe-test.html";
+        public const string JwtKey = "test-only-signing-key-0123456789-abcdefghijklmnop";
+
+        // Id gói Miễn phí được seed khi có user đăng nhập lần đầu (giống dòng seed ở Supabase)
+        public static readonly Guid FreePlanId = Guid.Parse("1b6f3a2e-0c4d-4f8a-9e21-5d7c8b9a0f01");
+
+        // Bật để giả lập lỗi ở bước tạo project "Cá nhân" khi khởi tạo user mới
+        public bool FailOnProjectCreate { get; set; }
 
         private readonly string _databaseName = Guid.NewGuid().ToString();
 
@@ -24,7 +33,7 @@ namespace METANOIA.Test.Infrastructure
 
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Jwt:Key"] = "test-only-signing-key-0123456789-abcdefghijklmnop",
+                ["Jwt:Key"] = JwtKey,
                 ["Jwt:Issuer"] = "METANOIA",
                 ["Jwt:Audience"] = "METANOIA.Client",
                 ["Jwt:ExpiryMinutes"] = "60",
@@ -33,18 +42,40 @@ namespace METANOIA.Test.Infrastructure
                 ["Google:CalendarRedirectUri"] = "https://localhost/api/google-calendar/callback",
                 ["Frontend:AllowedOrigins:0"] = FrontendOrigin,
                 ["Frontend:CalendarConnectedRedirectUri"] = CalendarRedirectUri,
-                ["Storage:RootPath"] = Path.Combine(Path.GetTempPath(), "metanoia-tests", _databaseName)
+                ["Storage:RootPath"] = Path.Combine(Path.GetTempPath(), "metanoia-tests", _databaseName),
+                ["Subscription:FreePlanId"] = FreePlanId.ToString(),
+                ["Payments:ReconciliationEnabled"] = "false",
+                ["Payments:LinkExpiryMinutes"] = "15",
+                ["Payments:RefundWindowDays"] = "7"
             }));
 
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<DbContextOptions<AppDbContext>>();
-                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_databaseName));
+                services.AddDbContext<AppDbContext>((serviceProvider, options) => options
+                    .UseInMemoryDatabase(_databaseName)
+                    .AddInterceptors(serviceProvider.GetRequiredService<AdminAuditSaveChangesInterceptor>()));
 
                 services.RemoveAll<IGoogleTokenValidator>();
                 services.AddScoped<IGoogleTokenValidator, FakeGoogleTokenValidator>();
+
+                services.RemoveAll<IUserSetupRepository>();
+                services.AddScoped<IUserSetupRepository>(sp =>
+                    new FailingUserSetupRepository(sp.GetRequiredService<AppDbContext>(), () => FailOnProjectCreate));
+
+                services.RemoveAll<IGoogleCalendarSyncService>();
+                services.AddScoped<IGoogleCalendarSyncService>(sp => new RecordingGoogleSyncService(
+                    GoogleSync, ActivatorUtilities.CreateInstance<GoogleCalendarSyncService>(sp)));
+
+                services.RemoveAll<IPayOSClient>();
+                services.AddSingleton<IPayOSClient>(PayOS);
             });
         }
+
+        public FakePayOSClient PayOS { get; } = new();
+
+        // Ghi lại các lần đồng bộ Google để test webhook; mặc định vẫn chạy bản thật
+        public GoogleSyncRecorder GoogleSync { get; } = new();
 
         public async Task EnsureDefaultRoleAsync()
         {
@@ -54,6 +85,22 @@ namespace METANOIA.Test.Infrastructure
             if (!await db.Roles.AnyAsync(r => r.Name == "Freelancer"))
             {
                 db.Roles.Add(new Role { Id = Guid.NewGuid(), Name = "Freelancer" });
+                await db.SaveChangesAsync();
+            }
+
+            if (!await db.SubscriptionPlans.AnyAsync(p => p.Id == FreePlanId))
+            {
+                db.SubscriptionPlans.Add(new SubscriptionPlan
+                {
+                    Id = FreePlanId,
+                    Name = "Miễn phí",
+                    Price = 0,
+                    DurationDays = 30,
+                    AiCallLimit = 30,
+                    StorageLimitMb = 100,
+                    ProjectLimit = 3,
+                    IsActive = true
+                });
                 await db.SaveChangesAsync();
             }
         }

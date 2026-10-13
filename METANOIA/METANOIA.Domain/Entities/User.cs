@@ -43,6 +43,8 @@ public partial class User
 
     public virtual ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
     public virtual Project? Project { get; set; }
 
     public virtual Role Role { get; set; } = null!;
