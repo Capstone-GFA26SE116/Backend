@@ -3,6 +3,7 @@ using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
@@ -15,6 +16,7 @@ namespace METANOIA.Infrastructure.Services
         private const decimal WorkingScore = 0.500m;
         private const decimal OffHoursScore = 0.200m;
         private const string NotConnected = "NotConnected";
+        private const int MaxFullNameLength = 100;
 
         // KBias khởi tạo theo mức hay làm lố
         private static readonly Dictionary<string, decimal> OverrunKBias = new(StringComparer.OrdinalIgnoreCase)
@@ -29,13 +31,16 @@ namespace METANOIA.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IGoogleCalendarConnectionService _googleConnection;
         private readonly IRefreshTokenRepository _refreshTokens;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public MeService(
             IUserSetupRepository setup,
             IUnitOfWork unitOfWork,
             IGoogleCalendarConnectionService googleConnection,
-            IRefreshTokenRepository refreshTokens)
+            IRefreshTokenRepository refreshTokens,
+            IServiceScopeFactory scopeFactory)
         {
+            _scopeFactory = scopeFactory;
             _refreshTokens = refreshTokens;
             _setup = setup;
             _unitOfWork = unitOfWork;
@@ -62,6 +67,21 @@ namespace METANOIA.Infrastructure.Services
             // Cùng DbContext nên các thay đổi trên được lưu chung với việc xóa liên kết Google (nếu có)
             await _googleConnection.DisconnectAsync(userId, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<MeDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto request, CancellationToken cancellationToken = default)
+        {
+            var user = await GetUserAsync(userId, cancellationToken);
+
+            var fullName = request.FullName?.Trim();
+            if (string.IsNullOrEmpty(fullName) || fullName.Length > MaxFullNameLength)
+            {
+                throw new UserFriendlyException($"Họ tên không được để trống và tối đa {MaxFullNameLength} ký tự.");
+            }
+
+            user.FullName = fullName;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return await ToDtoAsync(user, cancellationToken);
         }
 
         public async Task<MeDto> UpdateSettingsAsync(Guid userId, UpdateSettingsRequestDto request, CancellationToken cancellationToken = default)
@@ -224,8 +244,20 @@ namespace METANOIA.Infrastructure.Services
             return user;
         }
 
+        // Chạy trong scope riêng (DbContext riêng): mô hình EF coi User và UserSubscription là quan hệ một-một, nên thêm
+        // gói mới cho một User đang được theo dõi ở đây sẽ làm EF báo "association severed". Dữ liệu vẫn chung một database.
+        private async Task RefreshSubscriptionAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<IPaymentService>().RefreshUserSubscriptionAsync(userId, cancellationToken);
+        }
+
         private async Task<MeDto> ToDtoAsync(User user, CancellationToken cancellationToken)
         {
+            // Gói đã quá hạn thì xử lý ngay (hết hạn, bật gói xếp hàng hoặc về gói Miễn phí) thay vì chờ job nền,
+            // để người dùng không thấy gói cũ đã hết hạn
+            await RefreshSubscriptionAsync(user.Id, cancellationToken);
+
             var subscription = await _setup.GetActiveSubscriptionAsync(user.Id, cancellationToken);
             var googleStatus = await _setup.GetGoogleConnectionStatusAsync(user.Id, cancellationToken);
 
@@ -255,40 +287,10 @@ namespace METANOIA.Infrastructure.Services
             };
         }
 
-        private static void ValidateWorkHours(TimeOnly start, TimeOnly end)
-        {
-            if (end <= start)
-            {
-                throw new UserFriendlyException("Giờ kết thúc làm việc phải lớn hơn giờ bắt đầu.");
-            }
-        }
+        private static void ValidateWorkHours(TimeOnly start, TimeOnly end) => UserSettingsValidator.ValidateWorkHours(start, end);
 
-        private static void ValidateMinutes(int value, string label)
-        {
-            if (value < MinMinutes || value > MaxMinutes)
-            {
-                throw new UserFriendlyException($"{label} phải nằm trong khoảng {MinMinutes} đến {MaxMinutes} phút.");
-            }
-        }
+        private static void ValidateMinutes(int value, string label) => UserSettingsValidator.ValidateMinutes(value, label);
 
-        private static string ValidateTimeZone(string? timeZone)
-        {
-            var value = timeZone?.Trim();
-            if (string.IsNullOrEmpty(value) || value.Length > 50)
-            {
-                throw new UserFriendlyException("Múi giờ không hợp lệ (tối đa 50 ký tự).");
-            }
-
-            try
-            {
-                TimeZoneInfo.FindSystemTimeZoneById(value);
-            }
-            catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
-            {
-                throw new UserFriendlyException($"Múi giờ '{value}' không tồn tại. Ví dụ hợp lệ: Asia/Ho_Chi_Minh.");
-            }
-
-            return value;
-        }
+        private static string ValidateTimeZone(string? timeZone) => UserSettingsValidator.ValidateTimeZone(timeZone);
     }
 }

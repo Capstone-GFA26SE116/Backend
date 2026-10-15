@@ -31,11 +31,32 @@ namespace METANOIA.Infrastructure.Services
 
     public class AdminUserService : IAdminUserService
     {
-        private readonly IAdminUserRepository _repository;
+        private const string AdminRoleName = "Admin";
+        private const string DefaultRoleName = "Freelancer";
+        private const int MaxEmailLength = 255;
+        private const int MaxNameLength = 100;
 
-        public AdminUserService(IAdminUserRepository repository)
+        private readonly IAdminUserRepository _repository;
+        private readonly IUserRepository _users;
+        private readonly IUserSetupRepository _setup;
+        private readonly IUserInitializationService _initialization;
+        private readonly IMeService _meService;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public AdminUserService(
+            IAdminUserRepository repository,
+            IUserRepository users,
+            IUserSetupRepository setup,
+            IUserInitializationService initialization,
+            IMeService meService,
+            IUnitOfWork unitOfWork)
         {
             _repository = repository;
+            _users = users;
+            _setup = setup;
+            _initialization = initialization;
+            _meService = meService;
+            _unitOfWork = unitOfWork;
         }
 
         public Task<PagedResultDto<AdminUserListItemDto>> SearchAsync(
@@ -49,6 +70,200 @@ namespace METANOIA.Infrastructure.Services
         {
             return await _repository.GetDetailAsync(userId, cancellationToken)
                 ?? throw new NotFoundException("Không tìm thấy người dùng.");
+        }
+
+        public async Task<AdminUserDetailDto> CreateAsync(AdminUserRequestDto request, CancellationToken cancellationToken = default)
+        {
+            var email = NormalizeEmail(request.Email ?? throw new UserFriendlyException("Email không được để trống."));
+            var fullName = NormalizeName(request.FullName ?? throw new UserFriendlyException("Họ tên không được để trống."));
+
+            if (await _repository.EmailInUseAsync(email, Guid.Empty, cancellationToken))
+            {
+                throw new UserFriendlyException("Email này đã được dùng bởi một tài khoản khác (kể cả tài khoản đã xóa).");
+            }
+
+            var role = await GetRoleAsync(request.Role ?? DefaultRoleName, cancellationToken);
+            var start = request.WorkDayStart ?? new TimeOnly(8, 0);
+            var end = request.WorkDayEnd ?? new TimeOnly(18, 0);
+            var buffer = request.DefaultBufferMinutes ?? 15;
+            var reminder = request.ReminderLeadMinutes ?? 15;
+            UserSettingsValidator.ValidateWorkHours(start, end);
+            UserSettingsValidator.ValidateMinutes(buffer, "Thời gian đệm mặc định");
+            UserSettingsValidator.ValidateMinutes(reminder, "Thời gian nhắc trước");
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                FullName = fullName,
+                // Giữ chỗ cho đến khi chủ nhân đăng nhập Google lần đầu bằng đúng email này
+                GoogleSubjectId = AccountConstants.PendingSubjectPrefix + Guid.NewGuid().ToString("N"),
+                RoleId = role.Id,
+                Role = role,
+                TimeZone = request.TimeZone is null ? "Asia/Ho_Chi_Minh" : UserSettingsValidator.ValidateTimeZone(request.TimeZone),
+                WorkDayStart = start,
+                WorkDayEnd = end,
+                WorksOnWeekend = request.WorksOnWeekend ?? false,
+                DefaultBufferMinutes = buffer,
+                ReminderLeadMinutes = reminder,
+                OnboardingCompleted = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _users.AddAsync(user, cancellationToken);
+
+            // Cùng một lần lưu với project "Cá nhân", gói Miễn phí và dữ liệu circadian
+            await _initialization.InitializeNewUserAsync(user.Id, cancellationToken);
+
+            return await GetAsync(user.Id, cancellationToken);
+        }
+
+        public async Task<AdminUserDetailDto> UpdateAsync(Guid userId, AdminUserRequestDto request, CancellationToken cancellationToken = default)
+        {
+            var user = await GetExistingAsync(userId, cancellationToken);
+            if (user.DeletedAt is not null)
+            {
+                throw new UserFriendlyException("Tài khoản đã bị xóa. Hãy khôi phục trước khi sửa.");
+            }
+
+            if (request.Email is not null)
+            {
+                var email = NormalizeEmail(request.Email);
+                if (await _repository.EmailInUseAsync(email, user.Id, cancellationToken))
+                {
+                    throw new UserFriendlyException("Email này đã được dùng bởi một tài khoản khác.");
+                }
+
+                user.Email = email;
+            }
+
+            if (request.FullName is not null)
+            {
+                user.FullName = NormalizeName(request.FullName);
+            }
+
+            if (request.Role is not null && !string.Equals(request.Role.Trim(), user.Role.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                var role = await GetRoleAsync(request.Role, cancellationToken);
+                if (user.Role.Name == AdminRoleName && await _repository.CountActiveAdminsAsync(cancellationToken) <= 1)
+                {
+                    throw new UserFriendlyException("Không thể hạ quyền Admin cuối cùng của hệ thống.");
+                }
+
+                user.RoleId = role.Id;
+                user.Role = role;
+            }
+
+            // Chỉ kiểm tra giờ làm khi request có đổi giờ (giờ còn lại lấy từ dữ liệu hiện có)
+            if (request.WorkDayStart is not null || request.WorkDayEnd is not null)
+            {
+                var start = request.WorkDayStart ?? user.WorkDayStart;
+                var end = request.WorkDayEnd ?? user.WorkDayEnd;
+                UserSettingsValidator.ValidateWorkHours(start, end);
+                user.WorkDayStart = start;
+                user.WorkDayEnd = end;
+            }
+
+            if (request.TimeZone is not null)
+            {
+                user.TimeZone = UserSettingsValidator.ValidateTimeZone(request.TimeZone);
+            }
+
+            if (request.WorksOnWeekend is { } weekend)
+            {
+                user.WorksOnWeekend = weekend;
+            }
+
+            if (request.DefaultBufferMinutes is { } buffer)
+            {
+                UserSettingsValidator.ValidateMinutes(buffer, "Thời gian đệm mặc định");
+                user.DefaultBufferMinutes = buffer;
+            }
+
+            if (request.ReminderLeadMinutes is { } reminder)
+            {
+                UserSettingsValidator.ValidateMinutes(reminder, "Thời gian nhắc trước");
+                user.ReminderLeadMinutes = reminder;
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return await GetAsync(userId, cancellationToken);
+        }
+
+        public async Task DeleteAsync(Guid actingAdminId, Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await GetExistingAsync(userId, cancellationToken);
+            if (user.DeletedAt is not null)
+            {
+                throw new NotFoundException("Không tìm thấy người dùng.");
+            }
+
+            if (user.Id == actingAdminId)
+            {
+                throw new UserFriendlyException("Không thể tự xóa tài khoản của mình ở đây. Hãy dùng DELETE /api/me.");
+            }
+
+            if (user.Role.Name == AdminRoleName && await _repository.CountActiveAdminsAsync(cancellationToken) <= 1)
+            {
+                throw new UserFriendlyException("Không thể xóa Admin cuối cùng của hệ thống.");
+            }
+
+            // Cùng cách xóa với DELETE /api/me: xóa mềm, thu hồi mọi phiên đăng nhập, hủy liên kết Google Calendar
+            await _meService.DeleteAsync(userId, cancellationToken);
+        }
+
+        public async Task<AdminUserDetailDto> RestoreAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await GetExistingAsync(userId, cancellationToken);
+            if (user.DeletedAt is null)
+            {
+                throw new UserFriendlyException("Tài khoản này chưa bị xóa.");
+            }
+
+            if (await _repository.EmailInUseAsync(user.Email, user.Id, cancellationToken))
+            {
+                throw new UserFriendlyException("Email của tài khoản này đã được dùng bởi một tài khoản khác nên không thể khôi phục.");
+            }
+
+            user.DeletedAt = null;
+
+            // Bảo đảm đủ dữ liệu khởi tạo (idempotent) rồi lưu cùng lúc
+            await _initialization.InitializeNewUserAsync(userId, cancellationToken);
+            return await GetAsync(userId, cancellationToken);
+        }
+
+        private async Task<User> GetExistingAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            return await _setup.GetUserAsync(userId, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy người dùng.");
+        }
+
+        private async Task<Role> GetRoleAsync(string name, CancellationToken cancellationToken)
+        {
+            return await _users.GetRoleByNameAsync(name.Trim(), cancellationToken)
+                ?? throw new UserFriendlyException($"Role '{name.Trim()}' không tồn tại.");
+        }
+
+        private static string NormalizeEmail(string value)
+        {
+            var email = value.Trim().ToLowerInvariant();
+            if (email.Length == 0 || email.Length > MaxEmailLength || !email.Contains('@') || email.Contains(' '))
+            {
+                throw new UserFriendlyException("Email không hợp lệ.");
+            }
+
+            return email;
+        }
+
+        private static string NormalizeName(string value)
+        {
+            var name = value.Trim();
+            if (name.Length == 0 || name.Length > MaxNameLength)
+            {
+                throw new UserFriendlyException($"Họ tên không được để trống và tối đa {MaxNameLength} ký tự.");
+            }
+
+            return name;
         }
     }
 

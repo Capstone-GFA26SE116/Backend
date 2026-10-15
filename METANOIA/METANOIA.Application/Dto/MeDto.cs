@@ -43,6 +43,12 @@ namespace METANOIA.Application.Dto
         public DateTimeOffset? EndAt { get; set; }
     }
 
+    // Hồ sơ người dùng tự sửa. Email gắn với tài khoản Google, role do Admin quản lý, giờ làm và nhắc việc thuộc về cài đặt (settings)
+    public class UpdateProfileRequestDto
+    {
+        public string FullName { get; set; } = null!;
+    }
+
     public class UpdateSettingsRequestDto
     {
         public TimeOnly WorkDayStart { get; set; }

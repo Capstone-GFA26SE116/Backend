@@ -25,7 +25,8 @@ namespace METANOIA.Infrastructure.Data
             typeof(Invoice),
             typeof(PaymentTransaction),
             typeof(PaymentRefund),
-            typeof(FocusTrack)
+            typeof(FocusTrack),
+            typeof(User)
         };
 
         private readonly IAdminAuditContext _auditContext;

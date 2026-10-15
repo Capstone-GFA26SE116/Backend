@@ -74,12 +74,21 @@ namespace METANOIA.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Guid>> GetSucceededWithoutSubscriptionIdsAsync(int take, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Guid>> GetSucceededNeedingFulfillmentIdsAsync(int take, bool refundsEnabled, CancellationToken cancellationToken = default)
         {
-            return await _context.PaymentTransactions
-                .Where(p => p.Status == "Succeeded"
-                    && !_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
-                    && !_context.PaymentRefunds.Any(r => r.PaymentTransactionId == p.Id && r.Status != "Rejected"))
+            var succeeded = _context.PaymentTransactions.Where(p => p.Status == "Succeeded");
+
+            // Thiếu gói đăng ký, hoặc thiếu hóa đơn. Khi hoàn tiền đang bật thì giao dịch đang có yêu cầu hoàn tiền không cần cấp gói
+            var query = refundsEnabled
+                ? succeeded.Where(p =>
+                    (!_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
+                        && !_context.PaymentRefunds.Any(r => r.PaymentTransactionId == p.Id && r.Status != "Rejected"))
+                    || !_context.Invoices.Any(i => i.PaymentTransactionId == p.Id))
+                : succeeded.Where(p =>
+                    !_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
+                    || !_context.Invoices.Any(i => i.PaymentTransactionId == p.Id));
+
+            return await query
                 .OrderBy(p => p.CreatedAt)
                 .Select(p => p.Id)
                 .Take(take)

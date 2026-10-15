@@ -20,12 +20,31 @@ namespace METANOIA.Controllers
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        private bool IsAdmin => User.IsInRole("Admin");
+
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<ProjectDto>>> GetProjects(
+        public async Task<ActionResult<IReadOnlyList<ProjectWithClientDto>>> GetProjects(
             [FromQuery] bool includeArchived,
             CancellationToken cancellationToken)
         {
             return Ok(await _projectService.GetProjectsAsync(CurrentUserId, includeArchived, cancellationToken));
+        }
+        
+        
+        [HttpGet("filter")]
+        public async Task<ActionResult<IReadOnlyList<ProjectWithClientDto>>> FilterProjects(
+            [FromQuery] Guid? userId,
+            [FromQuery] string? name,
+            [FromQuery] string? status,
+            [FromQuery] Guid? clientId,
+            CancellationToken cancellationToken)
+        {
+            if (userId is { } other && other != CurrentUserId && !IsAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return Ok(await _projectService.FilterProjectsAsync(userId ?? CurrentUserId, name, status, clientId, cancellationToken));
         }
 
         [HttpGet("{projectId:guid}")]

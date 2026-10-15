@@ -28,6 +28,12 @@ namespace METANOIA.Infrastructure.Services
             return clients.Select(ToDto).ToList();
         }
 
+        public async Task<IReadOnlyList<ClientDto>> FilterClientsAsync(Guid userId, string? name, CancellationToken cancellationToken = default)
+        {
+            var clients = await _clientRepository.SearchByUserAsync(userId, name, cancellationToken);
+            return clients.Select(ToDto).ToList();
+        }
+
         public async Task<ClientDto> GetClientAsync(Guid userId, Guid clientId, CancellationToken cancellationToken = default)
         {
             var client = await GetOwnedClientAsync(userId, clientId, cancellationToken);

@@ -32,15 +32,11 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException($"Khoảng thời gian tối đa {MaxRangeDays} ngày.");
             }
 
+            var workingHours = await _calendarRepository.GetWorkingHoursAsync(userId, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy người dùng.");
             var slots = await _calendarRepository.GetSlotsAsync(userId, from.UtcDateTime, to.UtcDateTime, includeCancelled, cancellationToken);
             var events = await _calendarRepository.GetGoogleEventsAsync(userId, from.UtcDateTime, to.UtcDateTime, cancellationToken);
             var googleStatus = await _setupRepository.GetGoogleConnectionStatusAsync(userId, cancellationToken);
-
-            // Slot đã được ghi lên Google thì event tương ứng chỉ là bản sao của slot: không hiển thị hai lần
-            var syncedEventIds = slots
-                .Where(s => !string.IsNullOrEmpty(s.GoogleEventId))
-                .Select(s => s.GoogleEventId!)
-                .ToHashSet();
 
             var items = new List<CalendarItemDto>();
 
@@ -48,32 +44,45 @@ namespace METANOIA.Infrastructure.Services
             {
                 Source = "Slot",
                 Id = slot.Id.ToString(),
-                Title = slot.Task.Title,
+                Title = slot.TaskTitle,
                 Start = UtcTime.ToApi(slot.StartTime),
                 End = UtcTime.ToApi(slot.EndTime),
                 Status = slot.Status,
                 TaskId = slot.TaskId,
                 SubTaskId = slot.SubTaskId,
-                ProjectId = slot.Task.ProjectId
+                SubTaskTitle = slot.SubTaskTitle,
+                ProjectId = slot.ProjectId,
+                ProjectName = slot.ProjectName,
+                ClientName = slot.ClientName,
+                DomainName = slot.DomainName,
+                TaskType = slot.TaskType,
+                TaskStatus = slot.TaskStatus,
+                TaskDeadline = UtcTime.ToApi(slot.TaskDeadline),
+                ProposedMinutes = slot.ProposedMinutes,
+                Explanation = slot.Explanation,
+                IsManualOverride = slot.IsManualOverride,
+                SyncFailed = slot.SyncFailed
             }));
 
-            items.AddRange(events
-                .Where(e => !syncedEventIds.Contains(e.GoogleEventId))
-                .Select(e => new CalendarItemDto
-                {
-                    Source = "Google",
-                    Id = e.GoogleEventId,
-                    Title = e.Title,
-                    Start = UtcTime.ToApi(e.StartTime),
-                    End = UtcTime.ToApi(e.EndTime),
-                    IsAllDay = e.IsAllDay
-                }));
+            items.AddRange(events.Select(e => new CalendarItemDto
+            {
+                Source = "Google",
+                Id = e.GoogleEventId,
+                Title = e.Title,
+                Start = UtcTime.ToApi(e.StartTime),
+                End = UtcTime.ToApi(e.EndTime),
+                IsAllDay = e.IsAllDay
+            }));
 
             return new CalendarDto
             {
                 From = from,
                 To = to,
                 GoogleCalendarStatus = string.IsNullOrWhiteSpace(googleStatus) ? NotConnected : googleStatus,
+                TimeZone = workingHours.TimeZone,
+                WorkDayStart = workingHours.WorkDayStart,
+                WorkDayEnd = workingHours.WorkDayEnd,
+                WorksOnWeekend = workingHours.WorksOnWeekend,
                 Items = items.OrderBy(i => i.Start).ThenBy(i => i.End).ToList()
             };
         }

@@ -48,7 +48,7 @@ namespace METANOIA.Test
             return connectionId;
         }
 
-        private static GoogleCalendarEvent NewEvent(Guid connectionId, string googleEventId, DateTime start, int minutes, string title = "Sự kiện", bool cancelled = false) => new()
+        private static GoogleCalendarEvent NewEvent(Guid connectionId, string googleEventId, DateTime start, int minutes, string title = "Sự kiện", bool cancelled = false, bool createdByMetanoia = false) => new()
         {
             Id = Guid.NewGuid(),
             GoogleConnectionId = connectionId,
@@ -58,6 +58,7 @@ namespace METANOIA.Test
             EndTime = start.AddMinutes(minutes),
             Etag = "etag",
             IsCancelled = cancelled,
+            IsCreatedByMetanoia = createdByMetanoia,
             UpdatedAt = DateTime.UtcNow
         };
 
@@ -341,7 +342,7 @@ namespace METANOIA.Test
         }
 
         [Fact]
-        public async Task Calendar_OmitsOutOfRange_CancelledAndDuplicateEvents_AndOtherUsersData()
+        public async Task Calendar_OmitsOutOfRange_CancelledAndMetanoiaCreatedEvents_AndOtherUsersData()
         {
             using var factory = new ApiFactory();
             var (client, userId, taskId) = await SetupTaskAsync(factory);
@@ -354,7 +355,7 @@ namespace METANOIA.Test
             {
                 db.ScheduleSlots.Single(s => s.Id == syncedSlot.Id).GoogleEventId = "copy-of-slot";
                 db.GoogleCalendarEvents.AddRange(
-                    NewEvent(connectionId, "copy-of-slot", new DateTime(2026, 10, 10, 9, 0, 0, DateTimeKind.Utc), 60, "Bản sao của slot"),
+                    NewEvent(connectionId, "copy-of-slot", new DateTime(2026, 10, 10, 9, 0, 0, DateTimeKind.Utc), 60, "Do METANOIA tạo", createdByMetanoia: true),
                     NewEvent(connectionId, "cancelled", new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc), 30, "Đã hủy", cancelled: true),
                     NewEvent(connectionId, "next-week", new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc), 30, "Tuần sau"),
                     NewEvent(otherConnectionId, "someone-else", new DateTime(2026, 10, 10, 13, 0, 0, DateTimeKind.Utc), 30, "Của người khác"),

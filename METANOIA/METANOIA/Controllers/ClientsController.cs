@@ -20,10 +20,29 @@ namespace METANOIA.Controllers
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        private bool IsAdmin => User.IsInRole("Admin");
+
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<ClientDto>>> GetClients(CancellationToken cancellationToken)
         {
             return Ok(await _clientService.GetClientsAsync(CurrentUserId, cancellationToken));
+        }
+
+        // Lọc khách hàng theo userId và name: GET /api/clients/filter?userId=...&name=abc
+        // name chứa chuỗi, không phân biệt hoa thường. Bỏ trống userId thì là của chính người gọi;
+        // chỉ Admin mới được truyền userId của người khác (người thường truyền id người khác sẽ nhận 403).
+        [HttpGet("filter")]
+        public async Task<ActionResult<IReadOnlyList<ClientDto>>> FilterClients(
+            [FromQuery] Guid? userId,
+            [FromQuery] string? name,
+            CancellationToken cancellationToken)
+        {
+            if (userId is { } other && other != CurrentUserId && !IsAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return Ok(await _clientService.FilterClientsAsync(userId ?? CurrentUserId, name, cancellationToken));
         }
 
         [HttpGet("{clientId:guid}")]

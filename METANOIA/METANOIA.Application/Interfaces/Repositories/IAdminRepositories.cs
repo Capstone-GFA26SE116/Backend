@@ -10,6 +10,12 @@ namespace METANOIA.Application.Interfaces.Repositories
             string? search, string? role, bool includeDeleted, int page, int pageSize, CancellationToken cancellationToken = default);
 
         Task<AdminUserDetailDto?> GetDetailAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        // Có user nào KHÁC excludeUserId đang dùng email này không (kể cả tài khoản đã xóa)
+        Task<bool> EmailInUseAsync(string email, Guid excludeUserId, CancellationToken cancellationToken = default);
+
+        // Số Admin chưa bị xóa
+        Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken = default);
     }
 
     public interface IAiUsageRepository

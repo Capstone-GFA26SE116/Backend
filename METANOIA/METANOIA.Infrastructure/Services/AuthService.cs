@@ -69,9 +69,20 @@ namespace METANOIA.Infrastructure.Services
                 var existingByEmail = await _userRepository.GetByEmailAsync(googleUser.Email, cancellationToken);
                 if (existingByEmail is not null)
                 {
-                    throw new UserFriendlyException("Email này đã được đăng ký bằng phương thức khác.");
-                }
+                    // Tài khoản Admin tạo sẵn cho email này: chủ nhân đăng nhập lần đầu thì nhận tài khoản (Google đã xác minh email)
+                    if (existingByEmail.DeletedAt is not null
+                        || !existingByEmail.GoogleSubjectId.StartsWith(AccountConstants.PendingSubjectPrefix, StringComparison.Ordinal))
+                    {
+                        throw new UserFriendlyException("Email này đã được đăng ký bằng phương thức khác.");
+                    }
 
+                    existingByEmail.GoogleSubjectId = googleUser.Subject;
+                    user = existingByEmail;
+                }
+            }
+
+            if (user is null)
+            {
                 var defaultRole = await _userRepository.GetRoleByNameAsync(DefaultRoleName, cancellationToken)
                     ?? throw new UserFriendlyException($"Role mặc định '{DefaultRoleName}' chưa được khởi tạo trong hệ thống.");
 

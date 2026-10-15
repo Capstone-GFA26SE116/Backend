@@ -23,10 +23,23 @@ namespace METANOIA.Infrastructure.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<IReadOnlyList<ProjectDto>> GetProjectsAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<ProjectWithClientDto>> GetProjectsAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
         {
             var projects = await _projectRepository.GetByUserIdAsync(userId, includeArchived, cancellationToken);
-            return projects.Select(ToDto).ToList();
+            return projects.Select(ToProjectWithClient).ToList();
+        }
+
+        public async Task<IReadOnlyList<ProjectWithClientDto>> GetProjectsByUserIdAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
+        {
+            var projects = await _projectRepository.GetProjectByUserIdAsync(userId, includeArchived, cancellationToken);
+            return projects.Select(ToProjectWithClient).ToList();
+        }
+
+        public async Task<IReadOnlyList<ProjectWithClientDto>> FilterProjectsAsync(
+            Guid userId, string? name, string? status, Guid? clientId, CancellationToken cancellationToken = default)
+        {
+            var projects = await _projectRepository.SearchByUserAsync(userId, name, status, clientId, cancellationToken);
+            return projects.Select(ToProjectWithClient).ToList();
         }
 
         public async Task<ProjectDto> GetProjectAsync(Guid userId, Guid projectId, CancellationToken cancellationToken = default)
@@ -158,6 +171,32 @@ namespace METANOIA.Infrastructure.Services
             project.ClientId = request.ClientId;
         }
 
+        // Kết quả của API danh sách và API lọc: thêm userId và object client (null nếu dự án không có khách hàng)
+        private static ProjectWithClientDto ToProjectWithClient(Project project)
+        {
+            return new ProjectWithClientDto
+            {
+                Id = project.Id,
+                UserId = project.UserId,
+                Name = project.Name,
+                Description = project.Description,
+                StartDate = project.StartDate,
+                Deadline = project.Deadline,
+                Status = project.Status,
+                ClientId = project.ClientId,
+                Client = project.Client is null
+                    ? null
+                    : new ProjectClientDto
+                    {
+                        Id = project.Client.Id,
+                        Name = project.Client.Name,
+                        ContactEmail = project.Client.ContactEmail,
+                        Phone = project.Client.Phone
+                    },
+                CreatedAt = project.CreatedAt
+            };
+        }
+
         private static ProjectDto ToDto(Project project)
         {
             return new ProjectDto
@@ -172,5 +211,7 @@ namespace METANOIA.Infrastructure.Services
                 CreatedAt = project.CreatedAt
             };
         }
+
+        
     }
 }

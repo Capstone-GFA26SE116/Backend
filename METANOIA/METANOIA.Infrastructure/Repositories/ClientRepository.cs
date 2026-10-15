@@ -23,6 +23,19 @@ namespace METANOIA.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<IReadOnlyList<Client>> SearchByUserAsync(Guid userId, string? name, CancellationToken cancellationToken = default)
+        {
+            var query = _context.Clients.Where(c => c.UserId == userId);
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var term = name.Trim().ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(term));
+            }
+
+            return await query.OrderBy(c => c.Name).ToListAsync(cancellationToken);
+        }
+
         public Task<Client?> GetByIdForUserAsync(Guid clientId, Guid userId, CancellationToken cancellationToken = default)
         {
             return _context.Clients

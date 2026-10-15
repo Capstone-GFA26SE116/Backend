@@ -97,7 +97,9 @@ if (args.Contains(UserBackfillRunner.CommandLineFlag))
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Swagger mặc định chỉ bật khi chạy Development. Trên server hosting (Production) bật bằng "Swagger:Enabled": true
+// trong appsettings.json để test API; tắt đi (false) khi không cần nữa vì nó phơi toàn bộ danh sách API ra internet.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
