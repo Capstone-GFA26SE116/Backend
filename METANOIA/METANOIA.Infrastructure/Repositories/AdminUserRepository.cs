@@ -87,6 +87,16 @@ namespace METANOIA.Infrastructure.Repositories
             };
         }
 
+        public Task<bool> EmailInUseAsync(string email, Guid excludeUserId, CancellationToken cancellationToken = default)
+        {
+            return _context.Users.AnyAsync(u => u.Id != excludeUserId && u.Email.ToLower() == email.ToLower(), cancellationToken);
+        }
+
+        public Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken = default)
+        {
+            return _context.Users.CountAsync(u => u.DeletedAt == null && u.Role.Name == "Admin", cancellationToken);
+        }
+
         public async Task<AdminUserDetailDto?> GetDetailAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);

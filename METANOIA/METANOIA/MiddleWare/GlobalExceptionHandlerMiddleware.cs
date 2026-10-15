@@ -55,6 +55,25 @@ namespace METANOIA.MiddleWare
                     connectUrl = "/api/google-calendar/connect"
                 });
             }
+            catch (GoogleReconnectRequiredException ex)
+            {
+                _logger.LogWarning(ex, "Google Calendar needs to be reconnected");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "GOOGLE_RECONNECT_REQUIRED",
+                    connectUrl = "/api/google-calendar/connect"
+                });
+            }
+            catch (GoogleApiFailureException ex)
+            {
+                _logger.LogWarning(ex, "Google API failure");
+                await WriteResponseAsync(context, HttpStatusCode.BadGateway, new
+                {
+                    message = "Không đồng bộ được với Google Calendar lúc này. Vui lòng thử lại sau.",
+                    code = "GOOGLE_API_ERROR"
+                });
+            }
             catch (PaymentGatewayException ex)
             {
                 _logger.LogWarning(ex, "Payment gateway unavailable");

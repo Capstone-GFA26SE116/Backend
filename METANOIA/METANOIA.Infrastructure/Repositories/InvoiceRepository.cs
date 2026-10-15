@@ -41,6 +41,17 @@ namespace METANOIA.Infrastructure.Repositories
             return _context.Invoices.AnyAsync(i => i.Id != excludeId && i.InvoiceNumber == invoiceNumber, cancellationToken);
         }
 
+        public async Task<IReadOnlyList<string>> GetRecentInvoiceNumbersAsync(string prefix, int take, CancellationToken cancellationToken = default)
+        {
+            // Sắp theo chuỗi: phần số luôn đủ 6 chữ số nên chuỗi lớn nhất cũng là số lớn nhất
+            return await _context.Invoices
+                .Where(i => i.InvoiceNumber.StartsWith(prefix))
+                .OrderByDescending(i => i.InvoiceNumber)
+                .Select(i => i.InvoiceNumber)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+
         public Task<bool> PaymentHasInvoiceAsync(Guid paymentId, Guid excludeId, CancellationToken cancellationToken = default)
         {
             return _context.Invoices.AnyAsync(i => i.PaymentTransactionId == paymentId && i.Id != excludeId, cancellationToken);

@@ -35,6 +35,15 @@ namespace METANOIA.Controllers
             return NoContent();
         }
 
+        // Người dùng tự sửa hồ sơ của mình (hiện là họ tên). Giờ làm, múi giờ, nhắc việc nằm ở PUT /api/me/settings
+        [HttpPut("profile")]
+        public async Task<ActionResult<MeDto>> UpdateProfile(
+            [FromBody] UpdateProfileRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Ok(await _meService.UpdateProfileAsync(CurrentUserId, request, cancellationToken));
+        }
+
         [HttpPut("settings")]
         public async Task<ActionResult<MeDto>> UpdateSettings(
             [FromBody] UpdateSettingsRequestDto request,

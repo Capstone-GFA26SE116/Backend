@@ -19,10 +19,47 @@ namespace METANOIA.Infrastructure.Repositories
 
         public async Task<IReadOnlyList<Project>> GetByUserIdAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
         {
+            // Include trên khóa ngoại tùy chọn là LEFT JOIN: dự án không có khách hàng vẫn có mặt
+            return await _context.Projects
+                .Include(p => p.Client)
+                .Where(p => p.UserId == userId && (includeArchived || p.Status != ArchivedStatus))
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<Project>> GetProjectByUserIdAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
+        {
             return await _context.Projects
                 .Where(p => p.UserId == userId && (includeArchived || p.Status != ArchivedStatus))
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync(cancellationToken);
+        }
+
+
+
+        public async Task<IReadOnlyList<Project>> SearchByUserAsync(
+            Guid userId, string? name, string? status, Guid? clientId, CancellationToken cancellationToken = default)
+        {
+            var query = _context.Projects.Include(p => p.Client).Where(p => p.UserId == userId);
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var wanted = status.Trim();
+                query = query.Where(p => p.Status == wanted);
+            }
+
+            if (clientId is { } client)
+            {
+                query = query.Where(p => p.ClientId == client);
+            }
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var term = name.Trim().ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(term));
+            }
+
+            return await query.OrderByDescending(p => p.CreatedAt).ToListAsync(cancellationToken);
         }
 
         public Task<Project?> GetByIdForUserAsync(Guid projectId, Guid userId, CancellationToken cancellationToken = default)

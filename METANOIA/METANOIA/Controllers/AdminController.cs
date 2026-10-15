@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using METANOIA.Application.Dto;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -35,6 +36,39 @@ namespace METANOIA.Controllers
         public async Task<ActionResult<AdminUserDetailDto>> Get(Guid userId, CancellationToken cancellationToken)
         {
             return Ok(await _service.GetAsync(userId, cancellationToken));
+        }
+
+        // Tạo tài khoản trước khi chủ nhân đăng nhập. Email là bắt buộc; người đó đăng nhập Google bằng đúng email này sẽ nhận tài khoản
+        [HttpPost]
+        public async Task<ActionResult<AdminUserDetailDto>> Create([FromBody] AdminUserRequestDto request, CancellationToken cancellationToken)
+        {
+            var created = await _service.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(Get), new { userId = created.Id }, created);
+        }
+
+        // Trường nào để trống (null) thì giữ nguyên. Đổi role chỉ có hiệu lực với token mới (token cũ giữ role cũ đến khi hết hạn)
+        [HttpPut("{userId:guid}")]
+        public async Task<ActionResult<AdminUserDetailDto>> Update(
+            Guid userId,
+            [FromBody] AdminUserRequestDto request,
+            CancellationToken cancellationToken)
+        {
+            return Ok(await _service.UpdateAsync(userId, request, cancellationToken));
+        }
+
+        // Xóa mềm: thu hồi mọi phiên đăng nhập, hủy liên kết Google Calendar. Không tự xóa mình, không xóa Admin cuối cùng
+        [HttpDelete("{userId:guid}")]
+        public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _service.DeleteAsync(adminId, userId, cancellationToken);
+            return NoContent();
+        }
+
+        [HttpPost("{userId:guid}/restore")]
+        public async Task<ActionResult<AdminUserDetailDto>> Restore(Guid userId, CancellationToken cancellationToken)
+        {
+            return Ok(await _service.RestoreAsync(userId, cancellationToken));
         }
     }
 

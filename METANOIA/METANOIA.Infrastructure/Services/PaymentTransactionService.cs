@@ -3,6 +3,7 @@ using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
+using Microsoft.Extensions.Options;
 using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
@@ -21,10 +22,13 @@ namespace METANOIA.Infrastructure.Services
         private readonly IPaymentTransactionRepository _paymentRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public PaymentTransactionService(IPaymentTransactionRepository paymentRepository, IUnitOfWork unitOfWork)
+        private readonly PaymentOptions _options;
+
+        public PaymentTransactionService(IPaymentTransactionRepository paymentRepository, IUnitOfWork unitOfWork, IOptions<PaymentOptions> options)
         {
             _paymentRepository = paymentRepository;
             _unitOfWork = unitOfWork;
+            _options = options.Value;
         }
 
         public async Task<IReadOnlyList<PaymentTransactionDto>> GetPaymentsAsync(Guid userId, bool isAdmin, CancellationToken cancellationToken = default)
@@ -82,7 +86,7 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Giao dịch đã có hóa đơn nên không thể xóa.");
             }
 
-            if (await _paymentRepository.HasRefundAsync(paymentId, cancellationToken))
+            if (_options.RefundsEnabled && await _paymentRepository.HasRefundAsync(paymentId, cancellationToken))
             {
                 throw new UserFriendlyException("Giao dịch đã có yêu cầu hoàn tiền nên không thể xóa.");
             }

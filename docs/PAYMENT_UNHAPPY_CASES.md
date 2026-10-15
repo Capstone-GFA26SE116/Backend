@@ -13,7 +13,14 @@ cách test từng bước, và cách lấy các key cần điền vào `appsetti
 
 ---
 
-## 1. Chạy SQL tạo bảng hoàn tiền (bắt buộc)
+> **Cập nhật: hoàn tiền đang TẮT mặc định** (`Payments:RefundsEnabled = false`). Khi tắt, luồng thanh toán (checkout, webhook, sync,
+> đối soát, tạo gói và hóa đơn) **không cần bảng `PaymentRefund`**, nên có thể bỏ qua mục 1 và mục 5 cho đến khi làm hoàn tiền.
+> Lúc đó, tiền về sai số tiền hoặc sau khi đã hủy sẽ **không** tự mở yêu cầu hoàn tiền: hệ thống ghi log lỗi và webhook trả
+> `ReviewRequired`. Admin tìm các giao dịch này bằng cách lọc `GET /api/payment-transactions` có `webhookReceivedAt` nhưng trạng thái
+> không phải `Succeeded`, rồi hoàn tiền thủ công ngoài hệ thống. Các API `/api/refunds` và `POST /api/payments/{id}/refunds` trả 400
+> "Chức năng hoàn tiền chưa được bật" cho đến khi bạn chạy SQL ở mục 1 và đặt `RefundsEnabled = true`.
+
+## 1. Chạy SQL tạo bảng hoàn tiền (chỉ khi bật hoàn tiền)
 
 PayOS **không có API hoàn tiền cho merchant** (tài liệu API không nhắc tới), và `PaymentTransaction.Status`
 bị `CHECK` chỉ cho 5 giá trị nên không thêm được `Refunded`. Vì vậy hoàn tiền được lưu ở bảng mới `PaymentRefund`.

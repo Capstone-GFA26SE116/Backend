@@ -45,21 +45,28 @@ namespace METANOIA.Infrastructure.Services
             return new GoogleTokenResult(payload.AccessToken, payload.RefreshToken, payload.ExpiresIn);
         }
 
-        // Trả về null khi Google từ chối refresh token (thường là user đã thu hồi quyền).
+        // Trả về null CHỈ khi Google báo invalid_grant (refresh token bị thu hồi hoặc hết hiệu lực).
+        // Mọi lỗi khác (Google lỗi 5xx, sai client secret, mạng) ném GoogleApiFailureException chứ không coi là bị thu hồi quyền.
         public async Task<GoogleTokenResult?> RefreshAccessTokenAsync(string refreshToken, CancellationToken cancellationToken)
         {
-            var payload = await PostTokenRequestAsync(new Dictionary<string, string>
+            var (payload, error, status) = await PostTokenRequestDetailedAsync(new Dictionary<string, string>
             {
                 ["refresh_token"] = refreshToken,
                 ["grant_type"] = "refresh_token"
             }, cancellationToken);
 
-            if (payload?.AccessToken is null)
+            if (payload?.AccessToken is not null)
+            {
+                return new GoogleTokenResult(payload.AccessToken, null, payload.ExpiresIn);
+            }
+
+            if (string.Equals(error, "invalid_grant", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
 
-            return new GoogleTokenResult(payload.AccessToken, null, payload.ExpiresIn);
+            throw new GoogleApiFailureException(
+                $"Google từ chối làm mới access token (HTTP {status}{(error is null ? string.Empty : $", {error}")}).");
         }
 
         // Thu hồi quyền đã cấp cho METANOIA. Chỉ cố gắng hết sức: trả false nếu Google từ chối (ví dụ token đã bị thu hồi)
@@ -73,6 +80,13 @@ namespace METANOIA.Infrastructure.Services
 
         private async Task<GoogleTokenPayload?> PostTokenRequestAsync(Dictionary<string, string> form, CancellationToken cancellationToken)
         {
+            return (await PostTokenRequestDetailedAsync(form, cancellationToken)).Payload;
+        }
+
+        // Trả cả mã lỗi OAuth ("error" trong thân phản hồi, ví dụ invalid_grant) để phân biệt bị thu hồi quyền với Google lỗi
+        private async Task<(GoogleTokenPayload? Payload, string? Error, int Status)> PostTokenRequestDetailedAsync(
+            Dictionary<string, string> form, CancellationToken cancellationToken)
+        {
             form["client_id"] = _clientId;
             form["client_secret"] = _clientSecret;
 
@@ -80,12 +94,26 @@ namespace METANOIA.Infrastructure.Services
             using var content = new FormUrlEncodedContent(form);
             using var response = await client.PostAsync(TokenEndpoint, content, cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
-                return null;
+                return (await response.Content.ReadFromJsonAsync<GoogleTokenPayload>(cancellationToken), null, (int)response.StatusCode);
             }
 
-            return await response.Content.ReadFromJsonAsync<GoogleTokenPayload>(cancellationToken);
+            string? error = null;
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+                if (document.RootElement.TryGetProperty("error", out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    error = value.GetString();
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Thân phản hồi không phải JSON (ví dụ trang lỗi 5xx): coi như không có mã lỗi OAuth
+            }
+
+            return (null, error, (int)response.StatusCode);
         }
 
         private sealed class GoogleTokenPayload

@@ -28,6 +28,9 @@ namespace METANOIA.Application.Interfaces.Repositories
         // Gói Scheduled đầu tiên của user đã đến ngày bắt đầu
         Task<UserSubscription?> GetDueScheduledForUserAsync(Guid userId, DateTime now, CancellationToken cancellationToken = default);
 
+        // Gói Scheduled sớm nhất của user, dù đã đến ngày bắt đầu hay chưa
+        Task<UserSubscription?> GetFirstScheduledByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
         // Gói Active đã quá EndAt
         Task<IReadOnlyList<UserSubscription>> GetExpiredActiveAsync(DateTime now, int take, CancellationToken cancellationToken = default);
 

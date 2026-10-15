@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Task = System.Threading.Tasks.Task;
 
@@ -24,6 +25,17 @@ namespace METANOIA.Test.Infrastructure
 
         // Bật để giả lập lỗi ở bước tạo project "Cá nhân" khi khởi tạo user mới
         public bool FailOnProjectCreate { get; set; }
+
+        // Mặc định bật hoàn tiền để các test hoàn tiền hiện có chạy; test "hoàn tiền tắt" đặt false
+        public bool RefundsEnabled { get; set; } = true;
+
+        // Thay repository hoàn tiền bằng bản ném lỗi khi bị gọi, để chứng minh luồng thanh toán không đụng tới nó
+        public bool ForbidRefundRepository { get; set; }
+
+        // Máy chủ token Google giả và bộ ghi log, dùng cho test lỗi đồng bộ Google Calendar
+        public FakeGoogleHttpHandler GoogleHttp { get; } = new();
+
+        public CapturingLoggerProvider Logs { get; } = new();
 
         private readonly string _databaseName = Guid.NewGuid().ToString();
 
@@ -46,7 +58,8 @@ namespace METANOIA.Test.Infrastructure
                 ["Subscription:FreePlanId"] = FreePlanId.ToString(),
                 ["Payments:ReconciliationEnabled"] = "false",
                 ["Payments:LinkExpiryMinutes"] = "15",
-                ["Payments:RefundWindowDays"] = "7"
+                ["Payments:RefundWindowDays"] = "7",
+                ["Payments:RefundsEnabled"] = RefundsEnabled ? "true" : "false"
             }));
 
             builder.ConfigureServices(services =>
@@ -66,6 +79,15 @@ namespace METANOIA.Test.Infrastructure
                 services.RemoveAll<IGoogleCalendarSyncService>();
                 services.AddScoped<IGoogleCalendarSyncService>(sp => new RecordingGoogleSyncService(
                     GoogleSync, ActivatorUtilities.CreateInstance<GoogleCalendarSyncService>(sp)));
+
+                if (ForbidRefundRepository)
+                {
+                    services.RemoveAll<IPaymentRefundRepository>();
+                    services.AddScoped<IPaymentRefundRepository, ForbiddenPaymentRefundRepository>();
+                }
+
+                services.AddHttpClient(string.Empty).ConfigurePrimaryHttpMessageHandler(() => GoogleHttp);
+                services.AddLogging(logging => logging.AddProvider(Logs));
 
                 services.RemoveAll<IPayOSClient>();
                 services.AddSingleton<IPayOSClient>(PayOS);

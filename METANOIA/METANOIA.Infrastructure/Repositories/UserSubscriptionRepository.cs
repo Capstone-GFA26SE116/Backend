@@ -85,6 +85,14 @@ namespace METANOIA.Infrastructure.Repositories
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
+        public Task<UserSubscription?> GetFirstScheduledByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.UserSubscriptions
+                .Where(s => s.UserId == userId && s.Status == "Scheduled")
+                .OrderBy(s => s.StartAt)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         public async Task<IReadOnlyList<UserSubscription>> GetExpiredActiveAsync(DateTime now, int take, CancellationToken cancellationToken = default)
         {
             return await _context.UserSubscriptions

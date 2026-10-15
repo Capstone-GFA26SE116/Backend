@@ -22,11 +22,15 @@ namespace METANOIA.Infrastructure.Services
         private const string Cancelled = "Cancelled";
         private const string Expired = "Expired";
         private const int BatchSize = 50;
+        private const int MaxInvoiceNumberAttempts = 5;
+        private const int InvoicePrefixScan = 20;
 
         private readonly IPaymentTransactionRepository _payments;
         private readonly IUserSubscriptionRepository _subscriptions;
         private readonly IPaymentRefundRepository _refunds;
         private readonly IPayOSClient _gateway;
+        private readonly IInvoiceRepository _invoices;
+        private readonly IUserRepository _users;
         private readonly IUserInitializationService _userInitializationService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly PaymentOptions _options;
@@ -38,6 +42,8 @@ namespace METANOIA.Infrastructure.Services
             IUserSubscriptionRepository subscriptions,
             IPaymentRefundRepository refunds,
             IPayOSClient gateway,
+            IInvoiceRepository invoices,
+            IUserRepository users,
             IUserInitializationService userInitializationService,
             IUnitOfWork unitOfWork,
             IOptions<PaymentOptions> options,
@@ -48,6 +54,8 @@ namespace METANOIA.Infrastructure.Services
             _subscriptions = subscriptions;
             _refunds = refunds;
             _gateway = gateway;
+            _invoices = invoices;
+            _users = users;
             _userInitializationService = userInitializationService;
             _unitOfWork = unitOfWork;
             _options = options.Value;
@@ -259,7 +267,7 @@ namespace METANOIA.Infrastructure.Services
         {
             var staleBefore = DateTime.UtcNow.AddSeconds(-_options.PendingStaleAfterSeconds);
             var pending = await _payments.GetStalePendingIdsAsync(staleBefore, BatchSize, cancellationToken);
-            var orphans = await _payments.GetSucceededWithoutSubscriptionIdsAsync(BatchSize, cancellationToken);
+            var orphans = await _payments.GetSucceededNeedingFulfillmentIdsAsync(BatchSize, _options.RefundsEnabled, cancellationToken);
             return pending.Concat(orphans).Distinct().ToList();
         }
 
@@ -276,13 +284,26 @@ namespace METANOIA.Infrastructure.Services
         {
             var now = DateTime.UtcNow;
 
-            // Mỗi user một transaction: chuyển Expired + kích hoạt gói xếp hàng (hoặc về gói Miễn phí) hoặc cả hai cùng được lưu, hoặc không gì cả
             foreach (var userId in (await _subscriptions.GetExpiredActiveAsync(now, BatchSize, cancellationToken))
                 .Select(s => s.UserId).Distinct().ToList())
             {
-                await _unitOfWork.ExecuteInTransactionAsync(
-                    () => ExpireAndReplaceAsync(userId, now, cancellationToken), cancellationToken);
+                await RefreshUserSubscriptionAsync(userId, cancellationToken);
             }
+        }
+
+        public async Task RefreshUserSubscriptionAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var now = DateTime.UtcNow;
+
+            // Kiểm tra nhẹ trước để lần đọc thông tin thường (gói còn hạn) không phải mở transaction
+            var active = await _subscriptions.GetActiveByUserAsync(userId, cancellationToken);
+            if (active is null || active.EndAt is not { } end || end > now)
+            {
+                return;
+            }
+
+            // Một transaction cho mỗi user: chuyển Expired + kích hoạt gói xếp hàng (hoặc về gói Miễn phí) hoặc cả hai cùng được lưu, hoặc không gì cả
+            await _unitOfWork.ExecuteInTransactionAsync(() => ExpireAndReplaceAsync(userId, now, cancellationToken), cancellationToken);
         }
 
         private async Task ExpireAndReplaceAsync(Guid userId, DateTime now, CancellationToken cancellationToken)
@@ -318,7 +339,7 @@ namespace METANOIA.Infrastructure.Services
         {
             if (payment.Status == Succeeded)
             {
-                await EnsureSubscriptionAsync(payment, cancellationToken);
+                await EnsureFulfillmentAsync(payment, cancellationToken);
                 return;
             }
 
@@ -396,7 +417,7 @@ namespace METANOIA.Infrastructure.Services
 
             if (payment.Status == Succeeded)
             {
-                await EnsureSubscriptionAsync(payment, cancellationToken);
+                await EnsureFulfillmentAsync(payment, cancellationToken);
                 return WebhookOutcome.Duplicate;
             }
 
@@ -408,23 +429,37 @@ namespace METANOIA.Infrastructure.Services
             if (receivedAmount != payment.Amount)
             {
                 payment.Status = Failed;
-                await OpenSystemRefundAsync(payment, receivedAmount,
+                return await HandleUnexpectedMoneyAsync(payment, receivedAmount,
                     $"Số tiền nhận được ({receivedAmount:N0} VND) khác số tiền của đơn ({payment.Amount:N0} VND).", cancellationToken);
-                return WebhookOutcome.RefundOpened;
             }
 
             if (payment.Status is Cancelled or Failed)
             {
-                await OpenSystemRefundAsync(payment, receivedAmount,
+                return await HandleUnexpectedMoneyAsync(payment, receivedAmount,
                     $"Tiền về sau khi giao dịch đã ở trạng thái {payment.Status}.", cancellationToken);
-                return WebhookOutcome.RefundOpened;
             }
 
             // Pending hoặc Expired (tiền về sát giờ hết hạn): chấp nhận, kích hoạt gói
             payment.Status = Succeeded;
             payment.PaidAt = paidAtUtc ?? now;
-            await EnsureSubscriptionAsync(payment, cancellationToken);
+            await EnsureFulfillmentAsync(payment, cancellationToken);
             return WebhookOutcome.Processed;
+        }
+
+        // Tiền đã về nhưng đơn không hợp lệ (sai số tiền, đã hủy...). Hoàn tiền bật: mở yêu cầu hoàn tiền cho admin.
+        // Hoàn tiền tắt: chỉ ghi log lỗi và lưu trạng thái, admin xử lý thủ công (giao dịch có WebhookReceivedAt nhưng không Succeeded)
+        private async Task<WebhookOutcome> HandleUnexpectedMoneyAsync(PaymentTransaction payment, long amount, string reason, CancellationToken cancellationToken)
+        {
+            if (_options.RefundsEnabled)
+            {
+                await OpenSystemRefundAsync(payment, amount, reason, cancellationToken);
+                return WebhookOutcome.RefundOpened;
+            }
+
+            _logger.LogError("Giao dịch {PaymentId} nhận {Amount} VND nhưng không hợp lệ ({Reason}). Hoàn tiền đang tắt nên cần xử lý thủ công.",
+                payment.Id, amount, reason);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            return WebhookOutcome.ReviewRequired;
         }
 
         private async Task OpenSystemRefundAsync(PaymentTransaction payment, long amount, string reason, CancellationToken cancellationToken)
@@ -447,18 +482,13 @@ namespace METANOIA.Infrastructure.Services
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        // Tạo gói đăng ký cho giao dịch Succeeded nếu chưa có. Lỗi trùng khóa (webhook song song) coi như đã có người làm.
-        private async Task EnsureSubscriptionAsync(PaymentTransaction payment, CancellationToken cancellationToken)
+        // Giao dịch Succeeded phải có đủ hai thứ: gói đăng ký (UserSubscription) và hóa đơn (Invoice). Thiếu thứ nào thì tạo thứ đó,
+        // có đủ rồi thì không làm gì (idempotent: webhook gửi lại, đối soát chạy lại đều an toàn).
+        // Gói và hóa đơn được chuẩn bị rồi lưu bằng MỘT lần SaveChanges, tức là cùng một transaction.
+        private async Task EnsureFulfillmentAsync(PaymentTransaction payment, CancellationToken cancellationToken)
         {
             if (payment.Status != Succeeded)
             {
-                return;
-            }
-
-            if (await _subscriptions.GetByPaymentIdAsync(payment.Id, cancellationToken) is not null
-                || await _refunds.GetActiveByPaymentAsync(payment.Id, cancellationToken) is not null)
-            {
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
                 return;
             }
 
@@ -470,6 +500,31 @@ namespace METANOIA.Infrastructure.Services
                 return;
             }
 
+            // Đã có yêu cầu hoàn tiền thì không cấp gói mới, nhưng hóa đơn của khoản đã thu vẫn phải có
+            var subscription = await _subscriptions.GetByPaymentIdAsync(payment.Id, cancellationToken);
+            if (subscription is null && !await HasOpenRefundAsync(payment.Id, cancellationToken))
+            {
+                subscription = await StageSubscriptionAsync(payment, plan, cancellationToken);
+            }
+
+            Invoice? invoice = null;
+            if (!await _invoices.PaymentHasInvoiceAsync(payment.Id, Guid.Empty, cancellationToken))
+            {
+                invoice = await StageInvoiceAsync(payment, plan, subscription, cancellationToken);
+            }
+
+            await SaveFulfillmentAsync(payment, invoice, cancellationToken);
+        }
+
+        // Khi hoàn tiền tắt thì không bao giờ truy vấn bảng PaymentRefund
+        private async Task<bool> HasOpenRefundAsync(Guid paymentId, CancellationToken cancellationToken)
+        {
+            return _options.RefundsEnabled && await _refunds.GetActiveByPaymentAsync(paymentId, cancellationToken) is not null;
+        }
+
+        // Chuẩn bị UserSubscription (chưa lưu). Có thể lưu trước việc chuyển gói cũ sang Expired để không vướng index "mỗi user một gói Active"
+        private async Task<UserSubscription> StageSubscriptionAsync(PaymentTransaction payment, SubscriptionPlan plan, CancellationToken cancellationToken)
+        {
             var now = DateTime.UtcNow;
             var start = now;
             var status = "Active";
@@ -491,7 +546,7 @@ namespace METANOIA.Infrastructure.Services
                 }
             }
 
-            await _subscriptions.AddAsync(new UserSubscription
+            var subscription = new UserSubscription
             {
                 Id = Guid.NewGuid(),
                 UserId = payment.UserId,
@@ -503,18 +558,108 @@ namespace METANOIA.Infrastructure.Services
                 AiCallsUsed = 0,
                 QuotaResetAt = start,
                 CreatedAt = now
-            }, cancellationToken);
+            };
+            await _subscriptions.AddAsync(subscription, cancellationToken);
+            return subscription;
+        }
 
-            try
+        // Chuẩn bị Invoice (chưa lưu) từ dữ liệu của giao dịch, gói và người mua. Kỳ hóa đơn = thời hạn của gói vừa cấp
+        private async Task<Invoice?> StageInvoiceAsync(
+            PaymentTransaction payment, SubscriptionPlan plan, UserSubscription? subscription, CancellationToken cancellationToken)
+        {
+            var user = await _users.GetByIdAsync(payment.UserId, cancellationToken);
+            if (user is null)
             {
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                _logger.LogError("Không tạo được hóa đơn cho giao dịch {PaymentId}: không tìm thấy người mua {UserId}.", payment.Id, payment.UserId);
+                return null;
             }
-            catch (DbUpdateException ex)
+
+            var periodStartUtc = subscription?.StartAt ?? DateTime.UtcNow;
+            var periodEndUtc = subscription?.EndAt ?? periodStartUtc.AddDays(plan.DurationDays);
+            var zone = ResolveTimeZone(user.TimeZone);
+            var periodStart = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(periodStartUtc, DateTimeKind.Utc), zone));
+            var periodEnd = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(periodEndUtc, DateTimeKind.Utc), zone));
+            if (periodEnd <= periodStart)
             {
-                // Unique(PaymentTransactionId): một webhook khác đã kích hoạt trước. Lượt đối soát sau sẽ tự sửa nếu là lỗi khác.
-                _logger.LogWarning(ex, "Không lưu được gói cho giao dịch {PaymentId}, coi như đã được xử lý bởi luồng khác.", payment.Id);
+                periodEnd = periodStart.AddDays(1);
+            }
+
+            var invoice = new Invoice
+            {
+                Id = Guid.NewGuid(),
+                PaymentTransactionId = payment.Id,
+                InvoiceNumber = await NextInvoiceNumberAsync(1, cancellationToken),
+                PlanName = Truncate(plan.Name, 50),
+                Amount = payment.Amount,
+                BillingName = Truncate(user.FullName, 100),
+                BillingEmail = Truncate(user.Email, 255),
+                PeriodStart = periodStart,
+                PeriodEnd = periodEnd,
+                IssuedAt = DateTime.UtcNow
+            };
+            await _invoices.AddAsync(invoice, cancellationToken);
+            return invoice;
+        }
+
+        // Số hóa đơn dạng MTN-<năm>-<6 chữ số> tăng dần theo năm. Hai thanh toán cùng lúc có thể ra cùng một số:
+        // lúc đó unique index chặn, SaveFulfillmentAsync lấy số mới và lưu lại.
+        private async Task<string> NextInvoiceNumberAsync(int attempt, CancellationToken cancellationToken)
+        {
+            var prefix = $"MTN-{DateTime.UtcNow.Year}-";
+            var last = 0;
+            foreach (var number in await _invoices.GetRecentInvoiceNumbersAsync(prefix, InvoicePrefixScan, cancellationToken))
+            {
+                if (int.TryParse(number[prefix.Length..], out var sequence))
+                {
+                    last = sequence;
+                    break;
+                }
+            }
+
+            return $"{prefix}{last + attempt:D6}";
+        }
+
+        // Lưu gói, hóa đơn và trạng thái giao dịch cùng lúc
+        private async Task SaveFulfillmentAsync(PaymentTransaction payment, Invoice? invoice, CancellationToken cancellationToken)
+        {
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+                catch (DbUpdateException ex)
+                {
+                    // Số hóa đơn vừa bị người khác lấy mất: đổi số rồi lưu lại. Thực thể vẫn đang được theo dõi nên lưu lại được toàn bộ
+                    if (invoice is not null
+                        && attempt < MaxInvoiceNumberAttempts
+                        && await _invoices.InvoiceNumberExistsAsync(invoice.InvoiceNumber, invoice.Id, cancellationToken))
+                    {
+                        invoice.InvoiceNumber = await NextInvoiceNumberAsync(attempt + 1, cancellationToken);
+                        continue;
+                    }
+
+                    // Còn lại thường là unique(PaymentTransactionId): một luồng khác đã xử lý xong. Lượt đối soát sau sẽ tự bù nếu là lỗi khác
+                    _logger.LogWarning(ex, "Không lưu được gói/hóa đơn cho giao dịch {PaymentId}, coi như đã được xử lý bởi luồng khác.", payment.Id);
+                    return;
+                }
             }
         }
+
+        private static TimeZoneInfo ResolveTimeZone(string? timeZoneId)
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId ?? "Asia/Ho_Chi_Minh");
+            }
+            catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+            {
+                return TimeZoneInfo.CreateCustomTimeZone("UTC+7", TimeSpan.FromHours(7), "UTC+7", "UTC+7");
+            }
+        }
+
+        private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];
 
         private async Task<PaymentTransaction> GetAccessibleAsync(Guid userId, bool isAdmin, Guid paymentId, CancellationToken cancellationToken)
         {

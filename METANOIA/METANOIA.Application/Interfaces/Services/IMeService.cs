@@ -9,6 +9,9 @@ namespace METANOIA.Application.Interfaces.Services
         // Xóa mềm (DeletedAt) và hủy liên kết Google Calendar. Token cũ bị từ chối ngay, không đăng nhập lại được.
         Task DeleteAsync(Guid userId, CancellationToken cancellationToken = default);
 
+        // Người dùng tự cập nhật hồ sơ của chính mình
+        Task<MeDto> UpdateProfileAsync(Guid userId, UpdateProfileRequestDto request, CancellationToken cancellationToken = default);
+
         Task<MeDto> UpdateSettingsAsync(Guid userId, UpdateSettingsRequestDto request, CancellationToken cancellationToken = default);
 
         // Gọi lại nhiều lần được: ghi đè câu trả lời trước, không tạo trùng
