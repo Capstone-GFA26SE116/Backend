@@ -84,6 +84,9 @@ namespace METANOIA.Infrastructure
             services.AddHostedService<PaymentReconciliationWorker>();
             services.AddScoped<IInvoiceRepository, InvoiceRepository>();
             services.AddScoped<IInvoiceService, InvoiceService>();
+            services.Configure<AiServiceOptions>(configuration.GetSection("AiService"));
+            services.AddHttpClient<IAiServiceClient, AiServiceClient>();
+            services.AddScoped<IScheduleProposalService, ScheduleProposalService>();
             services.AddHttpClient();
 
             return services;

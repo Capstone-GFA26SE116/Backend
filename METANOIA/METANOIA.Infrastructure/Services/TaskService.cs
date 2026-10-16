@@ -22,11 +22,16 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly ITaskRepository _taskRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IAiServiceClient _aiServiceClient;
 
-        public TaskService(ITaskRepository taskRepository, IUnitOfWork unitOfWork)
+        public TaskService(
+            ITaskRepository taskRepository,
+            IUnitOfWork unitOfWork,
+            IAiServiceClient aiServiceClient)
         {
             _taskRepository = taskRepository;
             _unitOfWork = unitOfWork;
+            _aiServiceClient = aiServiceClient;
         }
 
         public async Task<IReadOnlyList<TaskDto>> GetTasksAsync(Guid userId, Guid projectId, string? status, CancellationToken cancellationToken = default)
@@ -74,8 +79,14 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await ValidateReferencesAsync(task.ProjectId, request, cancellationToken);
 
+            var oldStatus = task.Status;
             ApplyRequest(task, request);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (oldStatus != DoneStatus && task.Status == DoneStatus)
+            {
+                await _aiServiceClient.RecordTaskCompletionAsync(task.Id, cancellationToken);
+            }
 
             return ToDto(task);
         }
