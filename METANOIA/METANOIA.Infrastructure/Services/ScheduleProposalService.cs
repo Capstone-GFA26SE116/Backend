@@ -93,8 +93,8 @@ namespace METANOIA.Infrastructure.Services
                 {
                     Id = Guid.NewGuid(),
                     ScheduleSlotId = slot.Id,
-                    ChangeType = "Approved",
-                    Source = "User",
+                    ChangeType = "Created",
+                    Source = "AI",
                     NewStart = slot.StartTime,
                     NewEnd = slot.EndTime,
                     ChangedAt = now
