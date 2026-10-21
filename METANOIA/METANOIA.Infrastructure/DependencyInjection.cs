@@ -22,6 +22,7 @@ namespace METANOIA.Infrastructure
                     .AddInterceptors(serviceProvider.GetRequiredService<AdminAuditSaveChangesInterceptor>()));
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddSingleton(TimeProvider.System);
             services.Configure<SubscriptionOptions>(configuration.GetSection("Subscription"));
             services.AddScoped<IUserSetupRepository, UserSetupRepository>();
             services.AddScoped<IUserInitializationService, UserInitializationService>();
@@ -87,6 +88,14 @@ namespace METANOIA.Infrastructure
             services.Configure<AiServiceOptions>(configuration.GetSection("AiService"));
             services.AddHttpClient<IAiServiceClient, AiServiceClient>();
             services.AddScoped<IScheduleProposalService, ScheduleProposalService>();
+            services.AddScoped<IUserPushSubscriptionRepository, UserPushSubscriptionRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<IPushSubscriptionService, PushSubscriptionService>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IFocusSessionRepository, FocusSessionRepository>();
+            services.AddScoped<IFocusSessionService, FocusSessionService>();
+            services.AddScoped<IScheduleJobService, ScheduleJobService>();
+            services.AddScoped<SlotBackgroundJobs>();
             services.AddHttpClient();
 
             return services;

@@ -83,7 +83,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<UserDomainProfile> UserDomainProfiles { get; set; }
 
     public virtual DbSet<UserSubscription> UserSubscriptions { get; set; }
-
+    public virtual DbSet<HangfireJobTracker> HangfireJobTrackers { get; set; }
+    public virtual DbSet<UserPushSubscription> UserPushSubscriptions { get; set; }
     private string GetConnectionString()
     {
         IConfiguration configuration = new ConfigurationBuilder()
@@ -169,6 +170,7 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("AIUsageLog_UserSubscriptionId_fkey");
         });
+
 
         modelBuilder.Entity<BlindTestSession>(entity =>
         {
@@ -944,6 +946,83 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<UserSubscription>(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("UserSubscription_UserId_fkey");
+        });
+        modelBuilder.Entity<HangfireJobTracker>(entity =>
+        {
+            entity.HasKey(e => e.Id)
+                .HasName("HangfireJobTrackers_pkey");
+
+            entity.ToTable("HangfireJobTrackers");
+
+            entity.HasIndex(
+                e => new { e.ScheduleSlotId, e.JobType },
+                "UQ_HangfireJobTrackers_Slot_JobType")
+                .IsUnique();
+
+            entity.HasIndex(
+                e => e.HangfireJobId,
+                "IX_HangfireJobTrackers_HangfireJobId");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.JobType)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.HangfireJobId)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()")
+                .IsRequired();
+
+            entity.HasOne(e => e.ScheduleSlot)
+                .WithMany()
+                .HasForeignKey(e => e.ScheduleSlotId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName(
+                    "HangfireJobTrackers_ScheduleSlotId_fkey");
+        });
+        modelBuilder.Entity<UserPushSubscription>(entity =>
+        {
+            entity.HasKey(e => e.Id)
+                .HasName("UserPushSubscriptions_pkey");
+
+            entity.ToTable("UserPushSubscriptions");
+
+            entity.HasIndex(e => e.Endpoint, "UQ_UserPushSubscriptions_Endpoint")
+                .IsUnique();
+
+            entity.HasIndex(e => e.UserId, "IX_UserPushSubscriptions_UserId");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(e => e.Endpoint)
+                .HasColumnType("text")
+                .IsRequired();
+
+            entity.Property(e => e.P256dh)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.Auth)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()")
+                .IsRequired();
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("UserPushSubscriptions_UserId_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

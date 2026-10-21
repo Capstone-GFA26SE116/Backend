@@ -45,6 +45,15 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "Resource not found");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
             }
+            catch (FocusForbiddenException ex)
+            {
+                _logger.LogWarning(ex, "User is not allowed to access the focus session");
+                await WriteResponseAsync(context, HttpStatusCode.Forbidden, new
+                {
+                    message = ex.Message,
+                    code = "FOCUS_SESSION_FORBIDDEN"
+                });
+            }
             catch (GoogleCalendarNotConnectedException ex)
             {
                 _logger.LogWarning(ex, "Google Calendar is not connected");

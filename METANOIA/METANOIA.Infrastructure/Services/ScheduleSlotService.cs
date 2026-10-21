@@ -16,21 +16,25 @@ namespace METANOIA.Infrastructure.Services
 
         private static readonly HashSet<string> AllowedStatuses = new()
         {
-            ProposedStatus, "Approved", "Done", "Skipped", "Missed", CancelledStatus
+            ProposedStatus, "Approved", "Due", "InProgress", "Done", "Skipped",
+            "Missed", "Overrun", "Postponed", CancelledStatus
         };
 
         private readonly IScheduleSlotRepository _slotRepository;
         private readonly IScheduleChangeLogRepository _logRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IScheduleJobService _jobService;
 
         public ScheduleSlotService(
             IScheduleSlotRepository slotRepository,
             IScheduleChangeLogRepository logRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IScheduleJobService jobService)
         {
             _slotRepository = slotRepository;
             _logRepository = logRepository;
             _unitOfWork = unitOfWork;
+            _jobService = jobService;
         }
 
         public async Task<IReadOnlyList<ScheduleSlotDto>> GetSlotsAsync(Guid userId, Guid taskId, CancellationToken cancellationToken = default)
@@ -64,6 +68,7 @@ namespace METANOIA.Infrastructure.Services
             await _slotRepository.AddAsync(slot, cancellationToken);
             await AddLogAsync(slot.Id, "Created", null, null, slot.StartTime, slot.EndTime, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _jobService.ScheduleAllJobsForSlot(slot);
 
             return ToDto(slot);
         }
@@ -92,6 +97,10 @@ namespace METANOIA.Infrastructure.Services
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (startChanged || endChanged || slot.Status == "Approved")
+            {
+                _jobService.ScheduleAllJobsForSlot(slot);
+            }
             return ToDto(slot);
         }
 
@@ -106,6 +115,7 @@ namespace METANOIA.Infrastructure.Services
             var oldStart = slot.StartTime;
             var oldEnd = slot.EndTime;
             slot.Status = CancelledStatus;
+            _jobService.CancelAllJobs(slot.Id);
 
             await AddLogAsync(slot.Id, "Deleted", oldStart, oldEnd, null, null, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -151,7 +161,7 @@ namespace METANOIA.Infrastructure.Services
 
             if (request.Status is not null && !AllowedStatuses.Contains(request.Status))
             {
-                throw new UserFriendlyException("Trạng thái không hợp lệ. Chọn một trong: Proposed, Approved, Done, Skipped, Missed, Cancelled.");
+                throw new UserFriendlyException("Trạng thái không hợp lệ. Chọn một trong: Proposed, Approved, Due, InProgress, Done, Skipped, Missed, Overrun, Postponed, Cancelled.");
             }
 
             if (request.Explanation?.Length > MaxExplanationLength)
