@@ -1,21 +1,30 @@
-using System.Security.Claims;
-using System.Text;
 using METANOIA.Application;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Auditing;
+using METANOIA.Domain.Configuration;
 using METANOIA.Infrastructure;
+using METANOIA.Infrastructure.Notifications;
 using METANOIA.Infrastructure.Services;
 using METANOIA.MiddleWare;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers(options => options.Filters.Add<AdminAuditFilter>());
+builder.Services.AddControllers(options => options.Filters.Add<AdminAuditFilter>())
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddHttpContextAccessor();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -45,10 +54,21 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHangfire(configuration => configuration
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(
+        builder.Configuration.GetConnectionString("DefaultConnection"))));
+builder.Services.AddHangfireServer();
 
 // Cho tầng dữ liệu biết khi nào đang xử lý thao tác ghi của Admin để ghi AdminActionLog
 builder.Services.AddScoped<IAdminAuditContext, HttpAdminAuditContext>();
+// 1. Cấu hình VAPID Settings
+builder.Services.Configure<VapidSettings>(
+    builder.Configuration.GetSection("VapidSettings"));
 
+// 2. Thêm dịch vụ SignalR
+builder.Services.AddSignalR();
 var allowedOrigins = builder.Configuration.GetSection("Frontend:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy => policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
@@ -68,9 +88,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!))
         };
 
-        // Token còn hạn nhưng chủ tài khoản đã xóa (DELETE /api/me) thì bị từ chối ngay, không chờ token hết hạn
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && context.HttpContext.Request.Path.StartsWithSegments("/hubs/notifications"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -115,7 +145,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.UseHangfireDashboard("/hangfire");
+app.MapHub<NotificationHub>("/hubs/notifications");
 app.Run();
 
 return 0;
