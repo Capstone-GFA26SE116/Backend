@@ -3,7 +3,7 @@ name: Deploy .NET Core App to Azure Web App
 on:
   push:
     branches:
-      - develop # Đổi sang branch develop thay vì main
+      - develop
 
 env:
   AZURE_WEBAPP_NAME: metanoia-backend-core
@@ -22,14 +22,16 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # Trỏ chính xác vào file solution .sln trong thư mục METANOIA
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore METANOIA/METANOIA.sln
 
       - name: Build app
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build METANOIA/METANOIA.sln --configuration Release --no-restore
 
+      # Publish file project .csproj trong thư mục METANOIA/METANOIA
       - name: Publish app
-        run: dotnet publish -c Release -o ./publish
+        run: dotnet publish METANOIA/METANOIA/METANOIA.csproj -c Release -o ./publish
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
