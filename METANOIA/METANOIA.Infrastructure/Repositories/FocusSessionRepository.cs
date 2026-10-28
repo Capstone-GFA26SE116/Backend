@@ -1,37 +1,31 @@
-﻿
-using METANOIA.Application.Dto;
-using METANOIA.Application.Exceptions;
-using METANOIA.Application.Interfaces.Repositories;
+﻿using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Domain.Entities;
-using METANOIA.Domain.Enums;
 using METANOIA.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace METANOIA.Infrastructure.Repositories
 {
     public class FocusSessionRepository : IFocusSessionRepository
     {
         private readonly AppDbContext _context;
+
         public FocusSessionRepository(AppDbContext context)
         {
             _context = context;
         }
-        public async Task<FocusSession?> GetRunningSessionAsync(Guid userId, DateTimeOffset now)
+
+        public async Task<FocusSession?> GetRunningAsync(Guid userId)
         {
             return await _context.FocusSessions
-                .FirstOrDefaultAsync(s => s.Task.Project.UserId == userId && s.StartedAt <= now && s.EndedAt == null);
+                .FirstOrDefaultAsync(s => s.Task.Project.UserId == userId && s.EndedAt == null);
         }
 
-        public async Task<FocusSession?> GetRunningSessionWithSlotAsync(Guid userId, DateTimeOffset now)
+        public async Task<FocusSession?> GetRunningWithDetailsAsync(Guid userId)
         {
             return await _context.FocusSessions
+                .Include(s => s.Task)
                 .Include(s => s.ScheduleSlot)
-                .FirstOrDefaultAsync(s => s.Task.Project.UserId == userId && s.StartedAt <= now && s.EndedAt == null);
+                .FirstOrDefaultAsync(s => s.Task.Project.UserId == userId && s.EndedAt == null);
         }
 
         public async Task<FocusSession?> GetByIdAsync(Guid sessionId)

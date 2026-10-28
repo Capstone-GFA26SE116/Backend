@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>METANOIA - Focus session test</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1d1d1f; }
+    main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    section { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    label { display: block; font-size: 13px; color: #555; margin-top: 8px; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; margin-top: 3px; border: 1px solid #ccd0d6; border-radius: 6px; font: inherit; background: #fff; }
+    button { margin: 8px 6px 0 0; padding: 7px 14px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; cursor: pointer; font: inherit; }
+    button:disabled { background: #b8c2d0; cursor: not-allowed; }
+    button.secondary { background: #6b7280; }
+    button.danger { background: #d93025; }
+    button.good { background: #188038; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .row, .row3 { grid-template-columns: 1fr; } }
+    .muted { color: #666; font-size: 13px; }
+    .notice { padding: 8px 12px; border-radius: 6px; background: #eef4ff; margin-bottom: 12px; display: none; white-space: pre-wrap; }
+    .notice.error { background: #fdecea; }
+    .notice.ok { background: #e6f4ea; }
+    .notice.warn { background: #fff4e5; }
+    .timer { font-size: 54px; font-variant-numeric: tabular-nums; font-weight: 600; margin: 4px 0; }
+    .timer.overrun { color: #d93025; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #e8eaed; font-size: 13px; font-weight: 600; }
+    .badge.Approved { background: #e8f0fe; color: #174ea6; }
+    .badge.Due { background: #fef7e0; color: #b06000; }
+    .badge.InProgress { background: #e6f4ea; color: #137333; }
+    .badge.Overrun { background: #fce8e6; color: #c5221f; }
+    .badge.Done { background: #d2e3fc; color: #174ea6; }
+    .badge.Missed, .badge.Cancelled, .badge.Skipped { background: #e8eaed; color: #5f6368; }
+    .item { border-top: 1px solid #eceef1; padding: 8px 0; font-size: 14px; }
+    .item.unread { background: #f8fbff; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 280px; margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
+    details { margin-top: 8px; }
+    summary { cursor: pointer; color: #1a73e8; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+    th, td { border-bottom: 1px solid #eceef1; padding: 6px 8px; text-align: left; }
+    ol { margin: 6px 0 0 18px; padding: 0; font-size: 14px; }
+    code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>METANOIA - Focus session test</h1>
+  <p class="muted">Trang thử Start / Stop, đồng hồ, trạng thái slot và thông báo (SignalR, Web Push). Dùng chung phiên đăng nhập với <a href="/fe-test.html">fe-test.html</a>.</p>
+  <div id="notice" class="notice"></div>
+
+  <section>
+    <h2>Thứ tự thử nhanh</h2>
+    <ol>
+      <li>Mục 1: đăng nhập Google (hoặc dán <code>accessToken</code>).</li>
+      <li>Mục 2: bấm <b>Tạo task + slot thử</b> (mặc định: bắt đầu sau 1 phút, dài 3 phút, tự duyệt).</li>
+      <li>Mục 5: bấm <b>Kết nối SignalR</b> và cho phép thông báo trình duyệt.</li>
+      <li>Chờ đến giờ: slot tự chuyển <span class="badge Approved">Approved</span> → <span class="badge Due">Due</span> và có thông báo "Đến giờ rồi!". Hệ thống <b>không</b> tự bấm giờ.</li>
+      <li>Mục 3: bấm <b>Start</b>, đồng hồ chạy. Chờ hết 3 phút: slot thành <span class="badge Overrun">Overrun</span>. Chờ tới 6 phút (2 lần dự kiến): hệ thống tự ngắt, bạn xác nhận ở mục 6.</li>
+      <li>Hoặc bấm <b>Stop</b> trước đó: xem <code>sessionMinutes</code>, <code>taskTotalMinutes</code>, <code>checkInRequired</code>. Làm nhiều lần Start/Stop, rồi bấm "Tổng kết slot" ở mục 4.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>1. Đăng nhập</h2>
+    <label>Google Client ID (cùng ID trong appsettings)
+      <input id="clientId" placeholder="xxxx.apps.googleusercontent.com" />
+    </label>
+    <button onclick="renderGoogleButton()">Tải nút đăng nhập</button>
+    <div id="googleButton" style="margin-top:12px"></div>
+    <details>
+      <summary>Hoặc dán accessToken lấy từ Swagger / fe-test</summary>
+      <label>accessToken <input id="tokenInput" placeholder="eyJhbGciOi..." /></label>
+      <button class="secondary" onclick="useToken()">Dùng token này</button>
+    </details>
+    <p id="session" class="muted"></p>
+    <button class="secondary" onclick="logout()">Đăng xuất</button>
+  </section>
+
+  <section>
+    <h2>2. Chuẩn bị dữ liệu thử</h2>
+    <div class="row">
+      <div>
+        <label>Dự án <select id="projectSelect" onchange="onProjectChange()"></select></label>
+        <label>Loại công việc (Domain) <select id="domainSelect"></select></label>
+        <button class="secondary" onclick="loadProjects()">Tải lại danh sách</button>
+        <button class="secondary" onclick="createProject()">Tạo dự án "Focus test"</button>
+      </div>
+      <div>
+        <label>Tên task <input id="taskTitle" value="Task thử focus" /></label>
+        <div class="row">
+          <label>Bắt đầu sau (phút) <input id="slotStartIn" type="number" value="1" min="-600" /></label>
+          <label>Độ dài slot (phút) <input id="slotLength" type="number" value="3" min="1" /></label>
+        </div>
+        <label><input id="slotApproved" type="checkbox" checked style="width:auto" /> Tạo slot ở trạng thái Approved (đã duyệt, mới có job nhắc việc)</label>
+        <button onclick="createTaskAndSlot()">Tạo task + slot thử</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Task <select id="taskSelect" onchange="onTaskChange()"></select></label>
+      <label>Slot của task <select id="slotSelect" onchange="onSlotChange()"></select></label>
+    </div>
+    <p class="muted">Slot chỉ có job nhắc việc khi ở trạng thái <b>Approved</b>. Slot Proposed (chưa duyệt) bấm Start sẽ bị từ chối.</p>
+  </section>
+
+  <section>
+    <h2>3. Đồng hồ và nút Start / Stop</h2>
+    <div>Trạng thái slot: <span id="slotBadge" class="badge">chưa chọn</span> <span id="slotInfo" class="muted"></span></div>
+    <div id="timer" class="timer">--:--:--</div>
+    <div id="timerInfo" class="muted">Không có phiên nào đang chạy.</div>
+    <div class="row3">
+      <label>Lý do dừng
+        <select id="stopReason">
+          <option value="Completed">Completed - xong việc</option>
+          <option value="Interrupted">Interrupted - tạm dừng / bị gián đoạn</option>
+          <option value="Blocked">Blocked - bị chặn</option>
+          <option value="Other">Other - lý do khác</option>
+        </select>
+      </label>
+      <label>Ghi chú <input id="stopNote" placeholder="tùy chọn" /></label>
+      <label>Bài nhạc (focusTrackId) <input id="trackId" placeholder="tùy chọn, GUID" /></label>
+    </div>
+    <button id="btnStartSlot" class="good" onclick="startSession(true)">Start (gắn slot đã chọn)</button>
+    <button id="btnStartFree" class="secondary" onclick="startSession(false)">Start (không gắn slot)</button>
+    <button id="btnStop" class="danger" onclick="stopSession()">Stop</button>
+    <button class="secondary" onclick="refreshCurrent()">Làm mới phiên hiện tại</button>
+    <pre id="focusOut">Kết quả của API sẽ hiện ở đây.</pre>
+  </section>
+
+  <section>
+    <h2>4. Tổng kết slot</h2>
+    <button onclick="loadSummary()">Tổng kết slot đang chọn (T_act)</button>
+    <p id="summaryText" class="muted"></p>
+    <table id="summaryTable" style="display:none">
+      <thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Phút</th><th>Cách ghi nhận</th><th>Lý do dừng</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5. Thông báo</h2>
+    <p class="muted">Ba đường: <b>SignalR</b> (realtime khi đang mở trang), <b>Web Push</b> (kể cả khi đóng tab) và <b>hộp thư</b> (xem lại thông báo đã bỏ lỡ).</p>
+    <button onclick="connectHub()">Kết nối SignalR</button>
+    <button class="secondary" onclick="askBrowserPermission()">Cho phép thông báo trình duyệt</button>
+    <button class="secondary" onclick="subscribePush()">Đăng ký Web Push</button>
+    <button class="secondary" onclick="unsubscribePush()">Hủy Web Push</button>
+    <p id="hubStatus" class="muted">SignalR: chưa kết nối.</p>
+    <div class="row">
+      <div>
+        <h2 style="margin-top:12px">Nhận realtime</h2>
+        <div id="live"><p class="muted">Chưa có thông báo realtime nào.</p></div>
+      </div>
+      <div>
+        <h2 style="margin-top:12px">Hộp thư</h2>
+        <button class="secondary" onclick="loadInbox()">Tải hộp thư</button>
+        <button class="secondary" onclick="markAllRead()">Đánh dấu đã đọc hết</button>
+        <div id="inbox"></div>
+      </div>
+    </div>
+    <p class="muted">Hangfire dashboard (chỉ mở được khi truy cập từ chính máy chạy server): <a href="/hangfire" target="_blank">/hangfire</a></p>
+  </section>
+
+  <section>
+    <h2>6. Quên bấm Start, và xác nhận phiên bị tự ngắt</h2>
+    <div class="row">
+      <div>
+        <h2 style="font-size:14px">Tự khai báo (self-report)</h2>
+        <div class="row">
+          <label>Bắt đầu cách đây (phút) <input id="srStartAgo" type="number" value="60" /></label>
+          <label>Kết thúc cách đây (phút) <input id="srEndAgo" type="number" value="30" /></label>
+        </div>
+        <label>Lý do dừng
+          <select id="srReason"><option>Completed</option><option>Interrupted</option><option>Blocked</option><option>Other</option></select>
+        </label>
+        <button onclick="selfReport()">Gửi self-report (gắn task và slot đang chọn)</button>
+      </div>
+      <div>
+        <h2 style="font-size:14px">Xác nhận phiên AutoTimeout</h2>
+        <label>Session Id <input id="confirmId" placeholder="GUID của phiên bị tự ngắt" /></label>
+        <label>Số phút thực tế (bỏ trống nếu giữ nguyên) <input id="confirmMinutes" type="number" /></label>
+        <button class="good" onclick="confirmSession(true)">Xác nhận</button>
+        <button class="danger" onclick="confirmSession(false)">Loại bỏ phiên</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Nhật ký API</h2>
+    <p class="muted">Mỗi lần trang gọi API sẽ ghi một dòng ở đây (phương thức, đường dẫn, mã trả về).</p>
+    <button class="secondary" onclick="$('apiLog').textContent=''">Xóa nhật ký</button>
+    <pre id="apiLog"></pre>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const state = { projectId: null, taskId: null, slotId: null, slot: null, hub: null, running: null, plannedSeconds: 0 };
+  // Đồng hồ vẽ theo giờ SERVER: lấy elapsedSeconds do server tính, rồi cộng thêm thời gian trôi qua bằng đồng hồ đơn điệu
+  // (performance.now) của trình duyệt. Không dùng Date.now() nên đổi giờ máy không làm sai kết quả.
+  const clock = { elapsedAtFetch: 0, fetchedAt: 0, active: false };
+
+  // ---------------------------------------------------------------- Tiện ích
+  function notify(message, kind) {
+    const el = $('notice');
+    el.textContent = message;
+    el.className = 'notice ' + (kind || '');
+    el.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function token() { return sessionStorage.getItem('accessToken'); }
+
+  function logApi(method, path, status, note) {
+    const line = `${new Date().toLocaleTimeString('vi-VN')}  ${method} ${path} -> ${status}${note ? '  ' + note : ''}\n`;
+    const el = $('apiLog');
+    el.textContent = line + el.textContent;
+  }
+
+  async function api(method, path, body, quiet) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token()) headers.Authorization = 'Bearer ' + token();
+    let response;
+    try {
+      response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    } catch (e) {
+      logApi(method, path, 'LỖI MẠNG', e.message);
+      notify('Không gọi được server: ' + e.message, 'error');
+      return { ok: false, status: 0, data: {} };
+    }
+
+    let data = {};
+    const text = await response.text();
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+    if (!quiet || !response.ok) logApi(method, path, response.status);
+
+    if (response.status === 401) notify('Chưa đăng nhập hoặc token đã hết hạn (401). Hãy đăng nhập lại ở mục 1.', 'error');
+    return { ok: response.ok, status: response.status, data };
+  }
+
+  function show(el, value) { el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2); }
+  function fmtTime(iso) { return iso ? new Date(iso).toLocaleString('vi-VN') : ''; }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtDuration(totalSeconds) {
+    const sign = totalSeconds < 0 ? '-' : '';
+    const s = Math.abs(Math.floor(totalSeconds));
+    return `${sign}${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+  }
+  function option(value, label) { const o = document.createElement('option'); o.value = value; o.textContent = label; return o; }
+
+  // ---------------------------------------------------------------- 1. Đăng nhập
+  function renderSession() {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    $('session').textContent = token()
+      ? `Đã đăng nhập${user ? ': ' + user.fullName + ' (' + user.email + ', ' + user.role + ')' : ' bằng accessToken'}.`
+      : 'Chưa đăng nhập.';
+  }
+
+  function renderGoogleButton() {
+    const clientId = $('clientId').value.trim();
+    if (!clientId) return notify('Nhập Google Client ID trước.', 'error');
+    localStorage.setItem('googleClientId', clientId);
+    google.accounts.id.initialize({ client_id: clientId, callback: onGoogleCredential });
+    google.accounts.id.renderButton($('googleButton'), { theme: 'outline', size: 'large' });
+  }
+
+  async function onGoogleCredential(response) {
+    const result = await api('POST', '/api/auth/google', { idToken: response.credential });
+    if (!result.ok) return notify(result.data.message || 'Đăng nhập thất bại.', 'error');
+    sessionStorage.setItem('accessToken', result.data.accessToken);
+    sessionStorage.setItem('user', JSON.stringify({ fullName: result.data.fullName, email: result.data.email, role: result.data.role }));
+    renderSession();
+    notify('Đăng nhập thành công.', 'ok');
+    bootstrap();
+  }
+
+  function useToken() {
+    const value = $('tokenInput').value.trim().replace(/^Bearer\s+/i, '');
+    if (!value) return;
+    sessionStorage.setItem('accessToken', value);
+    sessionStorage.removeItem('user');
+    renderSession();
+    notify('Đã dùng accessToken.', 'ok');
+    bootstrap();
+  }
+
+  function logout() {
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('user');
+    if (state.hub) state.hub.stop();
+    renderSession();
+  }
+
+  // ---------------------------------------------------------------- 2. Dữ liệu thử
+  async function loadProjects() {
+    const result = await api('GET', '/api/projects');
+    const select = $('projectSelect');
+    select.replaceChildren();
+    if (!result.ok) return;
+    result.data.forEach((p) => select.append(option(p.id, p.name + (p.status === 'Archived' ? ' (lưu trữ)' : ''))));
+    if (result.data.length === 0) select.append(option('', '(chưa có dự án, bấm "Tạo dự án")'));
+    if (state.projectId && result.data.some((p) => p.id === state.projectId)) select.value = state.projectId;
+    await onProjectChange();
+  }
+
+  async function loadDomains() {
+    const result = await api('GET', '/api/domains');
+    const select = $('domainSelect');
+    select.replaceChildren();
+    if (!result.ok) return;
+    result.data.filter((d) => d.isActive).forEach((d) => select.append(option(d.id, d.name)));
+    if (!select.options.length) select.append(option('', '(chưa có Domain nào đang bật, nhờ Admin tạo)'));
+  }
+
+  async function createProject() {
+    const result = await api('POST', '/api/projects', { name: 'Focus test', description: 'Dự án thử focus session', clientId: null });
+    if (!result.ok) return notify(result.data.message || 'Không tạo được dự án.', 'error');
+    state.projectId = result.data.id;
+    await loadProjects();
+  }
+
+  async function onProjectChange() {
+    state.projectId = $('projectSelect').value || null;
+    const select = $('taskSelect');
+    select.replaceChildren();
+    if (!state.projectId) return;
+    const result = await api('GET', `/api/projects/${state.projectId}/tasks`);
+    if (!result.ok) return;
+    result.data.forEach((t) => select.append(option(t.id, `${t.title} [${t.status}]`)));
+    if (!result.data.length) select.append(option('', '(chưa có task, bấm "Tạo task + slot thử")'));
+    if (state.taskId && result.data.some((t) => t.id === state.taskId)) select.value = state.taskId;
+    await onTaskChange();
+  }
+
+  async function onTaskChange() {
+    state.taskId = $('taskSelect').value || null;
+    const select = $('slotSelect');
+    select.replaceChildren();
+    if (!state.taskId) return;
+    const result = await api('GET', `/api/tasks/${state.taskId}/schedule-slots`);
+    if (!result.ok) return;
+    result.data.slice().reverse().forEach((s) =>
+      select.append(option(s.id, `${fmtTime(s.startTime)} (${s.proposedMinutes} phút) [${s.status}]`)));
+    if (!result.data.length) select.append(option('', '(task chưa có slot)'));
+    if (state.slotId && result.data.some((s) => s.id === state.slotId)) select.value = state.slotId;
+    onSlotChange();
+  }
+
+  function onSlotChange() {
+    state.slotId = $('slotSelect').value || null;
+    refreshSlot();
+  }
+
+  async function createTaskAndSlot() {
+    if (!state.projectId) return notify('Chọn hoặc tạo dự án trước.', 'error');
+    const domainId = $('domainSelect').value;
+    if (!domainId) return notify('Chưa có Domain nào để gắn vào task. Nhờ Admin tạo Domain (POST /api/domains).', 'error');
+
+    const length = parseInt($('slotLength').value, 10) || 3;
+    const startIn = parseInt($('slotStartIn').value, 10) || 0;
+
+    const task = await api('POST', `/api/projects/${state.projectId}/tasks`, {
+      title: $('taskTitle').value || 'Task thử focus',
+      taskType: 'Flexible',
+      domainId,
+      deadline: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      estimatedMinutes: length
+    });
+    if (!task.ok) return notify(task.data.message || 'Không tạo được task.', 'error');
+
+    const start = new Date(Date.now() + startIn * 60000);
+    const slot = await api('POST', `/api/tasks/${task.data.id}/schedule-slots`, {
+      startTime: start.toISOString(),
+      endTime: new Date(start.getTime() + length * 60000).toISOString(),
+      isManualOverride: true,
+      status: $('slotApproved').checked ? 'Approved' : 'Proposed'
+    });
+    if (!slot.ok) return notify(slot.data.message || 'Không tạo được slot.', 'error');
+
+    state.taskId = task.data.id;
+    state.slotId = slot.data.id;
+    notify(`Đã tạo task và slot (${slot.data.status}). Slot bắt đầu lúc ${fmtTime(slot.data.startTime)}, dài ${length} phút.\n` +
+      (slot.data.status === 'Approved' ? 'Các job nhắc việc đã được hẹn. Chờ đến giờ để thấy trạng thái đổi sang Due.' : 'Slot đang là Proposed nên chưa có job nhắc việc.'), 'ok');
+    await onProjectChange();
+  }
+
+  // ---------------------------------------------------------------- 3. Start / Stop / đồng hồ
+  async function refreshSlot(quiet) {
+    const badge = $('slotBadge');
+    if (!state.slotId) {
+      badge.textContent = 'chưa chọn'; badge.className = 'badge'; $('slotInfo').textContent = '';
+      return;
+    }
+    const result = await api('GET', `/api/schedule-slots/${state.slotId}`, undefined, quiet);
+    if (!result.ok) return;
+    state.slot = result.data;
+    state.plannedSeconds = result.data.proposedMinutes * 60;
+    badge.textContent = result.data.status;
+    badge.className = 'badge ' + result.data.status;
+    $('slotInfo').textContent = `Giờ lịch: ${fmtTime(result.data.startTime)} → ${fmtTime(result.data.endTime)} (${result.data.proposedMinutes} phút)`;
+  }
+
+  function startedWarning(data) {
+    if (data.warning === 'STARTED_VERY_EARLY') {
+      notify(`Bạn đang bắt đầu sớm hơn lịch ${data.startedEarlyMinutes} phút (hơn 2 giờ). Phiên vẫn đã được tạo; nếu bấm nhầm hãy Stop ngay.`, 'warn');
+    } else if (data.startedEarlyMinutes > 0) {
+      notify(`Bắt đầu sớm ${data.startedEarlyMinutes} phút so với lịch. Các nhắc nhở phía cuối đã được hẹn lại theo giờ bắt đầu thực tế.`, 'ok');
+    } else {
+      notify('Đã bắt đầu.', 'ok');
+    }
+  }
+
+  async function startSession(withSlot) {
+    if (!state.taskId) return notify('Chọn task trước (mục 2).', 'error');
+    const body = { taskId: state.taskId };
+    if (withSlot) {
+      if (!state.slotId) return notify('Chưa chọn slot. Dùng "Start (không gắn slot)" nếu muốn làm ngoài lịch.', 'error');
+      body.scheduleSlotId = state.slotId;
+    }
+    const track = $('trackId').value.trim();
+    if (track) body.focusTrackId = track;
+
+    const result = await api('POST', '/api/focus/start', body);
+    show($('focusOut'), { status: result.status, ...result.data });
+    if (result.status === 409) {
+      notify('Bạn đang có một phiên chưa dừng (409). Trang đã tải lại phiên đó ở bên dưới.', 'warn');
+    } else if (!result.ok) {
+      notify(result.data.message || 'Không bắt đầu được.', 'error');
+    } else {
+      startedWarning(result.data);
+    }
+    await refreshCurrent();
+    await refreshSlot();
+  }
+
+  async function stopSession() {
+    if (!state.running) return notify('Không có phiên nào đang chạy.', 'error');
+    const result = await api('POST', `/api/focus/${state.running.sessionId}/stop`, {
+      stopReason: $('stopReason').value,
+      note: $('stopNote').value || null
+    });
+    show($('focusOut'), { status: result.status, ...result.data });
+    if (result.ok) {
+      const d = result.data;
+      notify(`Đã dừng. Phiên này: ${d.sessionMinutes} phút. Tổng cả task: ${d.taskTotalMinutes} phút.\n` +
+        (d.checkInRequired ? 'checkInRequired = true: giao diện thật nên hỏi người dùng "xong chưa / thấy thế nào".' : 'checkInRequired = false: bạn sẽ quay lại làm tiếp, chưa cần hỏi.'), 'ok');
+    } else {
+      notify(result.data.message || 'Không dừng được.', result.status === 409 ? 'warn' : 'error');
+    }
+    await refreshCurrent();
+    await refreshSlot();
+  }
+
+  async function refreshCurrent(quiet) {
+    if (!token()) return;
+    const result = await api('GET', '/api/focus/current', undefined, quiet);
+    if (result.status === 204) {
+      state.running = null;
+      clock.active = false;
+    } else if (result.ok) {
+      state.running = result.data;
+      clock.elapsedAtFetch = result.data.elapsedSeconds;
+      clock.fetchedAt = performance.now();
+      clock.active = true;
+      if (result.data.scheduleSlotId && result.data.scheduleSlotId === state.slotId) refreshSlot(quiet);
+    }
+    renderTimer();
+  }
+
+  function renderTimer() {
+    const timer = $('timer');
+    const info = $('timerInfo');
+    $('btnStop').disabled = !state.running;
+    $('btnStartSlot').disabled = !!state.running;
+    $('btnStartFree').disabled = !!state.running;
+
+    if (!state.running || !clock.active) {
+      timer.textContent = '--:--:--';
+      timer.className = 'timer';
+      info.textContent = 'Không có phiên nào đang chạy.';
+      return;
+    }
+
+    const elapsed = clock.elapsedAtFetch + (performance.now() - clock.fetchedAt) / 1000;
+    timer.textContent = fmtDuration(elapsed);
+    const planned = state.running.scheduleSlotId && state.running.scheduleSlotId === state.slotId ? state.plannedSeconds : 0;
+    const overrun = planned > 0 && elapsed > planned;
+    timer.className = 'timer' + (overrun ? ' overrun' : '');
+    info.textContent = `Task: ${state.running.taskTitle} | Bắt đầu lúc ${fmtTime(state.running.startedAt)} (giờ server)` +
+      (planned > 0 ? ` | Dự kiến ${Math.round(planned / 60)} phút, ${overrun ? 'đã quá ' + fmtDuration(elapsed - planned) : 'còn ' + fmtDuration(planned - elapsed)}` : ' | Không gắn slot');
+  }
+
+  // ---------------------------------------------------------------- 4. Tổng kết
+  async function loadSummary() {
+    if (!state.slotId) return notify('Chọn slot trước.', 'error');
+    const result = await api('GET', `/api/focus/${state.slotId}/time-summary`);
+    if (!result.ok) return notify(result.data.message || 'Không lấy được tổng kết.', 'error');
+    const d = result.data;
+    $('summaryText').textContent = `Dự kiến ${d.plannedMinutes} phút, thực tế ${d.actualMinutes} phút, ${d.sessionCount} phiên (phiên AutoTimeout chưa xác nhận không được tính).`;
+    const tbody = $('summaryTable').querySelector('tbody');
+    tbody.replaceChildren();
+    d.sessions.forEach((s) => {
+      const tr = document.createElement('tr');
+      [fmtTime(s.startedAt), fmtTime(s.endedAt), s.minutes, s.captureMethod, s.stopReason || ''].forEach((v) => {
+        const td = document.createElement('td'); td.textContent = v; tr.append(td);
+      });
+      tbody.append(tr);
+    });
+    $('summaryTable').style.display = d.sessions.length ? 'table' : 'none';
+  }
+
+  // ---------------------------------------------------------------- 5. Thông báo
+  const TITLES = {
+    PRE_START_REMINDER: 'Sắp đến giờ', START_PROMPT: 'Đến giờ - bấm Start', NOT_STARTED: 'Bạn chưa bắt đầu',
+    NEAR_END: 'Sắp hết giờ', OVERRUN: 'Đã quá giờ', AUTO_TIMEOUT: 'Phiên bị tự ngắt', CHECK_IN: 'Check-in'
+  };
+
+  function addLive(message, type) {
+    const box = $('live');
+    if (box.querySelector('p')) box.replaceChildren();
+    const div = document.createElement('div');
+    div.className = 'item';
+    const b = document.createElement('b'); b.textContent = (TITLES[type] || type) + ' ';
+    const t = document.createElement('span'); t.className = 'muted'; t.textContent = new Date().toLocaleTimeString('vi-VN');
+    div.append(b, t, document.createElement('br'), document.createTextNode(message));
+    box.prepend(div);
+  }
+
+  async function connectHub() {
+    if (!token()) return notify('Đăng nhập trước.', 'error');
+    if (state.hub) await state.hub.stop();
+    state.hub = new signalR.HubConnectionBuilder()
+      .withUrl('/hubs/notifications', { accessTokenFactory: () => token() })
+      .withAutomaticReconnect()
+      .build();
+
+    // Tên "ReceiveNotification" khớp INotificationClient ở server: (message, actionType, notificationId)
+    state.hub.on('ReceiveNotification', (message, type) => {
+      addLive(message, type);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(TITLES[type] || 'METANOIA', { body: message, tag: type });
+      }
+      // Trạng thái slot và phiên có thể vừa được job nền đổi: tải lại cho thấy ngay
+      refreshSlot();
+      refreshCurrent();
+      loadInbox();
+    });
+    state.hub.onreconnecting(() => $('hubStatus').textContent = 'SignalR: đang kết nối lại...');
+    state.hub.onreconnected(() => $('hubStatus').textContent = 'SignalR: đã kết nối lại.');
+    state.hub.onclose(() => $('hubStatus').textContent = 'SignalR: đã ngắt.');
+
+    try {
+      await state.hub.start();
+      $('hubStatus').textContent = 'SignalR: đã kết nối. Thông báo mới sẽ hiện ngay ở cột "Nhận realtime".';
+      logApi('WS', '/hubs/notifications', 'đã kết nối');
+    } catch (e) {
+      $('hubStatus').textContent = 'SignalR: lỗi kết nối - ' + e.message;
+      notify('Không kết nối được SignalR: ' + e.message, 'error');
+    }
+  }
+
+  async function askBrowserPermission() {
+    if (!('Notification' in window)) return notify('Trình duyệt này không hỗ trợ Notification.', 'error');
+    const permission = await Notification.requestPermission();
+    notify('Quyền thông báo trình duyệt: ' + permission, permission === 'granted' ? 'ok' : 'warn');
+  }
+
+  function urlBase64ToUint8Array(base64) {
+    const padding = '='.repeat((4 - base64.length % 4) % 4);
+    const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+
+  async function subscribePush() {
+    if (!token()) return notify('Đăng nhập trước.', 'error');
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return notify('Trình duyệt này không hỗ trợ Web Push.', 'error');
+
+    const key = await api('GET', '/api/notifications/vapid-public-key');
+    if (!key.ok) return notify(key.data.message || 'Server chưa cấu hình VapidSettings.', 'error');
+    if (await Notification.requestPermission() !== 'granted') return notify('Bạn chưa cho phép thông báo trình duyệt.', 'warn');
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key.data.publicKey)
+      });
+      const json = subscription.toJSON();
+      const result = await api('POST', '/api/notifications/subscribe', { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } });
+      notify(result.ok ? 'Đã đăng ký Web Push. Đóng tab đi, đến giờ vẫn sẽ có thông báo hệ điều hành.' : (result.data.message || 'Đăng ký thất bại.'), result.ok ? 'ok' : 'error');
+    } catch (e) {
+      notify('Không đăng ký được Web Push: ' + e.message + '\n(Web Push chỉ chạy trên https hoặc localhost, và VAPID public key phải khớp private key của server.)', 'error');
+    }
+  }
+
+  async function unsubscribePush() {
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && await registration.pushManager.getSubscription();
+    if (!subscription) return notify('Trình duyệt này chưa đăng ký Web Push.', 'warn');
+    await api('POST', '/api/notifications/unsubscribe', { endpoint: subscription.endpoint, keys: { p256dh: '-', auth: '-' } });
+    await subscription.unsubscribe();
+    notify('Đã hủy Web Push.', 'ok');
+  }
+
+  async function loadInbox() {
+    if (!token()) return;
+    const result = await api('GET', '/api/notifications?take=20');
+    const box = $('inbox');
+    box.replaceChildren();
+    if (!result.ok) return;
+    if (!result.data.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Hộp thư trống.'; box.append(p); return; }
+    result.data.forEach((n) => {
+      const div = document.createElement('div');
+      div.className = 'item' + (n.isRead ? '' : ' unread');
+      const b = document.createElement('b'); b.textContent = n.title + ' ';
+      const t = document.createElement('span'); t.className = 'muted'; t.textContent = `${n.type} - ${fmtTime(n.sentAt)}`;
+      div.append(b, t, document.createElement('br'), document.createTextNode(n.message));
+      if (!n.isRead) {
+        const btn = document.createElement('button'); btn.className = 'secondary'; btn.textContent = 'Đã đọc';
+        btn.onclick = async () => { await api('POST', `/api/notifications/${n.id}/read`); loadInbox(); };
+        div.append(document.createElement('br'), btn);
+      }
+      box.append(div);
+    });
+  }
+
+  async function markAllRead() {
+    await api('POST', '/api/notifications/read-all');
+    loadInbox();
+  }
+
+  // ---------------------------------------------------------------- 6. Self-report và confirm
+  async function selfReport() {
+    if (!state.taskId) return notify('Chọn task trước.', 'error');
+    const now = Date.now();
+    const body = {
+      taskId: state.taskId,
+      scheduleSlotId: state.slotId || null,
+      startedAt: new Date(now - (parseInt($('srStartAgo').value, 10) || 0) * 60000).toISOString(),
+      endedAt: new Date(now - (parseInt($('srEndAgo').value, 10) || 0) * 60000).toISOString(),
+      stopReason: $('srReason').value,
+      note: 'Khai báo từ trang test'
+    };
+    const result = await api('POST', '/api/focus/self-report', body);
+    show($('focusOut'), { status: result.status, ...result.data });
+    notify(result.ok ? 'Đã ghi nhận self-report (SelfReported, đã xác nhận).' : (result.data.message || 'Self-report bị từ chối.'), result.ok ? 'ok' : 'error');
+    refreshSlot();
+  }
+
+  async function confirmSession(confirmed) {
+    const id = $('confirmId').value.trim();
+    if (!id) return notify('Nhập Session Id của phiên bị tự ngắt (xem ở khung kết quả khi Start).', 'error');
+    const minutes = parseInt($('confirmMinutes').value, 10);
+    const body = { confirmed };
+    if (confirmed && minutes) body.correctedMinutes = minutes;
+    const result = await api('POST', `/api/focus/${id}/confirm`, body);
+    show($('focusOut'), { status: result.status, ...result.data });
+    notify(result.ok ? (confirmed ? 'Đã xác nhận phiên.' : 'Đã loại bỏ phiên, không dùng để học.') : (result.data.message || 'Không xác nhận được.'), result.ok ? 'ok' : 'error');
+  }
+
+  // ---------------------------------------------------------------- Khởi động
+  async function bootstrap() {
+    renderSession();
+    if (!token()) return;
+    await loadDomains();
+    await loadProjects();
+    await refreshCurrent();
+    await loadInbox();
+    connectHub();
+  }
+
+  $('clientId').value = localStorage.getItem('googleClientId') || '';
+  setInterval(renderTimer, 500);
+  setInterval(() => { if (token()) { refreshCurrent(true); refreshSlot(true); } }, 5000);
+  bootstrap();
+</script>
+</body>
+</html>

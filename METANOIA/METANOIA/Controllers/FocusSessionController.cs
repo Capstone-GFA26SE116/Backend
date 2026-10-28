@@ -1,4 +1,4 @@
-﻿using METANOIA.Application.Dto;
+using METANOIA.Application.Dto;
 using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +7,8 @@ using System.Security.Claims;
 
 namespace METANOIA.Controllers;
 
+// Hai đường dẫn cùng trỏ vào controller này: /api/focus/... (theo thiết kế) và /api/FocusSession/... (đường cũ, giữ để không vỡ FE)
+[Route("api/focus")]
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
@@ -17,15 +19,9 @@ public sealed class FocusSessionController(IFocusSessionService focusService) : 
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> StartSession([FromBody] FocusStartRequest request)
     {
-        try
-        {
-            return StatusCode(StatusCodes.Status201Created,
-                await focusService.StartSessionAsync(GetUserId(), request));
-        }
-        catch (FocusConflictException ex)
-        {
-            return Conflict(new { message = ex.Message, details = ex.Details });
-        }
+        // Đang có phiên chạy: FocusConflictException -> 409 kèm phiên đó (middleware xử lý)
+        return StatusCode(StatusCodes.Status201Created,
+            await focusService.StartSessionAsync(GetUserId(), request));
     }
 
     [HttpPost("{sessionId:guid}/stop")]
@@ -60,6 +56,7 @@ public sealed class FocusSessionController(IFocusSessionService focusService) : 
     }
 
     [HttpGet("{slotId:guid}/time-summary")]
+    [HttpGet("/api/slots/{slotId:guid}/time-summary")]
     [ProducesResponseType(typeof(FocusTimeSummaryResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTimeSummary(Guid slotId)
     {

@@ -68,7 +68,7 @@ namespace METANOIA.Infrastructure.Services
             await _slotRepository.AddAsync(slot, cancellationToken);
             await AddLogAsync(slot.Id, "Created", null, null, slot.StartTime, slot.EndTime, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            _jobService.ScheduleAllJobsForSlot(slot);
+            SyncJobs(slot);
 
             return ToDto(slot);
         }
@@ -97,10 +97,7 @@ namespace METANOIA.Infrastructure.Services
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            if (startChanged || endChanged || slot.Status == "Approved")
-            {
-                _jobService.ScheduleAllJobsForSlot(slot);
-            }
+            SyncJobs(slot);
             return ToDto(slot);
         }
 
@@ -115,12 +112,33 @@ namespace METANOIA.Infrastructure.Services
             var oldStart = slot.StartTime;
             var oldEnd = slot.EndTime;
             slot.Status = CancelledStatus;
-            _jobService.CancelAllJobs(slot.Id);
 
             await AddLogAsync(slot.Id, "Deleted", oldStart, oldEnd, null, null, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _jobService.CancelAllJobs(slot.Id);
 
             return ToDto(slot);
+        }
+
+        // Giữ job nhắc việc khớp với slot sau mỗi lần tạo hoặc sửa. Đã lưu xong mới gọi: lỗi hẹn giờ không làm mất thay đổi.
+        //  - Approved: hẹn lại toàn bộ theo StartTime và EndTime hiện tại (job cũ bị hủy, tránh nổ sai giờ)
+        //  - Due, InProgress, Overrun: đang diễn ra, để nguyên job
+        //  - Còn lại (Proposed, Cancelled, Done, Skipped, Missed, Postponed): không cần nhắc, hủy hết
+        private void SyncJobs(ScheduleSlot slot)
+        {
+            switch (slot.Status)
+            {
+                case "Approved":
+                    _jobService.ScheduleAllJobsForSlot(slot);
+                    break;
+                case "Due":
+                case "InProgress":
+                case "Overrun":
+                    break;
+                default:
+                    _jobService.CancelAllJobs(slot.Id);
+                    break;
+            }
         }
 
         private async Task EnsureTaskOwnedAsync(Guid userId, Guid taskId, CancellationToken cancellationToken)

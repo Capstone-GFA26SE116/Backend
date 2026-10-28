@@ -17,6 +17,6 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         Task AddAsync(ScheduleSlot slot, CancellationToken cancellationToken = default);
         Task<ScheduleSlot?> GetByIdAsync(Guid slotId);
-        Task<ScheduleSlot?> GetSlotWithSessionsAsync(Guid slotId);
+        Task<ScheduleSlot?> GetSlotWithSessionsAsync(Guid slotId, Guid userId);
     }
 }
