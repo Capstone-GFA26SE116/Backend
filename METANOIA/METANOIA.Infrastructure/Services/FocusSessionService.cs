@@ -1,4 +1,4 @@
-﻿using METANOIA.Application.Dto;
+using METANOIA.Application.Dto;
 using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
@@ -334,13 +334,33 @@ namespace METANOIA.Infrastructure.Services
                 EndedAt: UtcTime.ToApi(s.EndedAt),
                 Minutes: Round(MinutesOf(s)),
                 CaptureMethod: ParseEnum<CaptureMethod>(s.CaptureMethod),
-                StopReason: ParseNullableEnum<FocusStopReason>(s.StopReason))).ToList();
+                StopReason: ParseNullableEnum<FocusStopReason>(s.StopReason),
+                SessionId: s.Id)).ToList();
 
             return new FocusTimeSummaryResponse(
                 PlannedMinutes: slot.ProposedMinutes,
                 ActualMinutes: Round(sessions.Sum(MinutesOf)),
                 SessionCount: sessions.Count,
                 Sessions: items);
+        }
+
+        // ------------------------------------------------------------------ Pending confirmation
+
+        public async Task<IReadOnlyList<FocusPendingConfirmationItem>> GetPendingConfirmationAsync(Guid userId)
+        {
+            var sessions = await _sessionRepository.GetUnconfirmedAutoTimeoutAsync(userId);
+
+            return sessions
+                .Where(s => s.Note?.Contains(DiscardedMarker, StringComparison.Ordinal) != true)
+                .Select(s => new FocusPendingConfirmationItem(
+                    SessionId: s.Id,
+                    TaskId: s.TaskId,
+                    TaskTitle: s.Task.Title,
+                    ScheduleSlotId: s.ScheduleSlotId,
+                    StartedAt: UtcTime.ToApi(s.StartedAt),
+                    EndedAt: UtcTime.ToApi(s.EndedAt!.Value),
+                    SystemMinutes: Round(MinutesOf(s))))
+                .ToList();
         }
 
         // ------------------------------------------------------------------ Helpers

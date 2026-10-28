@@ -40,6 +40,14 @@ public sealed class FocusSessionController(IFocusSessionService focusService) : 
         return result is null ? NoContent() : Ok(result);
     }
 
+    // Các phiên bị hệ thống tự ngắt mà chưa xác nhận (hoặc loại bỏ). Rỗng nghĩa là không có gì cần hỏi người dùng
+    [HttpGet("pending-confirmation")]
+    [ProducesResponseType(typeof(IReadOnlyList<FocusPendingConfirmationItem>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPendingConfirmation()
+    {
+        return Ok(await focusService.GetPendingConfirmationAsync(GetUserId()));
+    }
+
     [HttpPost("{sessionId:guid}/confirm")]
     public async Task<IActionResult> ConfirmSession(Guid sessionId, [FromBody] FocusConfirmRequest request)
     {

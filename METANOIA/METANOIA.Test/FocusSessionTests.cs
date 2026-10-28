@@ -491,6 +491,59 @@ namespace METANOIA.Test
             Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         }
 
+        [Fact]
+        public async Task PendingConfirmation_ListsAutoTimeoutSessions_UntilConfirmedOrDiscarded_AndOnlyForTheOwner()
+        {
+            using var factory = new ApiFactory();
+            var s = await SetupAsync(factory, "owner");
+            var (other, _) = await TestHelpers.LoginAsync(factory, "other");
+
+            Assert.Empty((await s.Client.GetFromJsonAsync<List<FocusPendingConfirmationItem>>("/api/focus/pending-confirmation", Json))!);
+
+            // Hai phiên bị tự ngắt: một cái sẽ được xác nhận, một cái bị loại bỏ
+            var first = await AutoTimeoutSessionAsync(factory, s);
+            var second = await AutoTimeoutSessionAsync(factory, s);
+
+            var pending = (await s.Client.GetFromJsonAsync<List<FocusPendingConfirmationItem>>("/api/focus/pending-confirmation", Json))!;
+            Assert.Equal(2, pending.Count);
+            Assert.Equal(second, pending[0].SessionId);   // mới nhất trước
+            Assert.Equal("Viết báo cáo", pending[0].TaskTitle);
+            Assert.Equal(60, pending[0].SystemMinutes);
+            Assert.Empty((await other.GetFromJsonAsync<List<FocusPendingConfirmationItem>>("/api/focus/pending-confirmation", Json))!);
+
+            await s.Client.PostAsJsonAsync($"/api/focus/{first}/confirm", new { confirmed = true, correctedMinutes = 20 });
+            var afterConfirm = (await s.Client.GetFromJsonAsync<List<FocusPendingConfirmationItem>>("/api/focus/pending-confirmation", Json))!;
+            Assert.Equal(second, Assert.Single(afterConfirm).SessionId);
+
+            await s.Client.PostAsJsonAsync($"/api/focus/{second}/confirm", new { confirmed = false });
+            Assert.Empty((await s.Client.GetFromJsonAsync<List<FocusPendingConfirmationItem>>("/api/focus/pending-confirmation", Json))!);
+        }
+
+        // Bắt đầu một slot rồi để quá 2 lần thời gian dự kiến cho tới khi hệ thống tự ngắt. Trả về id phiên
+        private static async Task<Guid> AutoTimeoutSessionAsync(ApiFactory factory, Setup s)
+        {
+            var slot = await CreateSlotAsync(factory, s.Client, s.TaskId, 0, lengthMinutes: 30);
+            var started = await StartOkAsync(s.Client, s.TaskId, slot.Id);
+            factory.Clock.Advance(TimeSpan.FromMinutes(60));
+            await RunJobAsync(factory, jobs => jobs.AutoTimeout(slot.Id));
+            return started.SessionId;
+        }
+
+        [Fact]
+        public async Task TimeSummary_ExposesTheSessionIdOfEachSession()
+        {
+            using var factory = new ApiFactory();
+            var s = await SetupAsync(factory);
+            var slot = await CreateSlotAsync(factory, s.Client, s.TaskId, 0, 30);
+            var started = await StartOkAsync(s.Client, s.TaskId, slot.Id);
+            factory.Clock.Advance(TimeSpan.FromMinutes(5));
+            await StopOkAsync(s.Client, started.SessionId, "Completed");
+
+            var summary = await SummaryAsync(s.Client, slot.Id);
+
+            Assert.Equal(started.SessionId, Assert.Single(summary.Sessions).SessionId);
+        }
+
         // ---------------------------------------------------------------- Self-report
 
         [Fact]

@@ -1,6 +1,6 @@
 # Focus session: hướng dẫn chạy, test và hiểu luồng
 
-Tài liệu này giải thích tính năng bấm giờ làm việc (Start / Stop), nhắc việc bằng Hangfire và thông báo,
+Tài liệu cho FE nằm ở [FOCUS_SESSION_FE.md](FOCUS_SESSION_FE.md). Tài liệu này giải thích tính năng bấm giờ làm việc (Start / Stop), nhắc việc bằng Hangfire và thông báo,
 kèm trình tự chạy thử bằng trang `focus-test.html`. Mọi API cần JWT (`Authorization: Bearer <accessToken>`).
 
 ## 1. Ý tưởng
@@ -57,6 +57,7 @@ Ba bảng mới và vai trò:
 | `POST /api/focus/start` | Body `{ taskId, subTaskId?, scheduleSlotId?, focusTrackId? }`. Đang có phiên chạy thì **409** kèm phiên đó (`details`). Tạo phiên `Timer`. Gắn slot thì slot thành `InProgress`. Bắt đầu sớm hơn 2 giờ thì có `warning: "STARTED_VERY_EARLY"`. Trả 201 |
 | `POST /api/focus/{sessionId}/stop` | Body `{ stopReason, note? }` (`Completed`, `Interrupted`, `Blocked`, `Other`). Trả `sessionMinutes`, `taskTotalMinutes`, `checkInRequired`. Dừng lần hai trả **409**. Người khác trả **403** |
 | `GET /api/focus/current` | Phiên đang chạy: `elapsedSeconds`, `serverTime`, `isOverrun`. Không có thì **204** |
+| `GET /api/focus/pending-confirmation` | Các phiên bị hệ thống tự ngắt (AutoTimeout) chưa xác nhận hoặc loại bỏ, để FE biết `sessionId` cần gọi `/confirm` |
 | `POST /api/focus/{sessionId}/confirm` | Body `{ confirmed, correctedMinutes? }`. Chỉ cho phiên `AutoTimeout` chưa xác nhận |
 | `POST /api/focus/self-report` | Body `{ taskId, scheduleSlotId?, startedAt, endedAt, stopReason, note? }`. Cho người quên bấm Start |
 | `GET /api/focus/{slotId}/time-summary` | Cũng có ở `GET /api/slots/{slotId}/time-summary`. Trả `plannedMinutes`, `actualMinutes`, `sessionCount`, danh sách phiên |

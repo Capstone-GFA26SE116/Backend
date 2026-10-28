@@ -1,4 +1,4 @@
-﻿using METANOIA.Domain.Entities;
+using METANOIA.Domain.Entities;
 
 namespace METANOIA.Application.Interfaces.Repositories
 {
@@ -15,6 +15,10 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         // Mọi phiên đã kết thúc của một task, trừ một phiên (dùng khi cộng T_act của task)
         Task<List<FocusSession>> GetEndedSessionsByTaskIdAsync(Guid taskId, Guid excludeSessionId);
+
+        // Phiên AutoTimeout đã kết thúc nhưng chưa được xác nhận, kèm Task. Mới nhất trước.
+        // Phiên người dùng đã loại bỏ (ghi chú đánh dấu) do service lọc tiếp.
+        Task<List<FocusSession>> GetUnconfirmedAutoTimeoutAsync(Guid userId);
 
         System.Threading.Tasks.Task AddAsync(FocusSession session);
     }

@@ -1,4 +1,4 @@
-﻿using METANOIA.Application.Interfaces.Repositories;
+using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Domain.Entities;
 using METANOIA.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +40,18 @@ namespace METANOIA.Infrastructure.Repositories
         {
             return await _context.FocusSessions
                 .Where(s => s.TaskId == taskId && s.EndedAt != null && s.Id != excludeSessionId)
+                .ToListAsync();
+        }
+
+        public async Task<List<FocusSession>> GetUnconfirmedAutoTimeoutAsync(Guid userId)
+        {
+            return await _context.FocusSessions
+                .Include(s => s.Task)
+                .Where(s => s.Task.Project.UserId == userId
+                            && s.EndedAt != null
+                            && !s.IsConfirmed
+                            && s.CaptureMethod == "AutoTimeout")
+                .OrderByDescending(s => s.EndedAt)
                 .ToListAsync();
         }
 
