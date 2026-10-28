@@ -18,6 +18,7 @@ namespace METANOIA.Test.Infrastructure
     {
         public const string FrontendOrigin = "http://localhost:5173";
         public const string CalendarRedirectUri = "https://localhost/fe-test.html";
+        public const string VapidPublicKey = "test-vapid-public-key";
         public const string JwtKey = "test-only-signing-key-0123456789-abcdefghijklmnop";
 
         // Id gói Miễn phí được seed khi có user đăng nhập lần đầu (giống dòng seed ở Supabase)
@@ -35,6 +36,11 @@ namespace METANOIA.Test.Infrastructure
         // Máy chủ token Google giả và bộ ghi log, dùng cho test lỗi đồng bộ Google Calendar
         public FakeGoogleHttpHandler GoogleHttp { get; } = new();
 
+        // Thay Hangfire: ghi lại việc hẹn và hủy job. Đồng hồ chỉnh tay cho các test về thời gian làm việc
+        public FakeScheduleJobService Jobs { get; } = new();
+
+        public ManualTimeProvider Clock { get; } = new();
+
         public CapturingLoggerProvider Logs { get; } = new();
 
         private readonly string _databaseName = Guid.NewGuid().ToString();
@@ -42,6 +48,13 @@ namespace METANOIA.Test.Infrastructure
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
+
+            // Program.cs đọc Hangfire:Enabled ngay lúc dựng host, trước khi AddInMemoryCollection bên dưới được áp dụng,
+            // nên phải truyền bằng UseSetting. Trong test không có Postgres cho Hangfire; job được thay bằng FakeScheduleJobService.
+            builder.UseSetting("Hangfire:Enabled", "false");
+
+            // Tương tự: CORS cũng được dựng bằng giá trị đọc sớm, nên không được phụ thuộc vào appsettings.json cục bộ (file bị gitignore)
+            builder.UseSetting("Frontend:AllowedOrigins:0", FrontendOrigin);
 
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -56,6 +69,8 @@ namespace METANOIA.Test.Infrastructure
                 ["Frontend:CalendarConnectedRedirectUri"] = CalendarRedirectUri,
                 ["Storage:RootPath"] = Path.Combine(Path.GetTempPath(), "metanoia-tests", _databaseName),
                 ["Subscription:FreePlanId"] = FreePlanId.ToString(),
+                ["Hangfire:Enabled"] = "false",
+                ["VapidSettings:PublicKey"] = VapidPublicKey,
                 ["Payments:ReconciliationEnabled"] = "false",
                 ["Payments:LinkExpiryMinutes"] = "15",
                 ["Payments:RefundWindowDays"] = "7",
@@ -68,6 +83,12 @@ namespace METANOIA.Test.Infrastructure
                 services.AddDbContext<AppDbContext>((serviceProvider, options) => options
                     .UseInMemoryDatabase(_databaseName)
                     .AddInterceptors(serviceProvider.GetRequiredService<AdminAuditSaveChangesInterceptor>()));
+
+                services.RemoveAll<IScheduleJobService>();
+                services.AddSingleton<IScheduleJobService>(Jobs);
+
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(Clock);
 
                 services.RemoveAll<IGoogleTokenValidator>();
                 services.AddScoped<IGoogleTokenValidator, FakeGoogleTokenValidator>();

@@ -25,6 +25,7 @@
 16. [Thuật ngữ](#16-thuật-ngữ)
 17. [Sơ đồ: class diagram và sequence diagram](#17-sơ-đồ-class-diagram-và-sequence-diagram)
 18. [Business rule (quy tắc nghiệp vụ)](#18-business-rule-quy-tắc-nghiệp-vụ)
+19. [Focus session và thông báo](#19-focus-session-và-thông-báo)
 
 ---
 
@@ -2300,3 +2301,16 @@ stateDiagram-v2
 Các hằng số chỉnh được bằng cấu hình (mục 9): `Payments:LinkExpiryMinutes` (15), `Payments:ExpiryGraceSeconds` (60), `Payments:RefundWindowDays` (7), `Payments:RefundsEnabled` (false),
 `Payments:ReconciliationIntervalSeconds` (60), `Payments:PendingStaleAfterSeconds` (120). Thời hạn token chỉnh bằng `Jwt:ExpiryMinutes` (60) và `Jwt:RefreshTokenDays` (30). Các hằng số còn lại (10 giây ân hạn refresh token,
 50 lượt AI/ngày do dịch vụ AI quyết định, 100 ngày của lịch, 20 MB của file) nằm trong code nên đổi phải sửa code.
+
+---
+
+## 19. Focus session và thông báo
+
+Bấm giờ làm việc thật (`T_act`) để hệ thống học độ lệch ước lượng. Chi tiết, trình tự chạy thử và bảng lỗi nằm ở [FOCUS_SESSION_GUIDE.md](FOCUS_SESSION_GUIDE.md).
+
+- **API:** `/api/focus/start`, `/{id}/stop`, `/current`, `/{id}/confirm`, `/self-report`, `/{slotId}/time-summary` (đường cũ `/api/FocusSession/...` vẫn dùng được). Hộp thư: `/api/notifications` (danh sách, đã đọc, `vapid-public-key`, `subscribe`, `unsubscribe`). Realtime: SignalR `/hubs/notifications`.
+- **Luật chính:** không tự bấm giờ; không có pause (tạm dừng là Stop `Interrupted` rồi Start phiên mới); thời gian lấy từ giờ server; `T_act` = tổng các phiên; phiên `AutoTimeout` chưa xác nhận không dùng để học.
+- **Nền:** Hangfire hẹn 9 job cho mỗi slot `Approved` (nhắc, `Due`, `Missed`, `Overrun`, tự ngắt...). Mỗi job tự kiểm tra trạng thái slot trước khi làm. Bảng `HangfireJobTrackers` ghi job nào thuộc slot nào để hủy và hẹn lại khi slot đổi giờ.
+- **Thông báo:** `NotificationService` luôn ghi bảng `Notification` trước, rồi đẩy SignalR và Web Push (`UserPushSubscriptions`). Lỗi ở hai kênh đẩy chỉ ghi log.
+- **Cấu hình:** `Hangfire:Enabled`, `Hangfire:WorkerCount`, `VapidSettings`. Test dùng `Hangfire:Enabled = false` và `FakeScheduleJobService`.
+- **Trang thử:** `/focus-test.html` (chỉ khi Development hoặc `Swagger:Enabled`). SQL kèm theo: `docs/sql/003_focus_session.sql`.

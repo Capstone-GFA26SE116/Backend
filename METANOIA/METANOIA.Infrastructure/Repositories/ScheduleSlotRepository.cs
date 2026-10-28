@@ -54,11 +54,11 @@ namespace METANOIA.Infrastructure.Repositories
             return await _context.ScheduleSlots.FindAsync(slotId);
         }
 
-        public async Task<ScheduleSlot?> GetSlotWithSessionsAsync(Guid slotId)
+        public async Task<ScheduleSlot?> GetSlotWithSessionsAsync(Guid slotId, Guid userId)
         {
             return await _context.ScheduleSlots
                 .Include(s => s.FocusSessions)
-                .FirstOrDefaultAsync(s => s.Id == slotId);
+                .FirstOrDefaultAsync(s => s.Id == slotId && s.Task.Project.UserId == userId);
         }
     }
 }

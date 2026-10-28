@@ -155,5 +155,17 @@ namespace METANOIA.Test
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
+
+        [Fact]
+        public async Task Approve_SchedulesTheReminderJobsForEveryApprovedSlot()
+        {
+            using var factory = new ApiFactory();
+            var (client, proposalId, slotIds) = await SeedPendingProposalAsync(factory);
+
+            await client.PostAsync($"/api/schedule/proposals/{proposalId}/approve", null);
+
+            // Trước đây duyệt đề xuất AI không hẹn job nào nên slot AI không bao giờ nhắc việc
+            Assert.All(slotIds, id => Assert.Single(factory.Jobs.CallsFor("ScheduleAllJobsForSlot", id)));
+        }
     }
 }

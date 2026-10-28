@@ -1,4 +1,4 @@
-﻿using METANOIA.Application.Dto;
+using METANOIA.Application.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +15,6 @@ namespace METANOIA.Application.Interfaces.Services
         Task ConfirmSessionAsync(Guid userId, Guid sessionId, FocusConfirmRequest request);
         Task<Guid> SelfReportSessionAsync(Guid userId, FocusSelfReportRequest request);
         Task<FocusTimeSummaryResponse> GetTimeSummaryAsync(Guid userId, Guid slotId);
+        Task<IReadOnlyList<FocusPendingConfirmationItem>> GetPendingConfirmationAsync(Guid userId);
     }
 }

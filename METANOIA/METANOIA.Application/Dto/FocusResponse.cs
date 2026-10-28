@@ -1,4 +1,4 @@
-﻿using METANOIA.Domain.Enums;
+using METANOIA.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,7 +40,20 @@ namespace METANOIA.Application.Dto
         DateTimeOffset? EndedAt,
         double Minutes,
         CaptureMethod CaptureMethod,
-        FocusStopReason? StopReason
+        FocusStopReason? StopReason,
+        Guid SessionId
+    );
+
+    // Phiên bị hệ thống tự ngắt (AutoTimeout) mà người dùng chưa xác nhận hoặc loại bỏ. Dùng để dựng hộp thoại
+    // "Bạn thực sự làm bao lâu?" rồi gọi POST /api/focus/{sessionId}/confirm
+    public sealed record FocusPendingConfirmationItem(
+        Guid SessionId,
+        Guid TaskId,
+        string TaskTitle,
+        Guid? ScheduleSlotId,
+        DateTimeOffset StartedAt,
+        DateTimeOffset EndedAt,
+        double SystemMinutes
     );
 
     public sealed record FocusTimeSummaryResponse(

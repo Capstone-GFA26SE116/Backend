@@ -45,6 +45,26 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "Resource not found");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
             }
+            catch (FocusConflictException ex)
+            {
+                _logger.LogWarning(ex, "Focus session conflict");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "FOCUS_SESSION_CONFLICT",
+                    details = ex.Details
+                });
+            }
+            catch (FocusNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Focus session not found");
+                await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
+            }
+            catch (FocusValidationException ex)
+            {
+                _logger.LogWarning(ex, "Focus session validation failed");
+                await WriteResponseAsync(context, HttpStatusCode.BadRequest, new { message = ex.Message });
+            }
             catch (FocusForbiddenException ex)
             {
                 _logger.LogWarning(ex, "User is not allowed to access the focus session");
@@ -108,7 +128,10 @@ namespace METANOIA.MiddleWare
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
 
-            return context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+            return context.Response.WriteAsync(JsonSerializer.Serialize(payload, JsonOptions));
         }
+
+        // camelCase như mọi API khác. Cần cho thân lỗi chứa object lồng nhau (ví dụ 409 của focus session trả kèm phiên đang chạy)
+        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     }
 }
