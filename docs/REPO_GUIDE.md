@@ -766,7 +766,9 @@ Sao chép file mẫu thành `appsettings.json` rồi điền giá trị thật. 
 | `Payments:*` | `LinkExpiryMinutes` (15), `ExpiryGraceSeconds`, `RefundWindowDays`, `RefundsEnabled` (false), `ReconciliationEnabled`, `ReconciliationIntervalSeconds` (60), `PendingStaleAfterSeconds` (120) | Không |
 | `Subscription:FreePlanId` | Id dòng gói Miễn phí trong `SubscriptionPlan` (phải tồn tại, `Price = 0`, `IsActive`) | Không |
 | `AiService:BaseUrl`, `TimeoutSeconds` | Địa chỉ dịch vụ AI (mặc định `http://127.0.0.1:8000`, 30 giây) | Không |
-| `Storage:RootPath` | Thư mục lưu file tài liệu dự án (tối đa 20 MB/file) | Không |
+| `Storage:BlobConnectionString` | Connection string của Azure Storage. Có giá trị thì file tài liệu dự án lưu trên **Azure Blob** (xem `docs/AZURE_BLOB_SETUP.md`) | Không |
+| `Storage:BlobContainer` | Tên container Blob (mặc định `project-documents`) | Không |
+| `Storage:RootPath` | Chỉ dùng khi **không** có connection string: thư mục trên ổ đĩa lưu file tài liệu (tối đa 20 MB/file) | Không |
 | `Swagger:Enabled` | Bật Swagger ngoài môi trường Development | Không |
 
 Cách đọc cấu hình: các nhóm `Payments`, `PayOS`, `Subscription`, `AiService` được gắn vào class options

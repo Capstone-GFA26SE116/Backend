@@ -160,7 +160,15 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Tài liệu này là liên kết, không có file để tải về.");
             }
 
-            return new DocumentDownload(_fileStorage.OpenRead(document.StoragePath), document.Name);
+            try
+            {
+                return new DocumentDownload(_fileStorage.OpenRead(document.StoragePath), document.Name);
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // Dòng trong database còn nhưng file đã mất (ví dụ thư mục lưu trên server bị xóa khi deploy lại)
+                throw new NotFoundException("File không còn trong kho lưu trữ. Hãy tải file lên lại.", ex);
+            }
         }
 
         private async Task EnsureProjectOwnedAsync(Guid userId, Guid projectId, CancellationToken cancellationToken)

@@ -41,6 +41,12 @@ namespace METANOIA.Test.Infrastructure
 
         public ManualTimeProvider Clock { get; } = new();
 
+        // Cấu hình bổ sung cho riêng một test (đặt trước khi tạo client đầu tiên)
+        public Dictionary<string, string?> ExtraSettings { get; } = new();
+
+        // Thư mục LocalFileStorage dùng trong test
+        public string StorageRoot => Path.Combine(Path.GetTempPath(), "metanoia-tests", _databaseName);
+
         public CapturingLoggerProvider Logs { get; } = new();
 
         private readonly string _databaseName = Guid.NewGuid().ToString();
@@ -76,6 +82,9 @@ namespace METANOIA.Test.Infrastructure
                 ["Payments:RefundWindowDays"] = "7",
                 ["Payments:RefundsEnabled"] = RefundsEnabled ? "true" : "false"
             }));
+
+            // Đặt sau cấu hình mặc định để cấu hình riêng của test được ưu tiên
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(ExtraSettings));
 
             builder.ConfigureServices(services =>
             {

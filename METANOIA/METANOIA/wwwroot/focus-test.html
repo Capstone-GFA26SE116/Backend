@@ -62,6 +62,7 @@
       <li>Mục 5: bấm <b>Kết nối SignalR</b> và cho phép thông báo trình duyệt.</li>
       <li>Chờ đến giờ: slot tự chuyển <span class="badge Approved">Approved</span> → <span class="badge Due">Due</span> và có thông báo "Đến giờ rồi!". Hệ thống <b>không</b> tự bấm giờ.</li>
       <li>Mục 3: bấm <b>Start</b>, đồng hồ chạy. Chờ hết 3 phút: slot thành <span class="badge Overrun">Overrun</span>. Chờ tới 6 phút (2 lần dự kiến): hệ thống tự ngắt, bạn xác nhận ở mục 6.</li>
+      <li><b>Thử với subtask:</b> ở mục 2 bấm <b>Tạo 2 subtask mẫu</b>, chọn một subtask rồi bấm <b>Tạo slot cho subtask đang chọn</b>. Slot đó tự chọn sẵn subtask; Start sẽ gửi kèm <code>subTaskId</code>. Xong xem bảng subtask: trạng thái <b>không tự đổi</b>.</li>
       <li>Hoặc bấm <b>Stop</b> trước đó: xem <code>sessionMinutes</code>, <code>taskTotalMinutes</code>, <code>checkInRequired</code>. Làm nhiều lần Start/Stop, rồi bấm "Tổng kết slot" ở mục 4.</li>
     </ol>
   </section>
@@ -106,6 +107,32 @@
       <label>Slot của task <select id="slotSelect" onchange="onSlotChange()"></select></label>
     </div>
     <p class="muted">Slot chỉ có job nhắc việc khi ở trạng thái <b>Approved</b>. Slot Proposed (chưa duyệt) bấm Start sẽ bị từ chối.</p>
+
+    <h2 style="font-size:14px;margin-top:16px">Subtask của task đang chọn</h2>
+    <div class="row">
+      <div>
+        <label>Subtask đang chọn (sẽ gửi kèm khi Start)
+          <select id="subTaskSelect" onchange="onSubTaskChange()"></select>
+        </label>
+        <button class="secondary" onclick="createSampleSubTasks()">Tạo 2 subtask mẫu</button>
+        <button class="secondary" onclick="loadSubTasks()">Tải lại subtask</button>
+      </div>
+      <div>
+        <div class="row">
+          <label>Bắt đầu sau (phút) <input id="subSlotStartIn" type="number" value="1" min="-600" /></label>
+          <label>Độ dài (phút) <input id="subSlotLength" type="number" value="3" min="1" /></label>
+        </div>
+        <button onclick="createSlotForSubTask()">Tạo slot (đã duyệt) cho subtask đang chọn</button>
+      </div>
+    </div>
+    <table id="subTaskTable" style="display:none">
+      <thead><tr><th>#</th><th>Subtask</th><th>Ước lượng</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="muted">Trạng thái task: <span id="taskStatusBadge" class="badge">chưa chọn</span>
+      <button class="secondary" onclick="markTaskDone()">Đánh dấu task Done</button></p>
+    <p class="muted">Start/Stop chỉ ghi phiên vào <code>FocusSession</code>, <b>không</b> đổi trạng thái task hay subtask. Hai nút "Done" ở trên là các API cập nhật riêng
+      (<code>PUT /api/subtasks/{id}</code>, <code>PUT /api/tasks/{id}</code>). Task chuyển Done thì backend báo dịch vụ AI để học (lỗi AI chỉ ghi log).</p>
   </section>
 
   <section>
@@ -125,6 +152,7 @@
       <label>Ghi chú <input id="stopNote" placeholder="tùy chọn" /></label>
       <label>Bài nhạc (focusTrackId) <input id="trackId" placeholder="tùy chọn, GUID" /></label>
     </div>
+    <label><input id="sendSubTask" type="checkbox" checked style="width:auto" /> Gửi kèm <code>subTaskId</code> (subtask đang chọn ở mục 2) khi Start</label>
     <button id="btnStartSlot" class="good" onclick="startSession(true)">Start (gắn slot đã chọn)</button>
     <button id="btnStartFree" class="secondary" onclick="startSession(false)">Start (không gắn slot)</button>
     <button id="btnStop" class="danger" onclick="stopSession()">Stop</button>
@@ -178,6 +206,7 @@
           <select id="srReason"><option>Completed</option><option>Interrupted</option><option>Blocked</option><option>Other</option></select>
         </label>
         <button onclick="selfReport()">Gửi self-report (gắn task và slot đang chọn)</button>
+        <p class="muted">Lưu ý: API self-report hiện chưa nhận <code>subTaskId</code>, phiên khai báo chỉ gắn với task.</p>
       </div>
       <div>
         <h2 style="font-size:14px">Xác nhận phiên AutoTimeout</h2>
@@ -199,7 +228,7 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const state = { projectId: null, taskId: null, slotId: null, slot: null, hub: null, running: null, plannedSeconds: 0 };
+  const state = { projectId: null, taskId: null, slotId: null, slot: null, slots: [], subTasks: [], subTaskId: null, startInfo: null, hub: null, running: null, plannedSeconds: 0 };
   // Đồng hồ vẽ theo giờ SERVER: lấy elapsedSeconds do server tính, rồi cộng thêm thời gian trôi qua bằng đồng hồ đơn điệu
   // (performance.now) của trình duyệt. Không dùng Date.now() nên đổi giờ máy không làm sai kết quả.
   const clock = { elapsedAtFetch: 0, fetchedAt: 0, active: false };
@@ -249,6 +278,13 @@
     const sign = totalSeconds < 0 ? '-' : '';
     const s = Math.abs(Math.floor(totalSeconds));
     return `${sign}${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
+  }
+  function button(label, onClick, style) {
+    const el = document.createElement('button');
+    el.textContent = label;
+    if (style) el.className = style;
+    el.onclick = onClick;
+    return el;
   }
   function option(value, label) { const o = document.createElement('option'); o.value = value; o.textContent = label; return o; }
 
@@ -340,11 +376,17 @@
     state.taskId = $('taskSelect').value || null;
     const select = $('slotSelect');
     select.replaceChildren();
-    if (!state.taskId) return;
+    state.slots = [];
+    if (!state.taskId) { state.subTasks = []; renderSubTasks(); return; }
+
+    // Tải subtask trước để tên subtask hiện được trong danh sách slot
+    await Promise.all([loadSubTasks(), loadTaskInfo()]);
+
     const result = await api('GET', `/api/tasks/${state.taskId}/schedule-slots`);
     if (!result.ok) return;
+    state.slots = result.data;
     result.data.slice().reverse().forEach((s) =>
-      select.append(option(s.id, `${fmtTime(s.startTime)} (${s.proposedMinutes} phút) [${s.status}]`)));
+      select.append(option(s.id, `${fmtTime(s.startTime)} (${s.proposedMinutes} phút) [${s.status}]${s.subTaskId ? ' - subtask: ' + subTaskTitle(s.subTaskId) : ''}`)));
     if (!result.data.length) select.append(option('', '(task chưa có slot)'));
     if (state.slotId && result.data.some((s) => s.id === state.slotId)) select.value = state.slotId;
     onSlotChange();
@@ -352,6 +394,12 @@
 
   function onSlotChange() {
     state.slotId = $('slotSelect').value || null;
+    // Slot gắn subtask nào thì tự chọn sẵn subtask đó (tiện cho người thử; backend không bắt buộc hai bên khớp nhau)
+    const slot = state.slots.find((x) => x.id === state.slotId);
+    if (slot && slot.subTaskId && state.subTasks.some((t) => t.id === slot.subTaskId)) {
+      $('subTaskSelect').value = slot.subTaskId;
+      state.subTaskId = slot.subTaskId;
+    }
     refreshSlot();
   }
 
@@ -386,6 +434,126 @@
     notify(`Đã tạo task và slot (${slot.data.status}). Slot bắt đầu lúc ${fmtTime(slot.data.startTime)}, dài ${length} phút.\n` +
       (slot.data.status === 'Approved' ? 'Các job nhắc việc đã được hẹn. Chờ đến giờ để thấy trạng thái đổi sang Due.' : 'Slot đang là Proposed nên chưa có job nhắc việc.'), 'ok');
     await onProjectChange();
+  }
+
+  // ---------------------------------------------------------------- 2b. Subtask
+  function subTaskTitle(id) {
+    const t = state.subTasks.find((x) => x.id === id);
+    return t ? t.title : id.slice(0, 8);
+  }
+
+  function runningSubTaskLabel() {
+    if (!state.running) return '';
+    if (state.startInfo && state.startInfo.sessionId === state.running.sessionId) {
+      return state.startInfo.subTaskId ? ` (subtask: ${subTaskTitle(state.startInfo.subTaskId)})` : ' (không gắn subtask)';
+    }
+    return ' (subtask: không rõ, API current chưa trả)';
+  }
+
+  async function loadSubTasks() {
+    const select = $('subTaskSelect');
+    const keep = state.subTaskId;
+    select.replaceChildren(option('', '(không chọn subtask)'));
+    state.subTasks = [];
+    if (!state.taskId) { renderSubTasks(); return; }
+
+    const result = await api('GET', `/api/tasks/${state.taskId}/subtasks`);
+    if (!result.ok) { renderSubTasks(); return; }
+    state.subTasks = result.data.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    state.subTasks.forEach((t) => select.append(option(t.id, `#${t.orderIndex} ${t.title} [${t.status}]`)));
+    if (keep && state.subTasks.some((t) => t.id === keep)) select.value = keep;
+    state.subTaskId = select.value || null;
+    renderSubTasks();
+  }
+
+  function onSubTaskChange() {
+    state.subTaskId = $('subTaskSelect').value || null;
+  }
+
+  function renderSubTasks() {
+    const table = $('subTaskTable');
+    const tbody = table.querySelector('tbody');
+    tbody.replaceChildren();
+    table.style.display = state.subTasks.length ? 'table' : 'none';
+    state.subTasks.forEach((t) => {
+      const tr = document.createElement('tr');
+      [t.orderIndex, t.title, `${t.estimatedMinutes} phút`].forEach((v) => {
+        const td = document.createElement('td'); td.textContent = v; tr.append(td);
+      });
+      const status = document.createElement('td');
+      const badge = document.createElement('span'); badge.className = 'badge ' + t.status; badge.textContent = t.status;
+      status.append(badge); tr.append(status);
+      const action = document.createElement('td');
+      if (t.status !== 'Done') action.append(button('Đánh dấu Done', () => markSubTaskDone(t), 'secondary'));
+      tr.append(action);
+      tbody.append(tr);
+    });
+  }
+
+  async function createSampleSubTasks() {
+    if (!state.taskId) return notify('Chọn task trước.', 'error');
+    const next = state.subTasks.reduce((max, t) => Math.max(max, t.orderIndex), 0);
+    for (let i = 1; i <= 2; i++) {
+      const result = await api('POST', `/api/tasks/${state.taskId}/subtasks`, {
+        title: `Subtask mẫu ${next + i}`, estimatedMinutes: 20, orderIndex: next + i
+      });
+      if (!result.ok) return notify(result.data.message || 'Không tạo được subtask.', 'error');
+    }
+    notify('Đã tạo 2 subtask mẫu.', 'ok');
+    await loadSubTasks();
+  }
+
+  async function createSlotForSubTask() {
+    if (!state.taskId) return notify('Chọn task trước.', 'error');
+    if (!state.subTaskId) return notify('Chọn một subtask trước (hoặc bấm "Tạo 2 subtask mẫu").', 'error');
+    const length = parseInt($('subSlotLength').value, 10) || 3;
+    const startIn = parseInt($('subSlotStartIn').value, 10) || 0;
+    const start = new Date(Date.now() + startIn * 60000);
+
+    const slot = await api('POST', `/api/tasks/${state.taskId}/schedule-slots`, {
+      subTaskId: state.subTaskId,
+      startTime: start.toISOString(),
+      endTime: new Date(start.getTime() + length * 60000).toISOString(),
+      isManualOverride: true,
+      status: 'Approved'
+    });
+    if (!slot.ok) return notify(slot.data.message || 'Không tạo được slot cho subtask.', 'error');
+
+    state.slotId = slot.data.id;
+    notify(`Đã tạo slot Approved cho subtask "${subTaskTitle(state.subTaskId)}": ${fmtTime(slot.data.startTime)}, dài ${length} phút.`, 'ok');
+    await onTaskChange();
+  }
+
+  async function markSubTaskDone(t) {
+    const result = await api('PUT', `/api/subtasks/${t.id}`, {
+      title: t.title, estimatedMinutes: t.estimatedMinutes, orderIndex: t.orderIndex, status: 'Done'
+    });
+    notify(result.ok ? `Đã đánh dấu subtask "${t.title}" là Done.` : (result.data.message || 'Không cập nhật được subtask.'), result.ok ? 'ok' : 'error');
+    loadSubTasks();
+  }
+
+  async function loadTaskInfo() {
+    const badge = $('taskStatusBadge');
+    if (!state.taskId) { badge.textContent = 'chưa chọn'; badge.className = 'badge'; return; }
+    const result = await api('GET', `/api/tasks/${state.taskId}`);
+    if (!result.ok) return;
+    badge.textContent = result.data.status;
+    badge.className = 'badge ' + result.data.status;
+  }
+
+  // PUT /api/tasks/{id} thay thế toàn bộ, nên đọc task hiện tại rồi gửi lại đủ các trường, chỉ đổi status
+  async function markTaskDone() {
+    if (!state.taskId) return notify('Chọn task trước.', 'error');
+    const current = await api('GET', `/api/tasks/${state.taskId}`);
+    if (!current.ok) return;
+    const t = current.data;
+    const result = await api('PUT', `/api/tasks/${state.taskId}`, {
+      title: t.title, description: t.description, taskType: t.taskType, status: 'Done', domainId: t.domainId,
+      milestoneId: t.milestoneId, deadline: t.deadline, estimatedMinutes: t.estimatedMinutes,
+      aiEstimatedMinutes: t.aiEstimatedMinutes, fixedStart: t.fixedStart, fixedEnd: t.fixedEnd
+    });
+    notify(result.ok ? 'Đã đánh dấu task Done. Các subtask KHÔNG tự đổi theo.' : (result.data.message || 'Không cập nhật được task.'), result.ok ? 'ok' : 'error');
+    await Promise.all([loadTaskInfo(), loadSubTasks()]);
   }
 
   // ---------------------------------------------------------------- 3. Start / Stop / đồng hồ
@@ -423,6 +591,7 @@
     }
     const track = $('trackId').value.trim();
     if (track) body.focusTrackId = track;
+    if ($('sendSubTask').checked && state.subTaskId) body.subTaskId = state.subTaskId;
 
     const result = await api('POST', '/api/focus/start', body);
     show($('focusOut'), { status: result.status, ...result.data });
@@ -431,6 +600,8 @@
     } else if (!result.ok) {
       notify(result.data.message || 'Không bắt đầu được.', 'error');
     } else {
+      // GET /api/focus/current chưa trả subTaskId, nên trang tự nhớ subtask của phiên vừa Start
+      state.startInfo = { sessionId: result.data.sessionId, subTaskId: body.subTaskId || null };
       startedWarning(result.data);
     }
     await refreshCurrent();
@@ -446,8 +617,11 @@
     show($('focusOut'), { status: result.status, ...result.data });
     if (result.ok) {
       const d = result.data;
-      notify(`Đã dừng. Phiên này: ${d.sessionMinutes} phút. Tổng cả task: ${d.taskTotalMinutes} phút.\n` +
-        (d.checkInRequired ? 'checkInRequired = true: giao diện thật nên hỏi người dùng "xong chưa / thấy thế nào".' : 'checkInRequired = false: bạn sẽ quay lại làm tiếp, chưa cần hỏi.'), 'ok');
+      notify(`Đã dừng. Phiên này: ${d.sessionMinutes} phút. Tổng cả task (cộng mọi subtask): ${d.taskTotalMinutes} phút.\n` +
+        (d.checkInRequired ? 'checkInRequired = true: giao diện thật nên hỏi người dùng "xong chưa / thấy thế nào".' : 'checkInRequired = false: bạn sẽ quay lại làm tiếp, chưa cần hỏi.') +
+        '\nTrạng thái task và subtask KHÔNG tự đổi (xem bảng subtask ở mục 2).', 'ok');
+      loadSubTasks();
+      loadTaskInfo();
     } else {
       notify(result.data.message || 'Không dừng được.', result.status === 409 ? 'warn' : 'error');
     }
@@ -490,7 +664,7 @@
     const planned = state.running.scheduleSlotId && state.running.scheduleSlotId === state.slotId ? state.plannedSeconds : 0;
     const overrun = planned > 0 && elapsed > planned;
     timer.className = 'timer' + (overrun ? ' overrun' : '');
-    info.textContent = `Task: ${state.running.taskTitle} | Bắt đầu lúc ${fmtTime(state.running.startedAt)} (giờ server)` +
+    info.textContent = `Task: ${state.running.taskTitle}${runningSubTaskLabel()} | Bắt đầu lúc ${fmtTime(state.running.startedAt)} (giờ server)` +
       (planned > 0 ? ` | Dự kiến ${Math.round(planned / 60)} phút, ${overrun ? 'đã quá ' + fmtDuration(elapsed - planned) : 'còn ' + fmtDuration(planned - elapsed)}` : ' | Không gắn slot');
   }
 

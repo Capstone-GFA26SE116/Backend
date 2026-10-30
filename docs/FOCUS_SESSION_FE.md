@@ -159,6 +159,28 @@ Body (đây là chỗ **duy nhất** FE gửi giờ):
 ```
 `actualMinutes` chỉ cộng phiên đáng tin (không tính phiên bị tự ngắt chưa xác nhận). Dùng cho màn hình chi tiết slot: "Dự kiến 60, thực tế 65".
 
+### 2.8 Làm việc với subtask
+
+Start/Stop dùng được cho subtask: gửi thêm `subTaskId` (và `taskId` của task cha vẫn bắt buộc).
+
+```json
+{ "taskId": "<task cha>", "subTaskId": "<subtask>", "scheduleSlotId": "<slot của subtask>" }
+```
+
+Cách FE nên làm:
+- Slot có thể gắn subtask (`POST /api/tasks/{taskId}/schedule-slots` với `subTaskId`). Item calendar có `subTaskId` và `subTaskTitle`. Khi người dùng bấm Start trên một slot gắn subtask, **FE tự gửi kèm `subTaskId` của slot đó** (backend không tự lấy).
+- Subtask phải thuộc đúng `taskId`, nếu không 400. Backend **không** kiểm tra `subTaskId` có khớp subtask của slot hay không, nên FE đừng gửi lệch.
+
+Những gì **không** xảy ra khi làm việc trên subtask (FE đừng chờ):
+- Start/Stop **không đổi trạng thái** task hay subtask (`ToDo`, `Done`, `Skipped`). Muốn đánh dấu xong subtask thì gọi `PUT /api/subtasks/{id}` (thay thế toàn bộ: gửi đủ `title`, `estimatedMinutes`, `orderIndex`, `status`). Task xong thì `PUT /api/tasks/{id}` như mục 5E. Task `Done` **không** làm subtask tự `Done`.
+- `taskTotalMinutes` trong phản hồi Stop là tổng của **cả task** (mọi subtask cộng lại). Chưa có số liệu theo từng subtask.
+- `GET /api/focus/current` và `pending-confirmation` **chưa trả `subTaskId`**: muốn hiện "đang làm subtask nào", FE tự nhớ subtask của phiên vừa Start (lưu cùng `sessionId`).
+- `self-report` chưa nhận `subTaskId`.
+- Thông báo (đến giờ, sắp hết giờ...) chỉ nhắc tên task.
+- Mỗi người chỉ có **một phiên chạy một lúc**, kể cả khác subtask: Start subtask B khi A đang chạy trả 409.
+
+Trang mẫu `/focus-test.html` (mục 2) có sẵn: chọn subtask, tạo slot cho subtask, Start gửi kèm `subTaskId`, bảng trạng thái subtask và hai nút "Done" thủ công.
+
 ## 3. Cách vẽ đồng hồ (quan trọng)
 
 Người dùng có thể đổi giờ máy, nên **không** tính `Date.now() - startedAt`. Làm như sau:
@@ -276,5 +298,6 @@ Nút "Thêm thủ công": chọn task, giờ bắt đầu và kết thúc trong 
 
 - API **check-in** (lưu câu trả lời "thấy thế nào"): `checkInRequired` chỉ là gợi ý hiển thị, chưa có chỗ gửi.
 - API đổi nhanh trạng thái task (hiện dùng `PUT /api/tasks/{id}` đủ trường).
+- Thời gian làm việc theo từng subtask, và `subTaskId` trong `current`, `pending-confirmation`, `self-report`.
 - Danh sách lịch sử các phiên theo task (chỉ có tổng kết theo slot).
 - `GET /api/notifications` chưa có phân trang theo trang, chỉ có `take`.

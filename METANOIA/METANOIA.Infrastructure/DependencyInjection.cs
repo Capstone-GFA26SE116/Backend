@@ -69,7 +69,13 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IScheduleChangeLogService, ScheduleChangeLogService>();
             services.AddScoped<IProjectDocumentRepository, ProjectDocumentRepository>();
             services.AddScoped<IProjectDocumentService, ProjectDocumentService>();
-            services.AddScoped<IFileStorage, LocalFileStorage>();
+            // Nơi lưu file tài liệu dự án. Có Storage:BlobConnectionString thì lưu trên Azure Blob Storage (dùng khi deploy,
+            // vì ổ đĩa của App Service có thể bị xóa khi deploy lại); không có thì lưu vào thư mục trên ổ đĩa (dùng khi chạy local).
+            // Chọn lúc dùng (không phải lúc dựng host) nên đọc được cấu hình từ biến môi trường của Azure.
+            services.AddSingleton<IFileStorage>(sp =>
+                string.IsNullOrWhiteSpace(sp.GetRequiredService<IConfiguration>()[AzureBlobFileStorage.ConnectionStringKey])
+                    ? ActivatorUtilities.CreateInstance<LocalFileStorage>(sp)
+                    : ActivatorUtilities.CreateInstance<AzureBlobFileStorage>(sp));
             services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
             services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
             services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
