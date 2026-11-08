@@ -650,6 +650,10 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 
 | Method | Đường dẫn | Quyền |
 |---|---|---|
+| GET | `/api/documents` | Đăng nhập (tài liệu của **tôi** qua mọi dự án) |
+| GET | `/api/documents/by-user/{userId}` | Đăng nhập (chính mình, người khác chỉ Admin, còn lại 403) |
+| GET | `/api/documents/by-project/{projectId}` | Đăng nhập (giống `/api/projects/{projectId}/documents`) |
+| GET | `/api/documents/all` | Admin (mọi người dùng, có phân trang) |
 | GET | `/api/documents/{documentId}` | Đăng nhập |
 | PUT | `/api/documents/{documentId}` | Đăng nhập |
 | DELETE | `/api/documents/{documentId}` | Đăng nhập |
@@ -657,6 +661,8 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 | GET | `/api/projects/{projectId}/documents` | Đăng nhập |
 | POST | `/api/projects/{projectId}/documents/files` | Đăng nhập |
 | POST | `/api/projects/{projectId}/documents/links` | Đăng nhập |
+
+Các API danh sách đều nhận bộ lọc tùy chọn: `search` (tên chứa chuỗi, không phân biệt hoa thường), `tag` (`Brief`, `Contract`, `Design`, `Other`), `sourceType` (`File` hoặc `Link`); riêng `/api/documents`, `/by-user` và `/all` còn nhận `projectId`, và `/all` nhận thêm `userId`, `page`, `pageSize`. Giá trị lọc sai thì 400. Kết quả mới nhất trước; mỗi phần tử thêm `projectName` và `userId` (chủ dự án).
 
 #### Dự án (`ProjectsController`)
 
