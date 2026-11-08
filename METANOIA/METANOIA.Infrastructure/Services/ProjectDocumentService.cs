@@ -48,6 +48,31 @@ namespace METANOIA.Infrastructure.Services
             return documents.Select(ToDto).ToList();
         }
 
+        public async Task<IReadOnlyList<ProjectDocumentListItemDto>> GetUserDocumentsAsync(
+            Guid userId, Guid? projectId, string? search, string? tag, string? sourceType, CancellationToken cancellationToken = default)
+        {
+            ValidateFilters(tag, sourceType);
+
+            var rows = await _documentRepository.GetByUserAsync(userId, projectId, search, tag, sourceType, cancellationToken);
+            return rows.Select(ToListItemDto).ToList();
+        }
+
+        public async Task<PagedResultDto<ProjectDocumentListItemDto>> GetAllDocumentsAsync(
+            Guid? userId, Guid? projectId, string? search, string? tag, string? sourceType, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            ValidateFilters(tag, sourceType);
+            var (p, size) = Paging.Normalize(page, pageSize);
+
+            var (rows, total) = await _documentRepository.SearchAllAsync(userId, projectId, search, tag, sourceType, p, size, cancellationToken);
+            return new PagedResultDto<ProjectDocumentListItemDto>
+            {
+                Items = rows.Select(ToListItemDto).ToList(),
+                Page = p,
+                PageSize = size,
+                TotalCount = total
+            };
+        }
+
         public async Task<ProjectDocumentDto> GetDocumentAsync(Guid userId, Guid documentId, CancellationToken cancellationToken = default)
         {
             var document = await GetOwnedDocumentAsync(userId, documentId, cancellationToken);
@@ -213,6 +238,37 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("LinkUrl phải là đường dẫn http hoặc https hợp lệ, tối đa 2000 ký tự.");
             }
             return linkUrl;
+        }
+
+        private static void ValidateFilters(string? tag, string? sourceType)
+        {
+            if (tag is not null && !AllowedTags.Contains(tag))
+            {
+                throw new UserFriendlyException("Tag không hợp lệ. Chọn một trong: Brief, Contract, Design, Other.");
+            }
+
+            if (sourceType is not null && sourceType != FileType && sourceType != LinkType)
+            {
+                throw new UserFriendlyException("sourceType không hợp lệ. Chọn một trong: File, Link.");
+            }
+        }
+
+        private static ProjectDocumentListItemDto ToListItemDto(ProjectDocumentListRow row)
+        {
+            var document = row.Document;
+            return new ProjectDocumentListItemDto
+            {
+                Id = document.Id,
+                ProjectId = document.ProjectId,
+                Name = document.Name,
+                SourceType = document.SourceType,
+                LinkUrl = document.LinkUrl,
+                SizeBytes = document.SizeBytes,
+                Tag = document.Tag,
+                UploadedAt = UtcTime.ToApi(document.UploadedAt),
+                ProjectName = row.ProjectName,
+                UserId = row.UserId
+            };
         }
 
         private static ProjectDocumentDto ToDto(ProjectDocument document)

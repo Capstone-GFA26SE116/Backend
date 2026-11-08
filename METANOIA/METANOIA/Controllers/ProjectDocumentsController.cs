@@ -28,7 +28,58 @@ namespace METANOIA.Controllers
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        private bool IsAdmin => User.IsInRole("Admin");
+
+        // Tài liệu của TÔI qua mọi dự án. GET /api/documents?projectId=&search=&tag=&sourceType=
+        // search lọc theo tên (chứa chuỗi, không phân biệt hoa thường); sourceType là File hoặc Link
+        [HttpGet("api/documents")]
+        public async Task<ActionResult<IReadOnlyList<ProjectDocumentListItemDto>>> GetMyDocuments(
+            [FromQuery] Guid? projectId,
+            [FromQuery] string? search,
+            [FromQuery] string? tag,
+            [FromQuery] string? sourceType,
+            CancellationToken cancellationToken)
+        {
+            return Ok(await _documentService.GetUserDocumentsAsync(CurrentUserId, projectId, search, tag, sourceType, cancellationToken));
+        }
+
+        // Tài liệu của một người dùng theo id. Chính mình thì được; người khác chỉ Admin được xem (người thường nhận 403)
+        [HttpGet("api/documents/by-user/{userId:guid}")]
+        public async Task<ActionResult<IReadOnlyList<ProjectDocumentListItemDto>>> GetDocumentsByUser(
+            Guid userId,
+            [FromQuery] Guid? projectId,
+            [FromQuery] string? search,
+            [FromQuery] string? tag,
+            [FromQuery] string? sourceType,
+            CancellationToken cancellationToken)
+        {
+            if (userId != CurrentUserId && !IsAdmin)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+
+            return Ok(await _documentService.GetUserDocumentsAsync(userId, projectId, search, tag, sourceType, cancellationToken));
+        }
+
+        // Admin: tài liệu của MỌI người dùng, có phân trang (page từ 1, pageSize 1 đến 100). userId để trống là tất cả
+        [Authorize(Roles = "Admin")]
+        [HttpGet("api/documents/all")]
+        public async Task<ActionResult<PagedResultDto<ProjectDocumentListItemDto>>> GetAllDocuments(
+            [FromQuery] Guid? userId,
+            [FromQuery] Guid? projectId,
+            [FromQuery] string? search,
+            [FromQuery] string? tag,
+            [FromQuery] string? sourceType,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            return Ok(await _documentService.GetAllDocumentsAsync(userId, projectId, search, tag, sourceType, page, pageSize, cancellationToken));
+        }
+
+        // Đường dẫn thứ hai cho cùng việc: GET /api/documents/by-project/{projectId}
         [HttpGet("api/projects/{projectId:guid}/documents")]
+        [HttpGet("api/documents/by-project/{projectId:guid}")]
         public async Task<ActionResult<IReadOnlyList<ProjectDocumentDto>>> GetDocuments(
             Guid projectId,
             [FromQuery] string? search,
