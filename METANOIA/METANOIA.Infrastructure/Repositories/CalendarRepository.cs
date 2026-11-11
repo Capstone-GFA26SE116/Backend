@@ -22,7 +22,7 @@ namespace METANOIA.Infrastructure.Repositories
 
             if (!includeCancelled)
             {
-                query = query.Where(s => s.Status != "Cancelled");
+                query = query.Where(s => s.Status != nameof(METANOIA.Domain.Enums.ScheduleSlotStatus.Cancelled));
             }
 
             // Một câu SELECT duy nhất: slot join task, subtask (LEFT), project, client (LEFT), domain. Không truy vấn lặp theo từng slot

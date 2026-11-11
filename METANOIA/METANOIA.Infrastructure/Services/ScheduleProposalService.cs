@@ -23,17 +23,20 @@ namespace METANOIA.Infrastructure.Services
         private readonly AppDbContext _context;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IScheduleJobService _jobService;
+        private readonly ITaskProgressService _progress;
 
         public ScheduleProposalService(
             IAiServiceClient aiServiceClient,
             AppDbContext context,
             IUnitOfWork unitOfWork,
-            IScheduleJobService jobService)
+            IScheduleJobService jobService,
+            ITaskProgressService progress)
         {
             _aiServiceClient = aiServiceClient;
             _context = context;
             _unitOfWork = unitOfWork;
             _jobService = jobService;
+            _progress = progress;
         }
 
         public async Task<AiScheduleProposalResponseDto> ProposeScheduleAsync(
@@ -106,13 +109,27 @@ namespace METANOIA.Infrastructure.Services
                 await _context.ScheduleChangeLogs.AddAsync(changeLog, cancellationToken);
             }
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var result = new ProgressResult();
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Slot vừa được duyệt đưa Task từ ToDo lên Scheduled
+                foreach (var taskId in proposedSlots.Select(s => s.TaskId).Distinct())
+                {
+                    result.Merge(await _progress.RefreshTaskAsync(taskId, cancellationToken));
+                }
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
 
             // Slot vừa được duyệt thì mới hẹn các job nhắc việc (nhắc trước giờ, đến giờ bấm Start, quá giờ...)
             foreach (var slot in proposedSlots)
             {
                 _jobService.ScheduleAllJobsForSlot(slot);
             }
+
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(proposal);
         }

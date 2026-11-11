@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace METANOIA.Domain.Enums
 {
@@ -10,12 +6,13 @@ namespace METANOIA.Domain.Enums
     {
         Proposed,
         Approved,
-        Due,         // Mới thêm
-        InProgress,  // Mới thêm
+        Due,
+        InProgress,
         Done,
         Skipped,
         Missed,
-        Overrun,     // Mới thêm
-        Postponed
+        Overrun,
+        Postponed,
+        Cancelled
     }
 }

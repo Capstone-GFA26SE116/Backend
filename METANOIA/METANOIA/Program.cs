@@ -10,6 +10,7 @@ using METANOIA.MiddleWare;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
@@ -79,6 +80,9 @@ if (hangfireEnabled)
 }
 else
 {
+    // AddInfrastructure đã đăng ký ScheduleJobService thật (cần IBackgroundJobClient của Hangfire). Phải GỠ nó đi, không chỉ đăng ký thêm bản Null:
+    // ở Development, DI kiểm tra mọi đăng ký lúc dựng host nên bản thật còn sót lại sẽ làm ứng dụng không khởi động được.
+    builder.Services.RemoveAll<IScheduleJobService>();
     builder.Services.AddScoped<IScheduleJobService, NullScheduleJobService>();
 }
 

@@ -16,11 +16,13 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly ISubTaskRepository _subTaskRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ITaskProgressService _progress;
 
-        public SubTaskService(ISubTaskRepository subTaskRepository, IUnitOfWork unitOfWork)
+        public SubTaskService(ISubTaskRepository subTaskRepository, IUnitOfWork unitOfWork, ITaskProgressService progress)
         {
             _subTaskRepository = subTaskRepository;
             _unitOfWork = unitOfWork;
+            _progress = progress;
         }
 
         public async Task<IReadOnlyList<SubTaskDto>> GetSubTasksAsync(Guid userId, Guid taskId, CancellationToken cancellationToken = default)
@@ -44,10 +46,19 @@ namespace METANOIA.Infrastructure.Services
             await EnsureOrderIndexFreeAsync(taskId, request.OrderIndex, Guid.Empty, cancellationToken);
 
             var subTask = new SubTask { Id = Guid.NewGuid(), TaskId = taskId };
-            ApplyRequest(subTask, request);
+            ApplyRequest(subTask, request, string.IsNullOrWhiteSpace(request.Status) ? ToDoStatus : request.Status);
 
-            await _subTaskRepository.AddAsync(subTask, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            // Subtask mới (ToDo) có thể làm Task đã Done phải mở lại: lưu và đồng bộ Task trong cùng một transaction
+            var result = new ProgressResult { TaskId = taskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _subTaskRepository.AddAsync(subTask, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                result.Merge(await _progress.RefreshTaskAsync(taskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(subTask);
         }
@@ -58,8 +69,22 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await EnsureOrderIndexFreeAsync(subTask.TaskId, request.OrderIndex, subTaskId, cancellationToken);
 
-            ApplyRequest(subTask, request);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            // Không gửi status thì giữ nguyên (trước đây tự về ToDo, làm mở lại subtask đã xong ngoài ý muốn)
+            var newStatus = string.IsNullOrWhiteSpace(request.Status) ? subTask.Status : request.Status;
+            StatusRules.EnsureSubTask(subTask.Status, newStatus);
+
+            ApplyRequest(subTask, request, newStatus);
+
+            var result = new ProgressResult { TaskId = subTask.TaskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Subtask xong hoặc mở lại có thể làm Task tự Done hoặc mở lại
+                result.Merge(await _progress.RefreshTaskAsync(subTask.TaskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(subTask);
         }
@@ -74,8 +99,18 @@ namespace METANOIA.Infrastructure.Services
                     "Subtask đã có lịch sử tập trung hoặc đánh giá nên không thể xóa. Hãy đổi trạng thái sang Skipped thay thế.");
             }
 
-            _subTaskRepository.Remove(subTask);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var taskId = subTask.TaskId;
+            var result = new ProgressResult { TaskId = taskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                _subTaskRepository.Remove(subTask);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Xóa subtask cuối cùng còn dở có thể làm Task tự Done
+                result.Merge(await _progress.RefreshTaskAsync(taskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+            await _progress.AfterCommitAsync(result, cancellationToken);
         }
 
         private async Task EnsureTaskOwnedAsync(Guid userId, Guid taskId, CancellationToken cancellationToken)
@@ -123,12 +158,12 @@ namespace METANOIA.Infrastructure.Services
             }
         }
 
-        private static void ApplyRequest(SubTask subTask, SubTaskRequestDto request)
+        private static void ApplyRequest(SubTask subTask, SubTaskRequestDto request, string status)
         {
             subTask.Title = request.Title.Trim();
             subTask.EstimatedMinutes = request.EstimatedMinutes;
             subTask.OrderIndex = request.OrderIndex;
-            subTask.Status = string.IsNullOrWhiteSpace(request.Status) ? ToDoStatus : request.Status;
+            subTask.Status = status;
         }
 
         private static SubTaskDto ToDto(SubTask subTask)

@@ -2,7 +2,7 @@
 
 Dành cho FE dựng màn hình **bấm giờ làm việc**, **nhắc việc** và **thông báo**.
 Mọi hành vi trong tài liệu này đã được **kiểm tra bằng chạy thật** trên bản code hiện tại (mục 11 liệt kê kết quả).
-Phía backend giải thích thêm ở `docs/FOCUS_SESSION_GUIDE.md`. Trang mẫu chạy được: `/focus-test.html` (chế độ Development).
+Phía backend giải thích thêm ở `docs/FOCUS_SESSION_GUIDE.md`. **Luật chuyển trạng thái của Milestone, Task, Subtask, Slot và ý nghĩa `StopReason` / `CaptureMethod` nằm ở [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md).** Trang mẫu chạy được: `/focus-test.html` (chế độ Development).
 
 ---
 
@@ -14,10 +14,10 @@ Phía backend giải thích thêm ở `docs/FOCUS_SESSION_GUIDE.md`. Trang mẫu
 | Có Start/Stop cho **subtask** không? | **Có**. Gửi `taskId` (của task cha) **kèm** `subTaskId`. API Stop hoàn toàn giống nhau |
 | Hai loại dùng chung API không? | **Có**: cùng `POST /api/focus/start` và `POST /api/focus/{id}/stop`. Khác nhau chỉ là có gửi `subTaskId` hay không |
 | Subtask có đồng hồ riêng không? | Không. Đồng hồ là của **phiên** (một phiên đang chạy một lúc), phiên được gắn nhãn task hoặc subtask |
-| Start/Stop có tự đổi trạng thái task hay subtask không? | **Không.** Trạng thái `ToDo`, `Done`, `Skipped` của task và subtask chỉ đổi khi FE gọi API cập nhật riêng |
+| Start/Stop có tự đổi trạng thái task hay subtask không? | **Có.** Start làm task `InProgress`. Stop `Completed` trên phiên của subtask làm subtask `Done`; mọi subtask xong thì task tự `Done`. Chi tiết ở mục 5.2 và 6.2 |
 | Tổng thời gian tính theo subtask không? | **Chưa.** Tổng luôn là của **cả task** (cộng mọi phiên, mọi subtask). Chưa có số liệu theo từng subtask |
 
-Điểm FE hay hiểu sai nhất: **Stop `Completed` chỉ làm slot thành `Done`**, không đánh dấu task hay subtask xong.
+Điểm FE hay hiểu sai nhất: **trạng thái nhiều bảng đổi theo một lần Start/Stop** (slot, subtask, task, giai đoạn). Sau mỗi Start, Stop, tạo hoặc hủy slot, FE nên **tải lại** các bảng đó thay vì tự tính. Stop `Blocked` hoặc `Other` **bắt buộc có `note`**.
 
 ---
 
@@ -61,7 +61,8 @@ Phía backend giải thích thêm ở `docs/FOCUS_SESSION_GUIDE.md`. Trang mẫu
 | `Overrun` | Quá giờ dự kiến mà vẫn đang làm | Đồng hồ **đỏ**, nút Stop |
 | `Done` | Xong | Hoàn thành |
 | `Missed` | Hết giờ mà chưa Start | "Đã bỏ lỡ", vẫn cho Start làm bù |
-| `Skipped`, `Cancelled`, `Postponed` | Bỏ qua, hủy, dời | Ẩn hoặc làm mờ |
+| `Postponed` | Đang chờ (ví dụ Stop `Blocked`), hết nhắc "bấm Start" | Hiện "Đang chờ"; cho Start làm tiếp hoặc xếp lại thành `Approved` |
+| `Skipped`, `Cancelled` | Bỏ qua, hủy | Ẩn hoặc làm mờ. **Trạng thái chốt**, không đổi tiếp |
 
 Hệ thống **không tự bấm giờ**: tới giờ slot chỉ chuyển `Due` và nhắc, chỉ khi người dùng bấm Start mới có thời gian làm việc.
 Start được khi slot ở: `Approved`, `Due`, `InProgress`, `Overrun`, `Missed`, `Postponed`. Slot `Proposed`, `Done`, `Skipped`, `Cancelled` thì 400.
@@ -122,7 +123,7 @@ Lỗi:
 ```json
 { "stopReason": "Completed", "note": "Đã gửi file cho khách" }
 ```
-`stopReason`: `Completed` (xong), `Interrupted` (tạm dừng, gián đoạn), `Blocked` (bị chặn), `Other`. `note` tùy chọn.
+`stopReason`: `Completed` (xong), `Interrupted` (tạm dừng, gián đoạn), `Blocked` (bị kẹt, ví dụ chờ khách), `Other` (lý do khác). `note` **bắt buộc khi `Blocked` hoặc `Other`** (thiếu thì 400 và phiên vẫn chạy), còn lại tùy chọn.
 
 **200**:
 ```json
@@ -130,10 +131,20 @@ Lỗi:
 ```
 - `sessionMinutes`: phiên vừa dừng. `taskTotalMinutes`: tổng mọi phiên **của cả task** (xem mục 7).
 - `checkInRequired`: `true` với `Completed` và `Other` (nên hỏi "xong chưa / thấy thế nào"), `false` với `Interrupted`, `Blocked` (người dùng sẽ quay lại).
-- Slot (nếu phiên có gắn slot): `Completed` thì `Done`; các lý do còn lại thì quay về `Due` (để hiện lại nút Start).
+- Tác động của từng lý do (slot áp dụng khi phiên có gắn slot):
+
+| `stopReason` | Slot | Subtask của phiên | Task |
+|---|---|---|---|
+| `Completed` | `Done` | **`Done`** (nếu phiên có `subTaskId`) | Suy lại; mọi subtask xong thì tự `Done` |
+| `Interrupted` | `Due` (hiện lại nút Start) | không đổi | `InProgress` |
+| `Blocked` | **`Postponed`**, hủy các nhắc của slot | không đổi | `InProgress` |
+| `Other` | `Due` | không đổi | `InProgress` |
+
+Stop `Completed` trên task **không có subtask** chỉ đóng slot; người dùng tự bấm `Done` cho task (`PUT /api/tasks/{id}`).
 
 | HTTP | Ý nghĩa |
 |---|---|
+| 400 | `Blocked` hoặc `Other` mà thiếu `note`. **Phiên vẫn đang chạy**, hiện `message` và cho nhập ghi chú |
 | 409 | Phiên đã dừng trước đó (bấm hai lần, hai tab). `details.endedAt` là giờ đã dừng. Coi như thành công, tải lại `/current` |
 | 403 / 404 | Phiên của người khác / không tồn tại |
 
@@ -172,21 +183,31 @@ Quy tắc đã xác nhận:
 **Giống hệt Stop task** (`POST /api/focus/{sessionId}/stop`, cùng body, cùng phản hồi). Backend nhận ra phiên là của subtask nào nhờ `sessionId`, FE không gửi `subTaskId` khi Stop.
 
 Hành vi đã xác nhận:
-- `Completed` → **slot** của phiên thành `Done`. Slot khác của cùng task **không đổi**.
+- `Completed` → **slot** của phiên thành `Done` **và subtask của phiên thành `Done`**. Slot khác của cùng task **không đổi**. Subtask cuối cùng xong thì **task tự `Done`**.
 - `sessionMinutes`: thời gian phiên này. `taskTotalMinutes`: **tổng cả task** (phiên task-only và mọi subtask cộng chung), **không** tách theo subtask.
-- Trạng thái **subtask và task không đổi** sau Stop (đã kiểm tra: subtask vẫn `ToDo` sau `Completed`).
+- Các lý do khác (`Interrupted`, `Blocked`, `Other`) **không đổi subtask**; task vẫn `InProgress`.
 
-### 6.3 Muốn đánh dấu subtask hoặc task xong thì phải gọi riêng
+### 6.3 Đánh dấu thủ công và việc hệ thống tự làm
 
-Stop không làm việc này. FE gọi API riêng (cả hai đều **thay thế toàn bộ**, nên gửi đủ các trường):
+Stop `Completed` đã tự đóng **slot** và **subtask của phiên**. Các trường hợp còn lại FE gọi API riêng (cả hai đều **thay thế toàn bộ**, nên gửi đủ các trường; riêng `status` nếu **không gửi** thì giữ nguyên trạng thái hiện có):
 
-**Subtask xong:** `PUT /api/subtasks/{subTaskId}`
+**Subtask:** `PUT /api/subtasks/{subTaskId}`
 ```json
 { "title": "Subtask 1", "estimatedMinutes": 20, "orderIndex": 1, "status": "Done" }
 ```
-**Task xong:** `PUT /api/tasks/{taskId}`: lấy task bằng `GET /api/tasks/{taskId}`, gửi lại **đủ** `title`, `description`, `taskType`, `domainId`, `milestoneId`, `deadline`, `estimatedMinutes`, `aiEstimatedMinutes`, `fixedStart`, `fixedEnd`, chỉ đổi `"status": "Done"`. Khi task chuyển sang `Done`, backend báo dịch vụ AI để học từ thời gian thực tế (lỗi AI chỉ ghi log, không làm hỏng việc cập nhật).
+**Task:** `PUT /api/tasks/{taskId}`: lấy task bằng `GET /api/tasks/{taskId}`, gửi lại **đủ** các trường rồi đổi `status` (xem [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md) cho các bước hợp lệ).
 
-Task `Done` **không** làm subtask tự `Done` (và ngược lại). FE tự quyết định có hỏi "Đánh dấu cả các subtask còn lại là xong?" hay không.
+Hệ thống tự làm (FE chỉ cần tải lại):
+
+| Việc | Hệ quả |
+|---|---|
+| Mọi subtask `Done` (hoặc `Skipped`, ít nhất một `Done`) | Task tự `Done`, ghi `completedAt` |
+| Mở lại một subtask (`→ ToDo`) của task `Done` | Task mở lại (`InProgress`), xóa `completedAt` |
+| Đặt task `Done` hoặc `Skipped` | Subtask còn `ToDo` thành `Skipped`; slot chưa diễn ra thành `Cancelled`. Đang có phiên chạy thì **400**, phải Stop trước |
+| Start | Task `InProgress`; giai đoạn `Planned` tự lên `InProgress` |
+| Tạo slot `Approved` (hoặc duyệt `Proposed`) | Task `Scheduled` |
+
+Bước chuyển sai (ví dụ task `Done` → `Skipped`, subtask `Done` → `Skipped`) trả **400**; `message` liệt kê các bước hợp lệ.
 
 ---
 
@@ -200,8 +221,8 @@ Task `Done` **không** làm subtask tự `Done` (và ngược lại). FE tự qu
 | Slot trên lịch | Slot không có `subTaskId` | Slot có `subTaskId` (cùng `taskId` cha) |
 | Phiên lưu | `taskId` | `taskId` **và** `subTaskId` |
 | Tổng thời gian trả về | Cả task | **Cả task** (không tách riêng subtask) |
-| Đổi trạng thái tự động | Không | Không |
-| Đánh dấu xong | `PUT /api/tasks/{id}` (`Done`) | `PUT /api/subtasks/{id}` (`Done`) |
+| Đổi trạng thái tự động | Start → task `InProgress`; mọi subtask xong → task `Done` | Stop `Completed` → subtask `Done` |
+| Đánh dấu xong | Tự động khi mọi subtask xong, hoặc `PUT /api/tasks/{id}` (`Done`) | Stop `Completed`, hoặc `PUT /api/subtasks/{id}` (`Done`) |
 | Giới hạn một phiên một lúc | Có | Có (chung với task) |
 
 Bảng cho FE: tùy tình huống, body Start là gì.
@@ -279,6 +300,17 @@ Gọi khi mở app và khi nhận thông báo `AUTO_TIMEOUT`. Không có `subTas
 **201** `{ "sessionId": "…" }`. Hợp lệ khi `endedAt > startedAt`, cả hai không ở tương lai, dài tối đa 24 giờ. Gắn `scheduleSlotId` và `stopReason = "Completed"` thì slot thành `Done`.
 
 > **Chú ý subtask:** self-report **bỏ qua** `subTaskId` nếu bạn gửi (đã kiểm tra: gửi kèm vẫn trả 201 nhưng phiên không có subtask). Phiên khai báo chỉ gắn với task.
+
+> **Ghi chú lý do dừng:** `stopReason = Blocked` hoặc `Other` cũng **bắt buộc `note`** (thiếu thì 400). Phiên khai báo là `SelfReported`, đã xác nhận, được tính. Task có phiên đáng tin thì lên `InProgress`.
+
+### 8.6 `GET /api/focus/task/{taskId}/sessions`: mọi phiên của một task
+
+Mảng sắp theo thời gian bắt đầu (cũ trước, mới sau), gồm cả phiên chưa xác nhận và đã loại bỏ (khác `time-summary`):
+```json
+[{ "sessionId": "…", "subTaskId": null, "scheduleSlotId": "…", "startedAt": "…", "endedAt": "…", "minutes": 25,
+   "captureMethod": "Timer", "stopReason": "Completed", "isConfirmed": true, "note": null, "state": "Stopped" }]
+```
+`state` suy ra từ dữ liệu: `Running`, `Stopped`, `PendingConfirmation`, `Confirmed`, `Discarded` (xem [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md) mục 6). Phiên có `subTaskId`, nên đây là nơi duy nhất cho biết phiên thuộc subtask nào sau khi tải lại trang. `404` nếu task không phải của bạn.
 
 ---
 
@@ -375,7 +407,7 @@ Chạy thật cho một task có 2 subtask và 3 slot (một slot task, mỗi su
 | 3 | `GET /current` khi đang chạy phiên subtask | **Không có** field `subTaskId` (chỉ có `sessionId, taskId, taskTitle, scheduleSlotId, startedAt, elapsedSeconds, serverTime, isOverrun`) |
 | 4 | Đang chạy S1, Start S2, rồi Start `{ taskId }` | Cả hai đều **409** |
 | 5 | Stop S1 `Completed` sau 25 phút | `sessionMinutes = 25`, `taskTotalMinutes = 35` (cộng cả phiên task-only 10 phút) |
-| 6 | Sau Stop `Completed` của S1 | Subtask S1 vẫn `ToDo`, task vẫn `ToDo` |
+| 6 | Sau Stop `Completed` của S1 | Subtask S1 `Done` (tự động), task `InProgress` (S2 còn `ToDo`). Stop `Completed` của S2 thì task tự `Done` |
 | 7 | Start với subtask của **task khác**, hoặc subtask **không tồn tại** | Đều **400** |
 | 8 | Slot của S1 + Start `{ taskId, subTaskId = S1, scheduleSlotId }` | 201, `plannedMinutes` = độ dài slot, phiên lưu S1. Stop `Completed`: slot của S1 `Done`, **slot của S2 vẫn `Approved`** |
 | 9 | Slot của S2, Start **không** gửi `subTaskId` | 201 nhưng phiên **không có subtask** |
@@ -383,6 +415,8 @@ Chạy thật cho một task có 2 subtask và 3 slot (một slot task, mỗi su
 | 11 | `time-summary` | Mỗi phiên có `sessionId`, **không có** `subTaskId` |
 | 12 | `GET /api/calendar`, item slot của S1 | Có `subTaskId`, `subTaskTitle`, `status` |
 | 13 | `self-report` gửi kèm `subTaskId` | 201, nhưng phiên **không có subtask** |
+
+> Bảng trên ghi lại lần kiểm tra trước khi có luồng trạng thái liền mạch; riêng dòng 6 đã cập nhật. Các hành vi mới được kiểm bằng `METANOIA.Test/StatusWorkflowTests.cs` và trang `/focus-test.html` (mục 8: kịch bản tự động).
 
 ---
 
@@ -404,7 +438,7 @@ Item `source = "Slot"` có `id` (chính là `scheduleSlotId`), `status`, `taskId
 Hộp thoại chọn lý do và ghi chú, rồi `POST /{id}/stop`. Dựa vào `checkInRequired` để hỏi thêm hay không. Sau đó refetch lịch để thấy trạng thái slot mới.
 
 **E. Khi người dùng nói "xong hẳn"**
-Dừng phiên **không** đánh dấu task hay subtask xong. Gọi `PUT /api/subtasks/{id}` và/hoặc `PUT /api/tasks/{id}` như mục 6.3. Gợi ý: sau khi Stop `Completed` trên subtask, hỏi "Đánh dấu subtask này là xong?" rồi gọi `PUT` subtask; nếu mọi subtask đã `Done` thì hỏi tiếp "Đánh dấu cả task là xong?".
+Stop `Completed` trên phiên của **subtask** đã tự đánh dấu subtask `Done`; subtask cuối xong thì **task tự `Done`**. Với task **không có subtask**, Stop `Completed` chỉ đóng slot nên cần hỏi "Đánh dấu task này là xong?" rồi gọi `PUT /api/tasks/{id}` (`Done`). Sau mỗi thao tác hãy tải lại task, subtask, slot.
 
 **F. Quên bấm Start**
 Nút "Thêm thủ công": chọn task, giờ bắt đầu và kết thúc trong quá khứ, `self-report`. (Chưa gắn được subtask.)
@@ -423,7 +457,9 @@ Nút "Thêm thủ công": chọn task, giờ bắt đầu và kết thúc trong 
 - Bấm Stop hai lần: lần hai trả 409, không báo lỗi đỏ.
 - Slot `Proposed` bấm Start: 400, nên ẩn hoặc vô hiệu nút.
 - Slot gắn subtask: Start phải gửi kèm `subTaskId` của slot. Kiểm tra bằng cách xem phiên có nhãn subtask ở UI của bạn.
-- Stop `Completed` một subtask rồi `GET` subtask: vẫn `ToDo`, đúng như thiết kế.
+- Stop `Completed` một subtask rồi `GET` subtask: phải `Done`; subtask cuối xong thì `GET` task phải `Done`.
+- Stop `Blocked` hoặc `Other` không điền ghi chú: phải nhận 400 và phiên vẫn chạy.
+- Tải lại trang giữa lúc đang làm subtask: lấy `subTaskId` từ `GET /api/focus/task/{taskId}/sessions` (phiên `Running`).
 - Tạo slot `Approved` bắt đầu sau 1 phút, dài 3 phút để thấy chuỗi `Due`, `Overrun`, tự ngắt (khoảng 6 phút).
 
 ---
@@ -433,9 +469,7 @@ Nút "Thêm thủ công": chọn task, giờ bắt đầu và kết thúc trong 
 - **Tổng thời gian theo từng subtask** (hiện chỉ theo task, và theo slot).
 - `subTaskId` trong `GET /current`, `time-summary`, `pending-confirmation`; `self-report` chưa nhận `subTaskId`.
 - Backend không tự lấy `subTaskId` từ slot khi Start, và không kiểm tra slot với subtask có khớp nhau không.
-- Tự đổi trạng thái task hoặc subtask khi Start/Stop.
 - API **check-in** (lưu câu trả lời "thấy thế nào"): `checkInRequired` chỉ là gợi ý hiển thị.
 - API đổi nhanh trạng thái task hoặc subtask (dùng `PUT` đủ trường).
-- Danh sách lịch sử các phiên theo task.
 - `GET /api/notifications` chưa có phân trang theo trang, chỉ có `take`.
 - Thông báo nhắc tên subtask (hiện chỉ nhắc tên task).

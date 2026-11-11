@@ -24,17 +24,20 @@ namespace METANOIA.Infrastructure.Services
         private readonly IScheduleChangeLogRepository _logRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IScheduleJobService _jobService;
+        private readonly ITaskProgressService _progress;
 
         public ScheduleSlotService(
             IScheduleSlotRepository slotRepository,
             IScheduleChangeLogRepository logRepository,
             IUnitOfWork unitOfWork,
-            IScheduleJobService jobService)
+            IScheduleJobService jobService,
+            ITaskProgressService progress)
         {
             _slotRepository = slotRepository;
             _logRepository = logRepository;
             _unitOfWork = unitOfWork;
             _jobService = jobService;
+            _progress = progress;
         }
 
         public async Task<IReadOnlyList<ScheduleSlotDto>> GetSlotsAsync(Guid userId, Guid taskId, CancellationToken cancellationToken = default)
@@ -57,6 +60,13 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await ValidateReferencesAsync(userId, taskId, request, cancellationToken);
 
+            // Task đã Done hoặc Skipped thì không xếp thêm lịch (muốn làm tiếp phải mở lại task)
+            var taskStatus = await _slotRepository.GetTaskStatusAsync(taskId, cancellationToken);
+            if (taskStatus is not null && StatusRules.IsTerminalTask(taskStatus))
+            {
+                throw new UserFriendlyException($"Task đang ở trạng thái '{taskStatus}' nên không xếp thêm lịch. Hãy mở lại task trước.");
+            }
+
             var slot = new ScheduleSlot
             {
                 Id = Guid.NewGuid(),
@@ -65,10 +75,26 @@ namespace METANOIA.Infrastructure.Services
             };
             ApplyRequest(slot, request);
 
-            await _slotRepository.AddAsync(slot, cancellationToken);
-            await AddLogAsync(slot.Id, "Created", null, null, slot.StartTime, slot.EndTime, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            // Slot mới chỉ bắt đầu ở Proposed (chưa duyệt) hoặc Approved (đã duyệt luôn); các trạng thái sau do luồng làm việc quyết định
+            if (slot.Status is not (ProposedStatus or "Approved"))
+            {
+                throw new UserFriendlyException("Slot mới chỉ tạo được ở trạng thái Proposed hoặc Approved.");
+            }
+
+            var result = new ProgressResult { TaskId = taskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _slotRepository.AddAsync(slot, cancellationToken);
+                await AddLogAsync(slot.Id, "Created", null, null, slot.StartTime, slot.EndTime, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Slot sống đầu tiên đưa Task từ ToDo lên Scheduled
+                result.Merge(await _progress.RefreshTaskAsync(taskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
             SyncJobs(slot);
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(slot);
         }
@@ -78,6 +104,12 @@ namespace METANOIA.Infrastructure.Services
             var slot = await GetOwnedSlotAsync(userId, slotId, cancellationToken);
             ValidateRequest(request);
             await ValidateReferencesAsync(userId, slot.TaskId, request, cancellationToken);
+
+            // Chuyển trạng thái phải theo bảng luật (không gửi status thì giữ nguyên)
+            if (!string.IsNullOrWhiteSpace(request.Status))
+            {
+                StatusRules.EnsureSlot(slot.Status, request.Status);
+            }
 
             var oldStart = slot.StartTime;
             var oldEnd = slot.EndTime;
@@ -96,8 +128,18 @@ namespace METANOIA.Infrastructure.Services
                 await AddLogAsync(slot.Id, changeType, oldStart, oldEnd, slot.StartTime, slot.EndTime, cancellationToken);
             }
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var result = new ProgressResult { TaskId = slot.TaskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Slot đổi trạng thái có thể làm Task đổi giữa ToDo, Scheduled và InProgress
+                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
             SyncJobs(slot);
+            await _progress.AfterCommitAsync(result, cancellationToken);
             return ToDto(slot);
         }
 
@@ -109,13 +151,26 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Slot này đã bị hủy trước đó.");
             }
 
+            // Slot đã Done hoặc Skipped là trạng thái chốt, không hủy được
+            StatusRules.EnsureSlot(slot.Status, CancelledStatus);
+
             var oldStart = slot.StartTime;
             var oldEnd = slot.EndTime;
             slot.Status = CancelledStatus;
 
-            await AddLogAsync(slot.Id, "Deleted", oldStart, oldEnd, null, null, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var result = new ProgressResult { TaskId = slot.TaskId };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await AddLogAsync(slot.Id, "Deleted", oldStart, oldEnd, null, null, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Hủy hết slot sống thì Task không còn Scheduled
+                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId, cancellationToken));
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
             _jobService.CancelAllJobs(slot.Id);
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(slot);
         }

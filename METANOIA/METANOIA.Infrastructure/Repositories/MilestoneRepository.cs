@@ -50,5 +50,12 @@ namespace METANOIA.Infrastructure.Repositories
         {
             _context.Milestones.Remove(milestone);
         }
+
+        public Task<int> CountOpenTasksAsync(Guid milestoneId, CancellationToken cancellationToken = default)
+        {
+            return _context.Tasks.CountAsync(
+                t => t.MilestoneId == milestoneId && t.Status != "Done" && t.Status != "Skipped",
+                cancellationToken);
+        }
     }
 }
