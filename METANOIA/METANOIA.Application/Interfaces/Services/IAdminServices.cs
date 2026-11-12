@@ -37,6 +37,12 @@ namespace METANOIA.Application.Interfaces.Services
         Task<FocusTrackDto> UpdateTrackAsync(Guid trackId, FocusTrackRequestDto request, CancellationToken cancellationToken = default);
     }
 
+    public interface IStatusResyncService
+    {
+        // Suy lại trạng thái Task (và Milestone) chưa đóng theo luật liền mạch. dryRun = true: chỉ báo cáo, không lưu
+        Task<StatusResyncReportDto> ResyncAsync(bool dryRun, CancellationToken cancellationToken = default);
+    }
+
     public interface IAdminAuditLogService
     {
         Task<PagedResultDto<AdminAuditLogDto>> SearchAsync(

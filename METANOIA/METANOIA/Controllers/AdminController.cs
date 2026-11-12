@@ -168,4 +168,25 @@ namespace METANOIA.Controllers
             return Ok(await _service.SearchAsync(adminId, targetType, targetId, action, from, to, page, pageSize, cancellationToken));
         }
     }
+
+    // Đồng bộ lại trạng thái cho dữ liệu cũ (xem docs/STATUS_WORKFLOW.md mục 9)
+    [Authorize(Roles = "Admin")]
+    [Route("api/admin/status-resync")]
+    [ApiController]
+    public class AdminStatusResyncController : ControllerBase
+    {
+        private readonly IStatusResyncService _service;
+
+        public AdminStatusResyncController(IStatusResyncService service)
+        {
+            _service = service;
+        }
+
+        // dryRun mặc định là TRUE (chỉ báo cáo, không lưu). Muốn áp dụng thật phải gửi dryRun=false
+        [HttpPost]
+        public async Task<ActionResult<StatusResyncReportDto>> Run([FromQuery] bool dryRun = true, CancellationToken cancellationToken = default)
+        {
+            return Ok(await _service.ResyncAsync(dryRun, cancellationToken));
+        }
+    }
 }

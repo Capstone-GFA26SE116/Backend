@@ -2320,11 +2320,12 @@ Sơ đồ, bảng chuyển đầy đủ và hướng dẫn thử từng trạng 
 | BR-109 | Trạng thái "sống" của Task **do hệ thống suy ra**: có phiên đang chạy, phiên đã kết thúc được tính, hoặc subtask `Done` → `InProgress`; chưa làm gì mà có slot `Approved`/`Due`/`InProgress`/`Overrun` → `Scheduled`; còn lại `ToDo`. Slot `Proposed` chưa làm Task `Scheduled` | không áp dụng |
 | BR-110 | Mọi subtask đã xử lý (không còn `ToDo`, ít nhất một `Done`) thì Task **tự `Done`**. Task không có subtask thì người dùng tự bấm. Mở lại một subtask thì Task `Done` mở lại | không áp dụng |
 | BR-111 | Đặt Task `Done` hoặc `Skipped`: subtask còn `ToDo` thành `Skipped`, slot chưa diễn ra (`Proposed`, `Approved`, `Due`, `Postponed`) thành `Cancelled` (ghi log `Deleted`, hủy job). Không đóng được khi còn phiên đang chạy. Task đã đóng không nhận slot mới và không Start được | `400` |
-| BR-112 | Milestone chỉ `Delivered` khi **mọi task `Done` hoặc `Skipped`**. `Planned` tự lên `InProgress` khi có task bắt đầu làm. Vào `InRevision` thì `RevisionCount` +1. Giai đoạn `Delivered` hoặc `Approved` không nhận task sống mới | `400` |
+| BR-112 | Giao giai đoạn (`Delivered`) khi còn task chưa `Done`/`Skipped` thì **cảnh báo**, không chặn cứng: lần đầu `409` (`MILESTONE_HAS_OPEN_TASKS`, kèm danh sách task dở), gửi lại với `confirmOpenTasks = true` thì vẫn giao và task dở giữ nguyên. `Planned` tự lên `InProgress` khi có task bắt đầu làm. Vào `InRevision` thì `RevisionCount` +1. Giai đoạn `Delivered` hoặc `Approved` không nhận task sống mới | `409` (cảnh báo giao), `400` (các trường hợp còn lại) |
 | BR-113 | Stop `Completed` → slot `Done`, subtask của phiên (nếu có) `Done`. Stop `Interrupted` → slot `Due`. Stop `Blocked` → slot `Postponed`, hủy job của slot. Stop `Other` → slot `Due` | không áp dụng |
 | BR-114 | Stop `Blocked` hoặc `Other` **bắt buộc có `note`**. Thiếu thì phiên vẫn đang chạy. Tự khai (self-report) cũng áp dụng cùng luật | `400` |
 | BR-115 | `CaptureMethod`: `Timer` và `SelfReported` đã xác nhận, được tính. `AutoTimeout` (slot `Done` ngay, `StopReason = Other`) **chưa xác nhận thì không tính** vào thời gian thực tế, việc học, hay trạng thái `InProgress` của Task | không áp dụng |
 | BR-116 | Loại bỏ phiên `AutoTimeout` mà slot không còn phiên đáng tin nào thì slot từ `Done` về `Missed` (ngoại lệ hệ thống duy nhất của trạng thái chốt) | không áp dụng |
+| BR-117 | Admin đồng bộ lại trạng thái dữ liệu cũ bằng `POST /api/admin/status-resync` (mặc định `dryRun = true`, không lưu). Chỉ xét task chưa đóng; task `Done`, `Skipped` giữ nguyên. Dùng đúng `TaskProgressService`. SQL bảo vệ `ScheduleSlot.Status`: `docs/sql/004_scheduleslot_status_check.sql` | `403` nếu không phải Admin |
 
 
 ---

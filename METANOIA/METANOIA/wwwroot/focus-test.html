@@ -45,7 +45,8 @@
     .badge.Due, .badge.Postponed, .badge.InRevision, .badge.PendingConfirmation { background: #fef0d6; color: #a15c00; }
     .badge.Overrun { background: #fce8e6; color: #c5221f; }
     .badge.Delivered { background: #f3e8fd; color: #6a1b9a; }
-    .badge.Missed, .badge.Cancelled, .badge.Skipped, .badge.Discarded { background: #e0e0e0; color: #616161; }
+    .badge.Active { background: #e6f4ea; color: #137333; }
+    .badge.Missed, .badge.Cancelled, .badge.Skipped, .badge.Discarded, .badge.Archived { background: #e0e0e0; color: #616161; }
     .item { border-top: 1px solid #eceef1; padding: 8px 0; font-size: 14px; }
     .item.unread { background: #f8fbff; }
     pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 280px; margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
@@ -106,6 +107,7 @@
     <label>Tên dự án mới <input id="projectName" value="[Thử] Dự án trạng thái" /></label>
     <button onclick="createProject()">Tạo dự án</button>
     <button class="secondary" onclick="loadProjects()">Tải lại</button>
+    <button id="btnArchive" class="secondary" onclick="toggleArchive()">Lưu trữ dự án</button>
 
     <h3>Giai đoạn (Milestone) <span id="milestoneBadge"></span></h3>
     <div class="row">
@@ -114,6 +116,7 @@
     </div>
     <button onclick="createMilestone()">Tạo giai đoạn</button>
     <div id="milestoneInfo" class="muted"></div>
+    <div id="milestoneOpen" class="note-hint"></div>
     <div id="milestoneActions"></div>
 
     <h3>Task <span id="taskBadge"></span></h3>
@@ -442,7 +445,7 @@
   }
 
   async function loadProjects() {
-    const result = await api('GET', '/api/projects', undefined, true);
+    const result = await api('GET', '/api/projects?includeArchived=true', undefined, true);
     if (!result.ok) return;
     const projects = result.data;
     state.projectId = syncSelect($('projectSelect'), projects, (p) => p.name + (p.status === 'Archived' ? ' (lưu trữ)' : ''), state.projectId);
@@ -561,6 +564,15 @@
     return result.data;
   }
 
+  async function toggleArchive() {
+    if (!state.project) return notify('Chọn dự án trước.', 'error');
+    const archived = state.project.status === 'Archived';
+    const result = await api('POST', `/api/projects/${state.project.id}/${archived ? 'restore' : 'archive'}`);
+    if (!result.ok) return notify(result.data.message || 'Không đổi được trạng thái dự án.', 'error');
+    notify(archived ? 'Đã khôi phục dự án (Active).' : 'Đã lưu trữ dự án (Archived).', 'ok');
+    await loadProjects();
+  }
+
   async function createMilestone() {
     if (!state.projectId) return notify('Chọn hoặc tạo dự án trước.', 'error');
     const next = state.milestones.reduce((max, m) => Math.max(max, m.orderIndex), 0) + 1;
@@ -647,8 +659,8 @@
   }
 
   // ---------------------------------------------------------------- Chuyển trạng thái bằng tay (nút gợi ý và mục 7)
-  async function putMilestone(m, status) {
-    return api('PUT', `/api/milestones/${m.id}`, { name: m.name, orderIndex: m.orderIndex, dueDate: m.dueDate, status, revisionCount: m.revisionCount });
+  async function putMilestone(m, status, confirmOpenTasks) {
+    return api('PUT', `/api/milestones/${m.id}`, { name: m.name, orderIndex: m.orderIndex, dueDate: m.dueDate, status, revisionCount: m.revisionCount, confirmOpenTasks: !!confirmOpenTasks });
   }
 
   async function putTask(t, status) {
@@ -669,8 +681,22 @@
 
   async function transition(kind, item, status) {
     const call = { milestone: putMilestone, task: putTask, subtask: putSubTask, slot: putSlot }[kind];
-    const result = await call(item, status);
+    let result = await call(item, status);
     const name = { milestone: 'Giai đoạn', task: 'Task', subtask: 'Subtask', slot: 'Slot' }[kind];
+
+    // Giao giai đoạn khi còn task dở: server cảnh báo (409), người dùng chọn làm tiếp hoặc xác nhận vẫn giao
+    if (kind === 'milestone' && result.status === 409 && result.data.code === 'MILESTONE_HAS_OPEN_TASKS') {
+      const list = ((result.data.details && result.data.details.tasks) || [])
+        .map((t) => `- ${t.title} [${t.status}]` + (t.openSubTaskCount ? ` (còn ${t.openSubTaskCount} subtask chưa xong)` : '')).join('\n');
+      if (window.confirm(`${result.data.message}\n\n${list}\n\nOK = vẫn giao (các task dở giữ nguyên). Hủy = quay lại làm tiếp.`)) {
+        result = await putMilestone(item, status, true);
+      } else {
+        notify(`Giai đoạn → ${status}: đã hủy. Còn task dở nên giữ nguyên trạng thái ${item.status}, bạn có thể làm tiếp.`, 'warn');
+        await loadProjectChildren(true);
+        return result;
+      }
+    }
+
     if (result.ok || result.status === 204) notify(`${name} → ${status}: được chấp nhận. Xem các bảng khác đã đổi theo ở mục 4.`, 'ok');
     else notify(`${name} → ${status}: server từ chối (${result.status}).\n${result.data.message || ''}`, 'error');
     await loadProjectChildren(true);
@@ -809,7 +835,14 @@
     $('milestoneInfo').textContent = milestone
       ? `Số lần chỉnh sửa: ${milestone.revisionCount} | Giao lúc: ${fmtTime(milestone.deliveredAt) || '-'} | Duyệt lúc: ${fmtTime(milestone.approvedAt) || '-'}`
       : 'Không chọn giai đoạn: task tạo mới không thuộc giai đoạn nào.';
+    const openTasks = milestone ? state.tasks.filter((t) => t.milestoneId === milestone.id && t.status !== 'Done' && t.status !== 'Skipped') : [];
+    $('milestoneOpen').textContent = !milestone ? '' : openTasks.length
+      ? `Task còn dở: ${openTasks.length} (${openTasks.map((t) => `${t.title} [${t.status}]`).join(', ')}). ` +
+        (['InProgress', 'InRevision'].includes(milestone.status) ? 'Bấm → Delivered bây giờ sẽ hiện cảnh báo: làm tiếp, hoặc vẫn giao (task dở giữ nguyên).' : '')
+      : 'Mọi task của giai đoạn đã Done hoặc Skipped (hoặc chưa có task).';
     actionButtons('milestone', milestone, $('milestoneActions'));
+    $('btnArchive').textContent = state.project && state.project.status === 'Archived' ? 'Khôi phục dự án' : 'Lưu trữ dự án';
+    $('btnArchive').disabled = !state.project;
 
     $('taskInfo').textContent = state.task
       ? `Hoàn thành lúc: ${fmtTime(state.task.completedAt) || '-'} | Còn dở: ${state.subTasks.filter((s) => s.status === 'ToDo').length} subtask ToDo`
@@ -1083,7 +1116,7 @@
     L.putTask = (t, status) => quiet('PUT', `/api/tasks/${t.id}`, { title: t.title, description: t.description, taskType: t.taskType, status, domainId: t.domainId, milestoneId: t.milestoneId, deadline: t.deadline, estimatedMinutes: t.estimatedMinutes });
     L.putSub = (s, status) => quiet('PUT', `/api/subtasks/${s.id}`, { title: s.title, estimatedMinutes: s.estimatedMinutes, orderIndex: s.orderIndex, status });
     L.putSlot = (s, status) => status === 'Cancelled' ? quiet('DELETE', `/api/schedule-slots/${s.id}`) : quiet('PUT', `/api/schedule-slots/${s.id}`, { subTaskId: s.subTaskId, startTime: s.startTime, endTime: s.endTime, isManualOverride: true, status });
-    L.putMilestone = (m, status) => quiet('PUT', `/api/milestones/${m.id}`, { name: m.name, orderIndex: m.orderIndex, dueDate: m.dueDate, status, revisionCount: 0 });
+    L.putMilestone = (m, status, confirmOpenTasks) => quiet('PUT', `/api/milestones/${m.id}`, { name: m.name, orderIndex: m.orderIndex, dueDate: m.dueDate, status, revisionCount: 0, confirmOpenTasks: !!confirmOpenTasks });
     L.start = (taskId, slotId, subTaskId) => quiet('POST', '/api/focus/start', { taskId, scheduleSlotId: slotId || null, subTaskId: subTaskId || null });
     L.stop = (sessionId, reason, note) => quiet('POST', `/api/focus/${sessionId}/stop`, { stopReason: reason, note: note || null });
     L.current = () => quiet('GET', '/api/focus/current');
@@ -1222,20 +1255,25 @@
       c.status('Cancelled → Approved bị chặn', await L.putSlot(await L.getSlot(other.id), 'Approved'), 400);
     });
 
-  scenario('milestone', '7. Milestone: vòng đời và cổng giao việc',
-    'Planned → InProgress → Delivered → InRevision → Approved. Chỉ giao khi mọi task Done/Skipped; giai đoạn đã giao không nhận task mới.',
+  scenario('milestone', '7. Milestone: vòng đời và cảnh báo khi giao còn task dở',
+    'Planned → InProgress → Delivered → InRevision → Approved. Giao khi còn task dở thì cảnh báo (409), xác nhận thì vẫn giao và task dở giữ nguyên; giai đoạn đã giao không nhận task mới.',
     async (L, c) => {
       await L.project('Milestone');
       const m = await L.milestone(1);
       const t1 = await L.task('Việc 1', m.id); const t2 = await L.task('Việc 2', m.id);
       c.status('Planned → Approved bị chặn (không nhảy cóc)', await L.putMilestone(m, 'Approved'), 400);
       c.status('Planned → InProgress', await L.putMilestone(m, 'InProgress'), 200);
-      c.status('Giao khi còn task dở bị chặn', await L.putMilestone(await L.getMilestone(m.id), 'Delivered'), 400);
+      const warn = await L.putMilestone(await L.getMilestone(m.id), 'Delivered');
+      c.status('Giao khi còn task dở: cảnh báo', warn, 409);
+      c.eq('Mã cảnh báo', warn.data.code, 'MILESTONE_HAS_OPEN_TASKS');
+      c.eq('Số task dở trong cảnh báo', warn.data.details && warn.data.details.openTaskCount, 2);
+      c.eq('Giai đoạn chưa đổi sau cảnh báo', (await L.getMilestone(m.id)).status, 'InProgress');
+      c.status('Xác nhận vẫn giao', await L.putMilestone(await L.getMilestone(m.id), 'Delivered', true), 200);
+      c.eq('Task dở giữ nguyên sau khi giao', (await L.getTask(t2.id)).status, 'ToDo');
       await L.putTask(await L.getTask(t1.id), 'Done');
       await L.putTask(await L.getTask(t2.id), 'Skipped');
       let cur = await L.getMilestone(m.id);
-      c.status('Giao khi mọi task Done/Skipped', await L.putMilestone(cur, 'Delivered'), 200);
-      cur = await L.getMilestone(m.id);
+      c.eq('Task dở vẫn đóng được sau khi giao', (await L.getTask(t2.id)).status, 'Skipped');
       c.eq('DeliveredAt được ghi', !!cur.deliveredAt, true);
       c.status('Thêm task mới vào giai đoạn đã giao bị chặn', await api('POST', `/api/projects/${L.projectId}/tasks`, { title: 'Thêm việc', taskType: 'Flexible', domainId: (await L.getTask(t1.id)).domainId, milestoneId: m.id, deadline: new Date(Date.now() + 86400000).toISOString(), estimatedMinutes: 30 }, true), 400);
       c.status('Delivered → InRevision (khách yêu cầu sửa)', await L.putMilestone(cur, 'InRevision'), 200);

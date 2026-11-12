@@ -73,14 +73,18 @@ namespace METANOIA.Infrastructure.Services
             var newStatus = string.IsNullOrWhiteSpace(request.Status) ? oldStatus : request.Status;
             StatusRules.EnsureMilestone(oldStatus, newStatus);
 
-            // Chỉ giao được khi mọi task đã Done hoặc Skipped
-            if (newStatus == DeliveredStatus && oldStatus != DeliveredStatus)
+            // Còn task chưa Done hoặc Skipped thì cảnh báo (409) kèm danh sách; người dùng làm tiếp hoặc xác nhận vẫn giao (ConfirmOpenTasks).
+            // Vẫn giao thì task dở giữ nguyên, không bị đổi trạng thái
+            if (newStatus == DeliveredStatus && oldStatus != DeliveredStatus && !request.ConfirmOpenTasks)
             {
-                var open = await _milestoneRepository.CountOpenTasksAsync(milestoneId, cancellationToken);
-                if (open > 0)
+                var open = await _milestoneRepository.GetOpenTasksAsync(milestoneId, cancellationToken);
+                if (open.Count > 0)
                 {
-                    throw new UserFriendlyException(
-                        $"Còn {open} task chưa Done hoặc Skipped nên chưa giao được giai đoạn. Hãy hoàn thành hoặc bỏ qua các task đó trước.");
+                    var subTasks = open.Sum(t => t.OpenSubTaskCount);
+                    throw new MilestoneOpenTasksException(
+                        $"Còn {open.Count} task chưa Done hoặc Skipped" + (subTasks > 0 ? $" (trong đó {subTasks} subtask chưa xong)" : "") +
+                        ". Hãy làm tiếp, hoặc gửi lại kèm confirmOpenTasks = true để vẫn giao giai đoạn.",
+                        new { openTaskCount = open.Count, openSubTaskCount = subTasks, tasks = open });
                 }
             }
 

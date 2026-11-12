@@ -149,10 +149,10 @@ stateDiagram-v2
     [*] --> Planned
     Planned --> InProgress : task đầu tiên bắt đầu (tự động) hoặc bấm tay
     InProgress --> Planned
-    InProgress --> Delivered : giao khách (cổng)
+    InProgress --> Delivered : giao khách (cảnh báo nếu còn task dở)
     Delivered --> InRevision : khách yêu cầu sửa
     Delivered --> Approved : khách duyệt
-    InRevision --> Delivered : giao lại (cổng)
+    InRevision --> Delivered : giao lại (cảnh báo nếu còn task dở)
     Approved --> InRevision : mở lại
 ```
 
@@ -164,11 +164,19 @@ stateDiagram-v2
 | `InRevision` | `Delivered` |
 | `Approved` | `InRevision` |
 
-- **Cổng giao việc:** chỉ chuyển sang `Delivered` khi **mọi task của giai đoạn là `Done` hoặc `Skipped`**, nếu không `400`.
+- **Cảnh báo khi giao còn task dở (không chặn cứng):** chuyển sang `Delivered` khi còn task chưa `Done` hoặc `Skipped` thì server trả **`409`** với `code = "MILESTONE_HAS_OPEN_TASKS"` và danh sách task dở. Người dùng chọn: (1) quay lại làm tiếp, hoặc (2) vẫn giao bằng cách gửi lại `PUT` với **`confirmOpenTasks = true`**. Vẫn giao thì **các task dở giữ nguyên**, không bị đổi trạng thái; chúng vẫn làm tiếp và đóng được. Áp dụng cả khi giao lại từ `InRevision`. Nếu mọi task đã xong (hoặc chưa có task) thì giao thẳng, không cần xác nhận.
+
+  ```json
+  // 409
+  { "message": "Còn 2 task chưa Done hoặc Skipped (trong đó 1 subtask chưa xong). ...",
+    "code": "MILESTONE_HAS_OPEN_TASKS",
+    "details": { "openTaskCount": 2, "openSubTaskCount": 1,
+                 "tasks": [{ "id": "…", "title": "Việc 2", "status": "ToDo", "openSubTaskCount": 1 }] } }
+  ```
 - `Planned` **tự lên `InProgress`** khi có task của giai đoạn bắt đầu làm (`InProgress`) hoặc đã `Done`. Các bước sau (giao, sửa, duyệt) là việc với khách nên **không tự đổi**.
 - `Delivered` lần đầu ghi `DeliveredAt` (giao lại thì cập nhật). `Approved` ghi `ApprovedAt`.
 - Vào `InRevision` thì `RevisionCount` tăng 1. Mở lại từ `Approved` thì xóa `ApprovedAt`.
-- Giai đoạn `Delivered` hoặc `Approved` không nhận task sống mới (xem mục 3).
+- Giai đoạn `Delivered` hoặc `Approved` không nhận task sống mới và không cho mở lại task đã đóng (xem mục 3). Task dở còn lại sau khi vẫn giao thì làm tiếp và đóng bình thường.
 
 ---
 
@@ -268,8 +276,8 @@ Cách nhanh nhất: mục 8 của trang, bấm **Chạy tất cả kịch bản*
 |---|---|
 | Giai đoạn `Planned` thử `→ Approved` | `400` (không nhảy cóc) |
 | Tạo task trong giai đoạn rồi Start | Giai đoạn tự `Planned → InProgress` |
-| Thử `→ Delivered` khi còn task dở | `400` |
-| Đặt hết task `Done` hoặc `Skipped`, rồi `→ Delivered` | Được, ghi `DeliveredAt` |
+| Thử `→ Delivered` khi còn task dở | Hiện cảnh báo `409` kèm danh sách task dở. Bấm **Hủy** thì giai đoạn giữ nguyên; bấm **OK** thì giao, task dở giữ nguyên |
+| Đặt hết task `Done` hoặc `Skipped`, rồi `→ Delivered` | Giao thẳng, không cảnh báo, ghi `DeliveredAt` |
 | `Delivered → InRevision` | `RevisionCount` +1 |
 | `InRevision → Approved` | `400` (phải giao lại) |
 | `Delivered → Approved` | Được, ghi `ApprovedAt` |
@@ -300,6 +308,43 @@ Kịch bản `AutoTimeout` cần Hangfire chạy (job nền) và cần thời gi
 
 - FE gửi bước chuyển sai sẽ nhận `400`; thân lỗi (`message`) liệt kê các bước hợp lệ. Nên **tải lại** task, subtask, slot, milestone sau Start, Stop, tạo hoặc hủy slot, vì trạng thái các bảng có thể đã đổi theo.
 - `PUT` không gửi `status` thì giữ nguyên.
-- Dịch vụ AI (Python) ghi slot thẳng vào database nên **không** đi qua các luật này.
-- Dữ liệu cũ không được sửa tự động: trạng thái chỉ được đồng bộ khi có thao tác tiếp theo trên task đó.
-- Không có thay đổi database nên không có file SQL kèm theo.
+- Dịch vụ AI (Python) ghi slot thẳng vào database nên **không** đi qua các luật này. Để chặn giá trị sai chữ, xem mục 9.2.
+- Dữ liệu cũ không được sửa tự động: trạng thái chỉ được đồng bộ khi có thao tác tiếp theo trên task đó, hoặc khi Admin chạy đồng bộ lại (mục 9.1).
+- Luồng trạng thái không cần thay đổi database. File SQL ở mục 9.2 chỉ là lớp bảo vệ tùy chọn.
+
+---
+
+## 9. Dữ liệu cũ và bảo vệ cột Status
+
+### 9.1 Đồng bộ lại dữ liệu cũ (chỉ Admin)
+
+Luật mới chỉ chạy khi có thao tác trên task, nên dữ liệu tạo trước đó có thể đang lệch (ví dụ task `ToDo` nhưng đã có slot `Approved`, hoặc `InProgress` dù mọi subtask đã `Done`). Endpoint này suy lại bằng đúng `TaskProgressService` của luồng thường.
+
+`POST /api/admin/status-resync?dryRun=true|false` (role `Admin`)
+
+| `dryRun` | Hành vi |
+|---|---|
+| bỏ trống hoặc `true` (**mặc định**) | Chỉ tính và báo cáo, **không lưu gì** |
+| `false` | Áp dụng thật, lưu theo từng lô 100 task |
+
+Phạm vi:
+- Duyệt mọi task **chưa đóng** (`ToDo`, `Scheduled`, `InProgress`) của mọi người dùng. Task `Done` và `Skipped` **không đụng tới** (đó là điều người dùng đã chốt, kể cả task `Done` kiểu cũ còn subtask `ToDo`).
+- Task có mọi subtask xong thì tự `Done`, hủy slot chưa diễn ra, và báo dịch vụ AI học như bình thường (chạy thật mới báo).
+- Giai đoạn `Planned` đã có task `InProgress` hoặc `Done` thì lên `InProgress`.
+- Chạy lại lần hai trả về không còn thay đổi nào.
+
+Phản hồi:
+```json
+{ "dryRun": true, "tasksChecked": 120, "tasksChanged": 7, "milestonesChanged": 2, "slotsCancelled": 0,
+  "changes": [ { "kind": "Task", "id": "…", "name": "Viết báo cáo", "from": "ToDo", "to": "Scheduled" } ],
+  "truncated": false }
+```
+`changes` cắt ở 1000 dòng đầu (`truncated = true` khi còn nữa).
+
+Cách dùng khuyến nghị: gọi `dryRun=true` (hoặc để trống), đọc `changes`, thấy hợp lý thì gọi `dryRun=false`.
+
+### 9.2 CHECK cho `ScheduleSlot.Status` (bạn tự chạy SQL)
+
+Dịch vụ AI (Python) ghi slot thẳng vào database nên có thể ghi sai chữ. File `docs/sql/004_scheduleslot_status_check.sql` thêm CHECK chỉ nhận 10 giá trị (`Proposed`, `Approved`, `Due`, `InProgress`, `Done`, `Skipped`, `Missed`, `Overrun`, `Postponed`, `Cancelled`).
+Nó có 3 bước: xem CHECK hiện có (chỉ đọc), liệt kê slot có Status lạ (chỉ đọc), rồi thêm hoặc thay CHECK (tự dừng và báo nếu còn dòng sai). Chạy lại nhiều lần vẫn an toàn. Trước khi chạy hãy xem code Python của AI ghi những giá trị nào để tránh làm AI bị lỗi.
+CHECK chỉ kiểm tra "giá trị có hợp lệ", không kiểm tra luật chuyển (ví dụ AI ghi thẳng `Done` vẫn qua).

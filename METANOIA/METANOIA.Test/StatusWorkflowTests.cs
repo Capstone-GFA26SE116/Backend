@@ -41,17 +41,18 @@ namespace METANOIA.Test
             return (await response.Content.ReadFromJsonAsync<MilestoneDto>())!;
         }
 
-        private static MilestoneRequestDto MilestoneBody(int order, string? status) => new()
+        private static MilestoneRequestDto MilestoneBody(int order, string? status, bool confirmOpenTasks = false) => new()
         {
             Name = $"Giai đoạn {order}",
             OrderIndex = order,
             DueDate = new DateOnly(2030, 1, 1),
             Status = status,
-            RevisionCount = 0
+            RevisionCount = 0,
+            ConfirmOpenTasks = confirmOpenTasks
         };
 
-        private static Task<HttpResponseMessage> PutMilestoneAsync(Setup s, Guid id, int order, string? status) =>
-            s.Client.PutAsJsonAsync($"/api/milestones/{id}", MilestoneBody(order, status));
+        private static Task<HttpResponseMessage> PutMilestoneAsync(Setup s, Guid id, int order, string? status, bool confirmOpenTasks = false) =>
+            s.Client.PutAsJsonAsync($"/api/milestones/{id}", MilestoneBody(order, status, confirmOpenTasks));
 
         private static async Task<TaskDto> NewTaskAsync(Setup s, string title = "Task cha", Guid? milestoneId = null, string? status = null)
         {
@@ -774,7 +775,52 @@ namespace METANOIA.Test
         }
 
         [Fact]
-        public async Task Milestone_CanOnlyBeDelivered_WhenEveryTaskIsDoneOrSkipped()
+        public async Task Milestone_Delivery_WarnsAboutOpenTasks_AndDeliversOnlyAfterConfirmation()
+        {
+            using var factory = new ApiFactory();
+            var s = await SetupAsync(factory);
+            var m = await NewMilestoneAsync(s);
+            var t1 = await NewTaskAsync(s, "Việc 1", m.Id);
+            var t2 = await NewTaskAsync(s, "Việc 2", m.Id);
+            var sub = (await (await s.Client.PostAsJsonAsync($"/api/tasks/{t2.Id}/subtasks",
+                new SubTaskRequestDto { Title = "Việc nhỏ", EstimatedMinutes = 10, OrderIndex = 1 })).Content.ReadFromJsonAsync<SubTaskDto>())!;
+            await PutMilestoneAsync(s, m.Id, 1, "InProgress");
+
+            // Còn 2 task dở: cảnh báo 409 kèm danh sách, giai đoạn chưa đổi
+            var warn = await PutMilestoneAsync(s, m.Id, 1, "Delivered");
+            Assert.Equal(HttpStatusCode.Conflict, warn.StatusCode);
+            using var body = JsonDocument.Parse(await warn.Content.ReadAsStringAsync());
+            Assert.Equal("MILESTONE_HAS_OPEN_TASKS", body.RootElement.GetProperty("code").GetString());
+            var details = body.RootElement.GetProperty("details");
+            Assert.Equal(2, details.GetProperty("openTaskCount").GetInt32());
+            Assert.Equal(1, details.GetProperty("openSubTaskCount").GetInt32());
+            var tasks = details.GetProperty("tasks").EnumerateArray().ToList();
+            Assert.Equal(2, tasks.Count);
+            Assert.Contains(tasks, t => t.GetProperty("title").GetString() == "Việc 2" && t.GetProperty("openSubTaskCount").GetInt32() == 1);
+            Assert.Equal("InProgress", (await s.Client.GetFromJsonAsync<MilestoneDto>($"/api/milestones/{m.Id}"))!.Status);
+
+            // Một task xong thì còn 1 task dở, vẫn cảnh báo
+            await PutTaskAsync(s, t1.Id, "Done");
+            using (var again = JsonDocument.Parse(await (await PutMilestoneAsync(s, m.Id, 1, "Delivered")).Content.ReadAsStringAsync()))
+                Assert.Equal(1, again.RootElement.GetProperty("details").GetProperty("openTaskCount").GetInt32());
+
+            // Xác nhận vẫn giao: được, ghi DeliveredAt, task dở và subtask dở GIỮ NGUYÊN
+            var delivered = await PutMilestoneAsync(s, m.Id, 1, "Delivered", confirmOpenTasks: true);
+            Assert.Equal(HttpStatusCode.OK, delivered.StatusCode);
+            var dto = (await delivered.Content.ReadFromJsonAsync<MilestoneDto>())!;
+            Assert.Equal("Delivered", dto.Status);
+            Assert.NotNull(dto.DeliveredAt);
+            Assert.Equal("ToDo", (await s.Client.GetFromJsonAsync<TaskDto>($"/api/tasks/{t2.Id}"))!.Status);
+            Assert.Equal("ToDo", (await s.Client.GetFromJsonAsync<SubTaskDto>($"/api/subtasks/{sub.Id}"))!.Status);
+
+            // Task dở trong giai đoạn đã giao vẫn làm tiếp và đóng được (nhưng task đã đóng không mở lại được)
+            await StopOkAsync(s, await StartOkAsync(s, t2.Id), "Interrupted");
+            Assert.Equal(HttpStatusCode.OK, (await PutTaskAsync(s, t2.Id, "Done")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await PutTaskAsync(s, t2.Id, "ToDo")).StatusCode);
+        }
+
+        [Fact]
+        public async Task Milestone_DeliversWithoutConfirmation_WhenEveryTaskIsDoneOrSkipped_AndRedeliveryWarnsToo()
         {
             using var factory = new ApiFactory();
             var s = await SetupAsync(factory);
@@ -782,16 +828,16 @@ namespace METANOIA.Test
             var t1 = await NewTaskAsync(s, "Việc 1", m.Id);
             var t2 = await NewTaskAsync(s, "Việc 2", m.Id);
             await PutMilestoneAsync(s, m.Id, 1, "InProgress");
-
-            var blocked = await PutMilestoneAsync(s, m.Id, 1, "Delivered");
-            Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
-            Assert.Contains("2 task", await blocked.Content.ReadAsStringAsync());
-
             await PutTaskAsync(s, t1.Id, "Done");
-            Assert.Equal(HttpStatusCode.BadRequest, (await PutMilestoneAsync(s, m.Id, 1, "Delivered")).StatusCode);
-
             await PutTaskAsync(s, t2.Id, "Skipped");
+
             Assert.Equal(HttpStatusCode.OK, (await PutMilestoneAsync(s, m.Id, 1, "Delivered")).StatusCode);
+
+            // Khách yêu cầu sửa, mở lại một task, rồi giao lại khi còn dở: cũng cảnh báo
+            await PutMilestoneAsync(s, m.Id, 1, "InRevision");
+            Assert.Equal(HttpStatusCode.OK, (await PutTaskAsync(s, t1.Id, "ToDo")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await PutMilestoneAsync(s, m.Id, 1, "Delivered")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await PutMilestoneAsync(s, m.Id, 1, "Delivered", confirmOpenTasks: true)).StatusCode);
         }
 
         [Fact]

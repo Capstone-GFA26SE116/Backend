@@ -45,6 +45,16 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "Resource not found");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
             }
+            catch (MilestoneOpenTasksException ex)
+            {
+                _logger.LogWarning(ex, "Milestone still has open tasks");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "MILESTONE_HAS_OPEN_TASKS",
+                    details = ex.Details
+                });
+            }
             catch (FocusConflictException ex)
             {
                 _logger.LogWarning(ex, "Focus session conflict");
