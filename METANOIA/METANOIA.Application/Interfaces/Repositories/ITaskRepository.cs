@@ -17,6 +17,12 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         Task<bool> HasHistoryAsync(Guid taskId, CancellationToken cancellationToken = default);
 
+        // Task có phiên làm việc đang chạy (EndedAt rỗng) không
+        Task<bool> HasRunningSessionAsync(Guid taskId, CancellationToken cancellationToken = default);
+
+        // Trạng thái của giai đoạn (null nếu không có giai đoạn)
+        Task<string?> GetMilestoneStatusAsync(Guid milestoneId, CancellationToken cancellationToken = default);
+
         Task AddAsync(DomainTask task, CancellationToken cancellationToken = default);
 
         void Remove(DomainTask task);

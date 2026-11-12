@@ -11,5 +11,8 @@ namespace METANOIA.Application.Dto
         public string? Status { get; set; }
 
         public int RevisionCount { get; set; }
+
+        // Giao giai đoạn (Delivered) khi còn task dở: lần đầu server trả 409 kèm danh sách; gửi lại với true để xác nhận vẫn giao
+        public bool ConfirmOpenTasks { get; set; }
     }
 }

@@ -2219,11 +2219,11 @@ stateDiagram-v2
 | BR-67 | Chuyển sang `Delivered` lần đầu thì tự ghi `DeliveredAt`. Chuyển sang `Approved` lần đầu thì tự ghi `ApprovedAt`. Không ghi đè nếu đã có | không áp dụng |
 | BR-68 | Task thuộc **một dự án của người dùng**. `DomainId` phải tồn tại. `MilestoneId` (nếu có) phải thuộc **cùng dự án** | `400` |
 | BR-69 | Task có hai loại. **Flexible** bắt buộc có `Deadline` và `EstimatedMinutes`. **Fixed** bắt buộc có `FixedStart` và `FixedEnd` với `FixedEnd` lớn hơn `FixedStart`. Task Flexible không lưu `FixedStart/FixedEnd` | `400` |
-| BR-70 | Trạng thái task: `ToDo`, `Scheduled`, `InProgress`, `Done`, `Skipped`. Số phút ước lượng (của người và của AI) phải lớn hơn 0. Tiêu đề tối đa 200 ký tự | `400` |
-| BR-71 | Chuyển sang `Done` thì tự ghi `CompletedAt` (nếu chưa có). Chuyển từ `Done` về trạng thái khác thì **xóa** `CompletedAt` | không áp dụng |
+| BR-70 | Trạng thái task: `ToDo`, `Scheduled`, `InProgress`, `Done`, `Skipped` (luật chuyển ở BR-107 đến BR-111). Số phút ước lượng (của người và của AI) phải lớn hơn 0. Tiêu đề tối đa 200 ký tự | `400` |
+| BR-71 | Chuyển sang `Done` thì tự ghi `CompletedAt` (nếu chưa có). Mở lại task `Done` thì **xóa** `CompletedAt`. Task chỉ mở lại về `ToDo`, `Scheduled` hoặc `InProgress` | không áp dụng |
 | BR-72 | Task **vừa chuyển** sang `Done` (không phải đã `Done` từ trước) thì báo cho dịch vụ AI để nó học (`/learning/task-completed`). Lỗi gọi AI **không** làm hỏng việc cập nhật task | không áp dụng |
 | BR-73 | Task hoặc subtask đã có lịch sử tập trung hoặc đánh giá thì **không xóa**, chỉ đổi sang `Skipped` | `400` |
-| BR-74 | Subtask: thuộc task của người dùng, thứ tự `OrderIndex` từ 1 và **duy nhất trong task**, số phút ước lượng lớn hơn 0, tiêu đề tối đa 200. Trạng thái: `ToDo`, `Done`, `Skipped`. Mặc định `ToDo` | `400` |
+| BR-74 | Subtask: thuộc task của người dùng, thứ tự `OrderIndex` từ 1 và **duy nhất trong task**, số phút ước lượng lớn hơn 0, tiêu đề tối đa 200. Trạng thái: `ToDo`, `Done`, `Skipped` (luật chuyển ở BR-107). Mặc định `ToDo` | `400` |
 | BR-75 | Tài liệu dự án: loại `File` hoặc `Link`. Tag: `Brief`, `Contract`, `Design`, `Other` (mặc định `Other`) | `400` |
 | BR-76 | File tải lên từ **1 byte đến 20 MB**. Link phải là `http` hoặc `https` hợp lệ, tối đa 2000 ký tự. Tên tối đa 255. Tài liệu dạng Link không có file để tải về | `400` |
 | BR-77 | Loại công việc (Domain): tên duy nhất không phân biệt hoa thường, tối đa 50. Đang được task hoặc hồ sơ người dùng dùng thì **không xóa**, chỉ đặt `IsActive = false`. Chỉ Admin được sửa | `400` |
@@ -2233,7 +2233,7 @@ stateDiagram-v2
 | Mã | Luật | Vi phạm thì |
 |---|---|---|
 | BR-78 | Slot thuộc một task của người dùng. `EndTime` phải lớn hơn `StartTime`. Subtask (nếu có) phải thuộc **đúng task đó**. Đề xuất (nếu có) phải tồn tại | `400` |
-| BR-79 | Trạng thái slot: `Proposed`, `Approved`, `Done`, `Skipped`, `Missed`, `Cancelled`. Slot do người dùng tạo bắt đầu ở `Proposed`. Giải thích tối đa 500 ký tự | `400` |
+| BR-79 | Trạng thái slot: `Proposed`, `Approved`, `Due`, `InProgress`, `Done`, `Skipped`, `Missed`, `Overrun`, `Postponed`, `Cancelled` (luật chuyển ở BR-107 và [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md)). Slot do người dùng tạo chỉ được `Proposed` hoặc `Approved`. Giải thích tối đa 500 ký tự | `400` |
 | BR-80 | Mọi thay đổi giờ của slot được ghi vào `ScheduleChangeLog`. Tạo → `Created`. Đổi giờ bắt đầu → `Moved`. Chỉ đổi giờ kết thúc → `Resized`. Hủy → `Deleted`. `Source` là `Manual`, `AI` hoặc `GoogleSync` (DB có CHECK cho các giá trị này) | `400` |
 | BR-81 | Lần **đầu** dời giờ bắt đầu thì lưu giờ gốc vào `OriginalStartTime` và không ghi đè nữa | không áp dụng |
 | BR-82 | Hủy slot là đổi sang `Cancelled` và ghi log `Deleted`, **không xóa dòng**. Hủy lại slot đã hủy là lỗi | `400` |
@@ -2295,7 +2295,7 @@ stateDiagram-v2
 | SubTask | `ToDo`, `Done`, `Skipped` |
 | Milestone | `Planned`, `InProgress`, `Delivered`, `InRevision`, `Approved` |
 | Project | `Active`, `Archived` |
-| ScheduleSlot | `Proposed`, `Approved`, `Done`, `Skipped`, `Missed`, `Cancelled` |
+| ScheduleSlot | `Proposed`, `Approved`, `Due`, `InProgress`, `Done`, `Skipped`, `Missed`, `Overrun`, `Postponed`, `Cancelled` |
 | ScheduleProposal | `Pending`, `Approved` |
 | ScheduleChangeLog | `ChangeType`: `Created`, `Moved`, `Resized`, `Deleted`. `Source`: `Manual`, `AI`, `GoogleSync` |
 | UserSubscription | `Active`, `Scheduled`, `Expired`, `Cancelled` |
@@ -2303,10 +2303,30 @@ stateDiagram-v2
 | PaymentRefund | `Requested`, `Approved`, `Rejected`, `Completed`. Nguồn: `User` |
 | ProjectDocument | Loại: `File`, `Link`. Tag: `Brief`, `Contract`, `Design`, `Other` |
 | Mức hay làm lố | `Rarely`, `Sometimes`, `Often`, `Always` |
+| FocusSession | `StopReason`: `Completed`, `Interrupted`, `Blocked`, `Other`. `CaptureMethod`: `Timer`, `SelfReported`, `AutoTimeout` |
 
 Các hằng số chỉnh được bằng cấu hình (mục 9): `Payments:LinkExpiryMinutes` (15), `Payments:ExpiryGraceSeconds` (60), `Payments:RefundWindowDays` (7), `Payments:RefundsEnabled` (false),
 `Payments:ReconciliationIntervalSeconds` (60), `Payments:PendingStaleAfterSeconds` (120). Thời hạn token chỉnh bằng `Jwt:ExpiryMinutes` (60) và `Jwt:RefreshTokenDays` (30). Các hằng số còn lại (10 giây ân hạn refresh token,
 50 lượt AI/ngày do dịch vụ AI quyết định, 100 ngày của lịch, 20 MB của file) nằm trong code nên đổi phải sửa code.
+
+### 18.11 Luồng trạng thái liền mạch (Milestone, Task, Subtask, Slot, Focus session)
+
+Sơ đồ, bảng chuyển đầy đủ và hướng dẫn thử từng trạng thái nằm ở [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md). Luật nằm ở `StatusRules` và `TaskProgressService` (`METANOIA.Infrastructure/Services`).
+
+| Mã | Luật | Vi phạm thì |
+|---|---|---|
+| BR-107 | Mỗi bảng có **bảng chuyển trạng thái**: Subtask `ToDo→Done\|Skipped`, `Done\|Skipped→ToDo`. Task `Done\|Skipped→ToDo\|Scheduled\|InProgress` (không đi thẳng `Done`↔`Skipped`). Slot `Done`, `Skipped`, `Cancelled` là trạng thái chốt. Milestone `Planned→InProgress→Delivered→InRevision\|Approved`. Đặt lại đúng trạng thái đang có luôn hợp lệ | `400` kèm danh sách bước hợp lệ |
+| BR-108 | `PUT` không gửi `status` thì **giữ nguyên** trạng thái hiện có | không áp dụng |
+| BR-109 | Trạng thái "sống" của Task **do hệ thống suy ra**: có phiên đang chạy, phiên đã kết thúc được tính, hoặc subtask `Done` → `InProgress`; chưa làm gì mà có slot `Approved`/`Due`/`InProgress`/`Overrun` → `Scheduled`; còn lại `ToDo`. Slot `Proposed` chưa làm Task `Scheduled` | không áp dụng |
+| BR-110 | Mọi subtask đã xử lý (không còn `ToDo`, ít nhất một `Done`) thì Task **tự `Done`**. Task không có subtask thì người dùng tự bấm. Mở lại một subtask thì Task `Done` mở lại | không áp dụng |
+| BR-111 | Đặt Task `Done` hoặc `Skipped`: subtask còn `ToDo` thành `Skipped`, slot chưa diễn ra (`Proposed`, `Approved`, `Due`, `Postponed`) thành `Cancelled` (ghi log `Deleted`, hủy job). Không đóng được khi còn phiên đang chạy. Task đã đóng không nhận slot mới và không Start được | `400` |
+| BR-112 | Giao giai đoạn (`Delivered`) khi còn task chưa `Done`/`Skipped` thì **cảnh báo**, không chặn cứng: lần đầu `409` (`MILESTONE_HAS_OPEN_TASKS`, kèm danh sách task dở), gửi lại với `confirmOpenTasks = true` thì vẫn giao và task dở giữ nguyên. `Planned` tự lên `InProgress` khi có task bắt đầu làm. Vào `InRevision` thì `RevisionCount` +1. Giai đoạn `Delivered` hoặc `Approved` không nhận task sống mới | `409` (cảnh báo giao), `400` (các trường hợp còn lại) |
+| BR-113 | Stop `Completed` → slot `Done`, subtask của phiên (nếu có) `Done`. Stop `Interrupted` → slot `Due`. Stop `Blocked` → slot `Postponed`, hủy job của slot. Stop `Other` → slot `Due` | không áp dụng |
+| BR-114 | Stop `Blocked` hoặc `Other` **bắt buộc có `note`**. Thiếu thì phiên vẫn đang chạy. Tự khai (self-report) cũng áp dụng cùng luật | `400` |
+| BR-115 | `CaptureMethod`: `Timer` và `SelfReported` đã xác nhận, được tính. `AutoTimeout` (slot `Done` ngay, `StopReason = Other`) **chưa xác nhận thì không tính** vào thời gian thực tế, việc học, hay trạng thái `InProgress` của Task | không áp dụng |
+| BR-116 | Loại bỏ phiên `AutoTimeout` mà slot không còn phiên đáng tin nào thì slot từ `Done` về `Missed` (ngoại lệ hệ thống duy nhất của trạng thái chốt) | không áp dụng |
+| BR-117 | Admin đồng bộ lại trạng thái dữ liệu cũ bằng `POST /api/admin/status-resync` (mặc định `dryRun = true`, không lưu). Chỉ xét task chưa đóng; task `Done`, `Skipped` giữ nguyên. Dùng đúng `TaskProgressService`. SQL bảo vệ `ScheduleSlot.Status`: `docs/sql/004_scheduleslot_status_check.sql` | `403` nếu không phải Admin |
+
 
 ---
 
@@ -2314,7 +2334,7 @@ Các hằng số chỉnh được bằng cấu hình (mục 9): `Payments:LinkEx
 
 Bấm giờ làm việc thật (`T_act`) để hệ thống học độ lệch ước lượng. Chi tiết, trình tự chạy thử và bảng lỗi nằm ở [FOCUS_SESSION_GUIDE.md](FOCUS_SESSION_GUIDE.md).
 
-- **API:** `/api/focus/start`, `/{id}/stop`, `/current`, `/{id}/confirm`, `/self-report`, `/{slotId}/time-summary` (đường cũ `/api/FocusSession/...` vẫn dùng được). Hộp thư: `/api/notifications` (danh sách, đã đọc, `vapid-public-key`, `subscribe`, `unsubscribe`). Realtime: SignalR `/hubs/notifications`.
+- **API:** `/api/focus/start`, `/{id}/stop`, `/current`, `/{id}/confirm`, `/self-report`, `/{slotId}/time-summary`, `/task/{taskId}/sessions` (mọi phiên của task kèm trạng thái suy ra; xem [STATUS_WORKFLOW.md](STATUS_WORKFLOW.md)) (đường cũ `/api/FocusSession/...` vẫn dùng được). Hộp thư: `/api/notifications` (danh sách, đã đọc, `vapid-public-key`, `subscribe`, `unsubscribe`). Realtime: SignalR `/hubs/notifications`.
 - **Luật chính:** không tự bấm giờ; không có pause (tạm dừng là Stop `Interrupted` rồi Start phiên mới); thời gian lấy từ giờ server; `T_act` = tổng các phiên; phiên `AutoTimeout` chưa xác nhận không dùng để học.
 - **Nền:** Hangfire hẹn 9 job cho mỗi slot `Approved` (nhắc, `Due`, `Missed`, `Overrun`, tự ngắt...). Mỗi job tự kiểm tra trạng thái slot trước khi làm. Bảng `HangfireJobTrackers` ghi job nào thuộc slot nào để hủy và hẹn lại khi slot đổi giờ.
 - **Thông báo:** `NotificationService` luôn ghi bảng `Notification` trước, rồi đẩy SignalR và Web Push (`UserPushSubscriptions`). Lỗi ở hai kênh đẩy chỉ ghi log.

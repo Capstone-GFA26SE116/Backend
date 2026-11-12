@@ -44,6 +44,21 @@ namespace METANOIA.Application.Dto
         Guid SessionId
     );
 
+    // Một phiên trong danh sách của task. State suy ra: Running, Stopped, PendingConfirmation, Confirmed, Discarded
+    public sealed record FocusSessionListItem(
+        Guid SessionId,
+        Guid? SubTaskId,
+        Guid? ScheduleSlotId,
+        DateTimeOffset StartedAt,
+        DateTimeOffset? EndedAt,
+        double Minutes,
+        CaptureMethod CaptureMethod,
+        FocusStopReason? StopReason,
+        bool IsConfirmed,
+        string? Note,
+        string State
+    );
+
     // Phiên bị hệ thống tự ngắt (AutoTimeout) mà người dùng chưa xác nhận hoặc loại bỏ. Dùng để dựng hộp thoại
     // "Bạn thực sự làm bao lâu?" rồi gọi POST /api/focus/{sessionId}/confirm
     public sealed record FocusPendingConfirmationItem(

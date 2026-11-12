@@ -67,5 +67,18 @@ namespace METANOIA.Infrastructure.Repositories
         {
             _context.Tasks.Remove(task);
         }
+
+        public Task<bool> HasRunningSessionAsync(Guid taskId, CancellationToken cancellationToken = default)
+        {
+            return _context.FocusSessions.AnyAsync(f => f.TaskId == taskId && f.EndedAt == null, cancellationToken);
+        }
+
+        public async Task<string?> GetMilestoneStatusAsync(Guid milestoneId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Milestones
+                .Where(m => m.Id == milestoneId)
+                .Select(m => m.Status)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
     }
 }

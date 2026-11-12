@@ -60,5 +60,13 @@ namespace METANOIA.Infrastructure.Repositories
                 .Include(s => s.FocusSessions)
                 .FirstOrDefaultAsync(s => s.Id == slotId && s.Task.Project.UserId == userId);
         }
+
+        public async Task<string?> GetTaskStatusAsync(Guid taskId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Tasks
+                .Where(t => t.Id == taskId)
+                .Select(t => t.Status)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
     }
 }

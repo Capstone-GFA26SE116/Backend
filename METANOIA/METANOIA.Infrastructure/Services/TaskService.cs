@@ -22,16 +22,16 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly ITaskRepository _taskRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IAiServiceClient _aiServiceClient;
+        private readonly ITaskProgressService _progress;
 
         public TaskService(
             ITaskRepository taskRepository,
             IUnitOfWork unitOfWork,
-            IAiServiceClient aiServiceClient)
+            ITaskProgressService progress)
         {
             _taskRepository = taskRepository;
             _unitOfWork = unitOfWork;
-            _aiServiceClient = aiServiceClient;
+            _progress = progress;
         }
 
         public async Task<IReadOnlyList<TaskDto>> GetTasksAsync(Guid userId, Guid projectId, string? status, CancellationToken cancellationToken = default)
@@ -59,16 +59,29 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await ValidateReferencesAsync(projectId, request, cancellationToken);
 
+            var status = string.IsNullOrWhiteSpace(request.Status) ? ToDoStatus : request.Status;
+            if (!StatusRules.IsTerminalTask(status))
+            {
+                await EnsureMilestoneAcceptsAsync(request.MilestoneId, cancellationToken);
+            }
+
             var task = new DomainTask
             {
                 Id = Guid.NewGuid(),
                 ProjectId = projectId,
                 CreatedAt = DateTime.UtcNow
             };
-            ApplyRequest(task, request);
+            ApplyRequest(task, request, status);
 
-            await _taskRepository.AddAsync(task, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                await _taskRepository.AddAsync(task, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Task tạo thẳng ở InProgress hoặc Done thì giai đoạn của nó cũng phải lên InProgress
+                await _progress.RefreshMilestoneAsync(task.MilestoneId, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
 
             return ToDto(task);
         }
@@ -79,14 +92,47 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await ValidateReferencesAsync(task.ProjectId, request, cancellationToken);
 
+            // Không gửi status thì giữ nguyên (trước đây tự về ToDo, làm mở lại task đã xong ngoài ý muốn)
             var oldStatus = task.Status;
-            ApplyRequest(task, request);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var newStatus = string.IsNullOrWhiteSpace(request.Status) ? oldStatus : request.Status;
+            StatusRules.EnsureTask(oldStatus, newStatus);
 
-            if (oldStatus != DoneStatus && task.Status == DoneStatus)
+            var closing = !StatusRules.IsTerminalTask(oldStatus) && StatusRules.IsTerminalTask(newStatus);
+            var reopening = StatusRules.IsTerminalTask(oldStatus) && !StatusRules.IsTerminalTask(newStatus);
+
+            // Đang có phiên làm việc chạy thì chưa đóng task: người dùng còn đang làm
+            if (closing && await _taskRepository.HasRunningSessionAsync(task.Id, cancellationToken))
             {
-                await _aiServiceClient.RecordTaskCompletionAsync(task.Id, cancellationToken);
+                throw new UserFriendlyException("Task đang có một phiên làm việc chạy. Hãy dừng phiên (Stop) trước khi đóng task.");
             }
+
+            // Giai đoạn đã giao hoặc đã duyệt không nhận thêm task đang làm (mở lại task hoặc chuyển task vào đó)
+            var milestoneChanged = request.MilestoneId != task.MilestoneId;
+            if (!StatusRules.IsTerminalTask(newStatus) && (reopening || milestoneChanged))
+            {
+                await EnsureMilestoneAcceptsAsync(request.MilestoneId, cancellationToken);
+            }
+
+            var result = new ProgressResult { TaskId = task.Id };
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                ApplyRequest(task, request, newStatus);
+
+                if (closing)
+                {
+                    // Task Done hoặc Skipped: subtask còn dở thành Skipped, slot chưa diễn ra bị hủy
+                    await _progress.CascadeCloseAsync(task.Id, result, cancellationToken);
+                    result.TaskBecameDone = newStatus == DoneStatus;
+                }
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                await _progress.RefreshMilestoneAsync(task.MilestoneId, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }, cancellationToken);
+
+            // Sau khi đã lưu: hủy job của slot vừa bị hủy và báo AI học khi task vừa Done
+            await _progress.AfterCommitAsync(result, cancellationToken);
 
             return ToDto(task);
         }
@@ -130,6 +176,22 @@ namespace METANOIA.Infrastructure.Services
                 && !await _taskRepository.MilestoneBelongsToProjectAsync(milestoneId, projectId, cancellationToken))
             {
                 throw new UserFriendlyException("Giai đoạn không tồn tại trong dự án này.");
+            }
+        }
+
+        // Giai đoạn Delivered hoặc Approved đã giao cho khách: muốn thêm việc phải chuyển InRevision trước
+        private async Task EnsureMilestoneAcceptsAsync(Guid? milestoneId, CancellationToken cancellationToken)
+        {
+            if (milestoneId is not { } id)
+            {
+                return;
+            }
+
+            var status = await _taskRepository.GetMilestoneStatusAsync(id, cancellationToken);
+            if (status is "Delivered" or "Approved")
+            {
+                throw new UserFriendlyException(
+                    $"Giai đoạn đang ở trạng thái '{status}' nên không nhận thêm task đang làm. Hãy chuyển giai đoạn sang InRevision trước.");
             }
         }
 
@@ -177,14 +239,14 @@ namespace METANOIA.Infrastructure.Services
             }
         }
 
-        private static void ApplyRequest(DomainTask task, TaskRequestDto request)
+        private static void ApplyRequest(DomainTask task, TaskRequestDto request, string status)
         {
             var isFixed = request.TaskType == FixedType;
 
             task.Title = request.Title.Trim();
             task.Description = request.Description;
             task.TaskType = request.TaskType;
-            task.Status = string.IsNullOrWhiteSpace(request.Status) ? ToDoStatus : request.Status;
+            task.Status = status;
             task.DomainId = request.DomainId;
             task.MilestoneId = request.MilestoneId;
             task.Deadline = request.Deadline?.UtcDateTime;

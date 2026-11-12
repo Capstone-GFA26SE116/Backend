@@ -16,6 +16,7 @@ public sealed class SlotBackgroundJobs(
     AppDbContext dbContext,
     INotificationService notification,
     TimeProvider timeProvider,
+    ITaskProgressService progress,
     ILogger<SlotBackgroundJobs> logger)
 {
     // Còn 15 phút nữa đến giờ: chỉ nhắc khi slot đã được duyệt và chưa tới giờ
@@ -34,6 +35,7 @@ public sealed class SlotBackgroundJobs(
         var slot = await GetSlotAsync(slotId);
         if (slot is null || !Is(slot, ScheduleSlotStatus.Approved)) return;
 
+        StatusRules.EnsureSlot(slot.Status, nameof(ScheduleSlotStatus.Due));
         slot.Status = ScheduleSlotStatus.Due.ToString();
         await dbContext.SaveChangesAsync();
 
@@ -71,6 +73,7 @@ public sealed class SlotBackgroundJobs(
         if (Is(slot, ScheduleSlotStatus.InProgress))
         {
             // Vẫn đang làm: chuyển sang Overrun, đợi người dùng bấm Stop (hoặc AutoTimeout cắt)
+            StatusRules.EnsureSlot(slot.Status, nameof(ScheduleSlotStatus.Overrun));
             slot.Status = ScheduleSlotStatus.Overrun.ToString();
             await dbContext.SaveChangesAsync();
             return;
@@ -87,7 +90,12 @@ public sealed class SlotBackgroundJobs(
         }
 
         // Chưa từng bấm Start
+        StatusRules.EnsureSlot(slot.Status, nameof(ScheduleSlotStatus.Missed));
         slot.Status = ScheduleSlotStatus.Missed.ToString();
+        await dbContext.SaveChangesAsync();
+
+        // Slot Missed không còn là slot sống: Task có thể từ Scheduled về ToDo
+        await progress.RefreshTaskAsync(slot.TaskId);
         await dbContext.SaveChangesAsync();
 
         await Notify(slot, "Bạn đã bỏ lỡ công việc",
@@ -125,7 +133,12 @@ public sealed class SlotBackgroundJobs(
         // Chưa được xác nhận thì không đưa vào việc học (xem POST /api/FocusSession/{id}/confirm)
         session.IsConfirmed = false;
         session.Note = "Hệ thống tự động ngắt do vượt quá 2 lần thời gian dự kiến.";
+        StatusRules.EnsureSlot(slot.Status, nameof(ScheduleSlotStatus.Done));
         slot.Status = ScheduleSlotStatus.Done.ToString();
+        await dbContext.SaveChangesAsync();
+
+        // Phiên chưa xác nhận không tính là "đã làm": Task suy lại (có thể về Scheduled hoặc ToDo cho tới khi người dùng xác nhận)
+        await progress.RefreshTaskAsync(slot.TaskId);
         await dbContext.SaveChangesAsync();
 
         await Notify(slot, "Phiên làm việc bị ngắt",

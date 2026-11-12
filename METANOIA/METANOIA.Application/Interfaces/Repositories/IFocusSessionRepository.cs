@@ -20,6 +20,12 @@ namespace METANOIA.Application.Interfaces.Repositories
         // Phiên người dùng đã loại bỏ (ghi chú đánh dấu) do service lọc tiếp.
         Task<List<FocusSession>> GetUnconfirmedAutoTimeoutAsync(Guid userId);
 
+        // Mọi phiên của một task (kể cả chưa xác nhận, đã loại bỏ), cũ trước. Dùng cho màn hình theo dõi
+        Task<List<FocusSession>> GetByTaskIdAsync(Guid taskId);
+
+        // Slot còn phiên ĐÁNG TIN nào khác (đã kết thúc, và là Timer, SelfReported hoặc AutoTimeout đã xác nhận) không
+        Task<bool> HasCountedSessionForSlotAsync(Guid slotId, Guid excludeSessionId);
+
         System.Threading.Tasks.Task AddAsync(FocusSession session);
     }
 }

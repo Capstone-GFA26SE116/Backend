@@ -1,3 +1,4 @@
+using METANOIA.Application.Dto;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Domain.Entities;
 using METANOIA.Infrastructure.Data;
@@ -49,6 +50,15 @@ namespace METANOIA.Infrastructure.Repositories
         public void Remove(Milestone milestone)
         {
             _context.Milestones.Remove(milestone);
+        }
+
+        public async Task<IReadOnlyList<MilestoneOpenTaskDto>> GetOpenTasksAsync(Guid milestoneId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Tasks
+                .Where(t => t.MilestoneId == milestoneId && t.Status != "Done" && t.Status != "Skipped")
+                .OrderBy(t => t.CreatedAt)
+                .Select(t => new MilestoneOpenTaskDto(t.Id, t.Title, t.Status, t.SubTasks.Count(s => s.Status == "ToDo")))
+                .ToListAsync(cancellationToken);
         }
     }
 }

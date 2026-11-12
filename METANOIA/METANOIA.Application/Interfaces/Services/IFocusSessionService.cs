@@ -16,5 +16,8 @@ namespace METANOIA.Application.Interfaces.Services
         Task<Guid> SelfReportSessionAsync(Guid userId, FocusSelfReportRequest request);
         Task<FocusTimeSummaryResponse> GetTimeSummaryAsync(Guid userId, Guid slotId);
         Task<IReadOnlyList<FocusPendingConfirmationItem>> GetPendingConfirmationAsync(Guid userId);
+
+        // Mọi phiên của một task (kể cả chưa xác nhận, đã loại bỏ) kèm trạng thái suy ra
+        Task<IReadOnlyList<FocusSessionListItem>> GetTaskSessionsAsync(Guid userId, Guid taskId);
     }
 }

@@ -59,5 +59,22 @@ namespace METANOIA.Infrastructure.Repositories
         {
             await _context.FocusSessions.AddAsync(session);
         }
+
+        public async Task<List<FocusSession>> GetByTaskIdAsync(Guid taskId)
+        {
+            return await _context.FocusSessions
+                .Where(s => s.TaskId == taskId)
+                .OrderBy(s => s.StartedAt)
+                .ToListAsync();
+        }
+
+        public async Task<bool> HasCountedSessionForSlotAsync(Guid slotId, Guid excludeSessionId)
+        {
+            return await _context.FocusSessions.AnyAsync(s =>
+                s.ScheduleSlotId == slotId
+                && s.Id != excludeSessionId
+                && s.EndedAt != null
+                && (s.IsConfirmed || s.CaptureMethod != "AutoTimeout"));
+        }
     }
 }

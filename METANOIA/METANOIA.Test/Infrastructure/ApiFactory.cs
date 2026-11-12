@@ -33,6 +33,9 @@ namespace METANOIA.Test.Infrastructure
         // Thay repository hoàn tiền bằng bản ném lỗi khi bị gọi, để chứng minh luồng thanh toán không đụng tới nó
         public bool ForbidRefundRepository { get; set; }
 
+        // Mặc định thay IScheduleJobService bằng bản giả. Đặt true để giữ nguyên cách Program.cs đăng ký (Hangfire tắt thì phải dùng NullScheduleJobService)
+        public bool KeepProgramJobService { get; set; }
+
         // Máy chủ token Google giả và bộ ghi log, dùng cho test lỗi đồng bộ Google Calendar
         public FakeGoogleHttpHandler GoogleHttp { get; } = new();
 
@@ -84,8 +87,11 @@ namespace METANOIA.Test.Infrastructure
                     .UseInMemoryDatabase(_databaseName)
                     .AddInterceptors(serviceProvider.GetRequiredService<AdminAuditSaveChangesInterceptor>()));
 
-                services.RemoveAll<IScheduleJobService>();
-                services.AddSingleton<IScheduleJobService>(Jobs);
+                if (!KeepProgramJobService)
+                {
+                    services.RemoveAll<IScheduleJobService>();
+                    services.AddSingleton<IScheduleJobService>(Jobs);
+                }
 
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(Clock);

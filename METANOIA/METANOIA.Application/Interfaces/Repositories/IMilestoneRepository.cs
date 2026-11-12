@@ -1,3 +1,4 @@
+using METANOIA.Application.Dto;
 using METANOIA.Domain.Entities;
 using Task = System.Threading.Tasks.Task;
 
@@ -12,6 +13,9 @@ namespace METANOIA.Application.Interfaces.Repositories
         Task<Milestone?> GetByIdForUserAsync(Guid milestoneId, Guid userId, CancellationToken cancellationToken = default);
 
         Task<bool> OrderIndexTakenAsync(Guid projectId, int orderIndex, Guid excludeId, CancellationToken cancellationToken = default);
+
+        // Các task của giai đoạn chưa Done hoặc Skipped (cảnh báo khi giao giai đoạn còn việc dở)
+        Task<IReadOnlyList<MilestoneOpenTaskDto>> GetOpenTasksAsync(Guid milestoneId, CancellationToken cancellationToken = default);
 
         Task AddAsync(Milestone milestone, CancellationToken cancellationToken = default);
 

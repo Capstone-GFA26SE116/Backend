@@ -72,7 +72,12 @@ namespace METANOIA.Test
             var created = await (await client.PostAsJsonAsync($"/api/projects/{projectId}/milestones", NewMilestone()))
                 .Content.ReadFromJsonAsync<MilestoneDto>();
 
-            var response = await client.PutAsJsonAsync($"/api/milestones/{created!.Id}", NewMilestone(status: "Delivered"));
+            // Planned không nhảy thẳng sang Delivered: phải qua InProgress (xem docs/STATUS_WORKFLOW.md)
+            var direct = await client.PutAsJsonAsync($"/api/milestones/{created!.Id}", NewMilestone(status: "Delivered"));
+            Assert.Equal(HttpStatusCode.BadRequest, direct.StatusCode);
+
+            await client.PutAsJsonAsync($"/api/milestones/{created.Id}", NewMilestone(status: "InProgress"));
+            var response = await client.PutAsJsonAsync($"/api/milestones/{created.Id}", NewMilestone(status: "Delivered"));
             var updated = await response.Content.ReadFromJsonAsync<MilestoneDto>();
 
             Assert.Equal("Delivered", updated!.Status);

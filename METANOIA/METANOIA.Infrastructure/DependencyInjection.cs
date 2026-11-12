@@ -95,6 +95,8 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IFocusSessionRepository, FocusSessionRepository>();
             services.AddScoped<IFocusSessionService, FocusSessionService>();
             services.AddScoped<IScheduleJobService, ScheduleJobService>();
+            services.AddScoped<ITaskProgressService, TaskProgressService>();
+            services.AddScoped<IStatusResyncService, StatusResyncService>();
             services.AddScoped<SlotBackgroundJobs>();
             services.AddHttpClient();
 
