@@ -39,8 +39,14 @@ namespace METANOIA.Application.Dto
 
         public string PlanName { get; set; } = null!;
 
+        // Ngày gói bắt đầu có hiệu lực
+        public DateTimeOffset StartAt { get; set; }
+
         // null: gói không hết hạn (gói Miễn phí)
         public DateTimeOffset? EndAt { get; set; }
+
+        // Số ngày còn lại tới EndAt (làm tròn lên, không âm). null khi gói không hết hạn
+        public int? RemainingDays { get; set; }
     }
 
     // Hồ sơ người dùng tự sửa. Email gắn với tài khoản Google, role do Admin quản lý, giờ làm và nhắc việc thuộc về cài đặt (settings)

@@ -1,3 +1,4 @@
+using METANOIA.Application.Dto;
 using METANOIA.Domain.Entities;
 using Task = System.Threading.Tasks.Task;
 
@@ -22,6 +23,9 @@ namespace METANOIA.Application.Interfaces.Repositories
         Task<bool> HasAiUsageAsync(Guid subscriptionId, CancellationToken cancellationToken = default);
 
         Task<UserSubscription?> GetActiveByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        // Hạn mức của gói Active (một truy vấn); null nếu người dùng không có gói Active
+        Task<PlanLimits?> GetActivePlanLimitsAsync(Guid userId, CancellationToken cancellationToken = default);
 
         Task<UserSubscription?> GetByPaymentIdAsync(Guid paymentId, CancellationToken cancellationToken = default);
 

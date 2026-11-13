@@ -18,6 +18,9 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         Task<bool> ClientBelongsToUserAsync(Guid clientId, Guid userId, CancellationToken cancellationToken = default);
 
+        // Số dự án tính vào hạn mức của gói: chưa lưu trữ và không phải dự án "Cá nhân" mặc định
+        Task<int> CountCountableAsync(Guid userId, CancellationToken cancellationToken = default);
+
         Task AddAsync(Project project, CancellationToken cancellationToken = default);
     }
 }

@@ -16,11 +16,13 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly IProjectRepository _projectRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPlanLimitService _planLimits;
 
-        public ProjectService(IProjectRepository projectRepository, IUnitOfWork unitOfWork)
+        public ProjectService(IProjectRepository projectRepository, IUnitOfWork unitOfWork, IPlanLimitService planLimits)
         {
             _projectRepository = projectRepository;
             _unitOfWork = unitOfWork;
+            _planLimits = planLimits;
         }
 
         public async Task<IReadOnlyList<ProjectWithClientDto>> GetProjectsAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
@@ -51,6 +53,7 @@ namespace METANOIA.Infrastructure.Services
         public async Task<ProjectDto> CreateProjectAsync(Guid userId, ProjectRequestDto request, CancellationToken cancellationToken = default)
         {
             await ValidateRequestAsync(userId, request, cancellationToken);
+            await _planLimits.EnsureCanCreateProjectAsync(userId, cancellationToken);
 
             var project = new Project
             {
@@ -90,6 +93,13 @@ namespace METANOIA.Infrastructure.Services
         public async Task<ProjectDto> RestoreProjectAsync(Guid userId, Guid projectId, CancellationToken cancellationToken = default)
         {
             var project = await GetOwnedProjectAsync(userId, projectId, cancellationToken);
+
+            // Khôi phục dự án đã lưu trữ cũng làm tăng số dự án đang hoạt động nên chịu cùng hạn mức (dự án mặc định không tính)
+            if (project.Status == ArchivedStatus && !project.IsDefault)
+            {
+                await _planLimits.EnsureCanCreateProjectAsync(userId, cancellationToken);
+            }
+
             project.Status = ActiveStatus;
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 

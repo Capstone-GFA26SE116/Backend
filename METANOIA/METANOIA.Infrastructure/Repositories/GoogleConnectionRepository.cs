@@ -28,6 +28,14 @@ namespace METANOIA.Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.UserId == userId, cancellationToken);
         }
 
+        public Task<string?> GetUserTimeZoneAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.Users
+                .Where(u => u.Id == userId)
+                .Select(u => (string?)u.TimeZone)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         public Task<GoogleConnection?> GetByWatchChannelIdAsync(string channelId, CancellationToken cancellationToken = default)
         {
             return _context.GoogleConnections

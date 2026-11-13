@@ -89,7 +89,7 @@ Job được hẹn khi slot ở trạng thái **Approved** (tạo slot Approved,
 
 | Job | Giờ chạy | Điều kiện | Việc làm |
 |---|---|---|---|
-| `PreStartReminder` | Start − 15 phút | `Approved` | Gửi nhắc |
+| `PreStartReminder` | Start − `ReminderLeadMinutes` của người dùng (mặc định 15; `0` = không hẹn job này) | `Approved` | Gửi nhắc. Người dùng đổi số phút nhắc trước thì các slot `Approved` chưa tới giờ được hẹn lại |
 | `SlotDue` | Start | `Approved` | Chuyển `Due`, nhắc bấm Start |
 | `NotStartedNudge` | Start + 20 phút | `Due` và chưa phiên nào | Nhắc lại |
 | `NearEndReminder` | End − 10 phút | `InProgress` | Nhắc sắp hết giờ |

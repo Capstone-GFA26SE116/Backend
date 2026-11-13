@@ -587,7 +587,7 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 | PUT | `/api/google-calendar/events/{eventId}` | Đăng nhập |
 | DELETE | `/api/google-calendar/events/{eventId}` | Đăng nhập |
 | GET | `/api/google-calendar/status` | Đăng nhập |
-| POST | `/api/google-calendar/sync` | Đăng nhập |
+| POST | `/api/google-calendar/sync?from=&to=&direction=` | Đăng nhập (xem [GOOGLE_CALENDAR_SYNC_FE.md](GOOGLE_CALENDAR_SYNC_FE.md)) |
 | POST | `/api/google-calendar/webhook` | Công khai |
 
 #### Hóa đơn (`InvoicesController`)
@@ -605,6 +605,7 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 | Method | Đường dẫn | Quyền |
 |---|---|---|
 | GET | `/api/me` | Đăng nhập |
+| GET | `/api/me/usage` | Đăng nhập |
 | DELETE | `/api/me` | Đăng nhập |
 | POST | `/api/me/onboarding` | Đăng nhập |
 | PUT | `/api/me/profile` | Đăng nhập |
@@ -2092,6 +2093,7 @@ Quy ước chung cho mọi nhóm:
 | BR-10 | Đăng xuất luôn thành công, kể cả token lạ hoặc đã thu hồi. `allDevices = true` thu hồi mọi phiên | luôn `204` |
 | BR-11 | Người dùng tự xóa tài khoản (`DELETE /api/me`) là **soft delete**: đặt `DeletedAt`, thu hồi mọi refresh token, ngắt kết nối Google, tất cả trong một lần lưu. Dữ liệu cũ vẫn giữ | không áp dụng |
 | BR-12 | Giờ kết thúc làm việc phải **sau** giờ bắt đầu. Đệm và nhắc trước nằm trong **0 đến 120 phút**. Múi giờ phải là tên IANA có thật, ví dụ `Asia/Ho_Chi_Minh` | `400` |
+| BR-12b | **Số phút nhắc trước** (`ReminderLeadMinutes`) quyết định giờ job `PreStartReminder` (Start − số phút này). `0` thì không nhắc trước. Đổi giá trị thì mọi slot `Approved` chưa tới giờ của người dùng được hẹn lại; đổi cài đặt khác thì không. Nội dung nhắc nêu số phút còn lại thật | không áp dụng |
 | BR-13 | Họ tên tối đa 100 ký tự và không được rỗng | `400` |
 
 **Quy tắc riêng của Admin quản lý người dùng**
@@ -2124,7 +2126,7 @@ Quy ước chung cho mọi nhóm:
 | BR-27 | Mua gói khi gói hiện tại là Miễn phí hoặc đã quá hạn thì gói cũ thành `Expired` và gói mới `Active` ngay, bắt đầu từ lúc mua | không áp dụng |
 | BR-28 | Hết hạn: gói `Active` quá `EndAt` thì thành `Expired`, rồi bật gói `Scheduled` đến hạn nếu có, **không có thì tự về gói Miễn phí**. Xử lý ngay khi người dùng mở `GET /api/me` và nhờ job nền mỗi 60 giây | không áp dụng |
 | BR-29 | `EndAt = StartAt + DurationDays` của gói. `EndAt` phải lớn hơn `StartAt`. Số lượt AI đã dùng không âm | `400` |
-| BR-30 | Hạn mức: `AiCallLimit` và `ProjectLimit` để trống nghĩa là **không giới hạn**. `Price` không âm, `DurationDays` và `StorageLimitMb` lớn hơn 0 | `400` |
+| BR-30 | Hạn mức: `AiCallLimit` và `ProjectLimit` để trống nghĩa là **không giới hạn**. `Price` không âm, `DurationDays` và `StorageLimitMb` lớn hơn 0. `ProjectLimit` và `StorageLimitMb` **có hiệu lực**, xem BR-118 đến BR-122 | `400` |
 | BR-31 | Tên gói duy nhất, **không phân biệt hoa thường**, tối đa 50 ký tự | `400` |
 | BR-32 | Gói đã có người dùng hoặc giao dịch thì **không xóa**, chỉ đặt `IsActive = false`. Gói đăng ký của người dùng đã phát sinh lượt gọi AI cũng không xóa, chỉ đổi sang `Cancelled` | `400` |
 | BR-33 | Một giao dịch thanh toán chỉ gắn với **một** gói đăng ký | `400` |
@@ -2265,7 +2267,9 @@ stateDiagram-v2
 | Mã | Luật | Vi phạm thì |
 |---|---|---|
 | BR-92 | Token Google lưu **đã mã hóa** (ASP.NET DataProtection). Khóa mã hóa nằm theo từng máy nên chuyển môi trường phải kết nối lại | `409` GOOGLE_RECONNECT_REQUIRED |
-| BR-93 | Mỗi người dùng một kết nối. Đồng bộ **một chiều Google → DB** bằng `SyncToken`, chỉ lấy phần thay đổi. Sự kiện bị xóa bên Google được đánh dấu `IsCancelled`, không xóa dòng | không áp dụng |
+| BR-93 | Mỗi người dùng một kết nối. Mặc định (không truyền tham số) đồng bộ **Google → DB** bằng `SyncToken`, chỉ lấy phần thay đổi. Sự kiện bị xóa bên Google được đánh dấu `IsCancelled`, không xóa dòng. Webhook luôn chạy kiểu này | không áp dụng |
+| BR-93b | `POST /api/google-calendar/sync` nhận `from`, `to` (NGÀY `yyyy-MM-dd` theo múi giờ của người dùng, gồm trọn ngày) và `direction` (`FromGoogle` mặc định, `ToGoogle`, `Both`). Chỉ `from`: từ ngày đó đến hết mọi lịch về sau. Chỉ `to`: từ đầu đến hết ngày đó. Có chọn ngày thì lấy đầy đủ trong khoảng và **không đọc, không ghi `SyncToken`** (Google không cho dùng cùng `timeMin`/`timeMax`) | `400` nếu `to` trước `from` |
+| BR-93c | Chiều METANOIA → Google (`ToGoogle`, `Both`) đẩy slot `Approved`, `Due`, `InProgress`, `Overrun` trong khoảng ngày thành sự kiện, id cố định `metanoia` + Guid của slot (đẩy lại thì cập nhật, không trùng), lưu vào `ScheduleSlot.GoogleEventId`. Slot đã đẩy mà nay `Cancelled`, `Skipped`, `Postponed` thì xóa sự kiện. `Done`, `Missed` giữ lại. Mỗi slot lưu riêng: một slot lỗi chỉ bị đánh dấu `SyncFailed`, các slot còn lại vẫn đẩy | không áp dụng |
 | BR-94 | Chưa kết nối mà gọi đồng bộ | `400` Chưa kết nối Google Calendar |
 | BR-95 | Kết nối ở trạng thái `Expired` hoặc `Revoked`, token không giải mã được, hoặc Google trả `invalid_grant` | `409` GOOGLE_RECONNECT_REQUIRED |
 | BR-96 | Google trả lỗi khác hoặc mất mạng: ghi `LastSyncError` (tối đa 500 ký tự) và luôn `LogError` | `502` GOOGLE_API_ERROR |
@@ -2326,6 +2330,11 @@ Sơ đồ, bảng chuyển đầy đủ và hướng dẫn thử từng trạng 
 | BR-115 | `CaptureMethod`: `Timer` và `SelfReported` đã xác nhận, được tính. `AutoTimeout` (slot `Done` ngay, `StopReason = Other`) **chưa xác nhận thì không tính** vào thời gian thực tế, việc học, hay trạng thái `InProgress` của Task | không áp dụng |
 | BR-116 | Loại bỏ phiên `AutoTimeout` mà slot không còn phiên đáng tin nào thì slot từ `Done` về `Missed` (ngoại lệ hệ thống duy nhất của trạng thái chốt) | không áp dụng |
 | BR-117 | Admin đồng bộ lại trạng thái dữ liệu cũ bằng `POST /api/admin/status-resync` (mặc định `dryRun = true`, không lưu). Chỉ xét task chưa đóng; task `Done`, `Skipped` giữ nguyên. Dùng đúng `TaskProgressService`. SQL bảo vệ `ScheduleSlot.Status`: `docs/sql/004_scheduleslot_status_check.sql` | `403` nếu không phải Admin |
+| BR-118 | **Hạn mức theo gói đang `Active`** chặn TẠO MỚI khi vượt. Dự án: tối đa `ProjectLimit` dự án đang hoạt động; **không tính** dự án lưu trữ (`Archived`) và dự án "Cá nhân" mặc định. `ProjectLimit` trống là không giới hạn | `400` kèm lời nhắc lưu trữ bớt hoặc nâng cấp gói |
+| BR-119 | **Khôi phục** dự án đã lưu trữ cũng chịu hạn mức dự án (vì làm tăng số dự án đang hoạt động). Khôi phục dự án đã `Active` thì không bị chặn | `400` |
+| BR-120 | Dung lượng: tổng `SizeBytes` các tài liệu loại `File` của **mọi dự án của người dùng** (link không tính). Tải thêm file làm `đã dùng + file mới` lớn hơn `StorageLimitMb` × 1 MB (1 MB = 1024 × 1024 byte) thì bị chặn; bằng đúng hạn mức thì cho. Kiểm tra **trước** khi ghi file xuống kho nên bị chặn không để lại file rác. Xóa tài liệu thì giải phóng dung lượng | `400` |
+| BR-121 | Vượt hạn mức **không xóa hay khóa gì** của người dùng: ví dụ hết kỳ về gói Free khi đang có 8 dự án mà Free cho 3 thì người dùng vẫn thấy đủ 8, chỉ không tạo thêm được cho tới khi xuống dưới hạn mức. Người dùng không có gói `Active` nào thì không áp hạn mức. Hai yêu cầu tạo cùng lúc có thể vượt hạn mức 1 đơn vị (không dùng khóa) | không áp dụng |
+| BR-122 | `GET /api/me/usage` trả mức đã dùng so với hạn mức (`planName`, `projectsUsed`, `projectLimit`, `storageUsedBytes`, `storageLimitMb`) và thời hạn gói (`subscriptionStartAt`, `subscriptionEndAt`, `remainingDays`: làm tròn lên, `null` với gói Miễn phí không hết hạn; `GET /api/me` cũng trả `startAt`, `endAt`, `remainingDays` trong `currentSubscription`) để FE hiện "2/3 dự án, 40/100 MB" và tắt nút trước khi bấm. Số lượt AI do dịch vụ AI quản (BR-86), không nằm ở đây | `401` nếu chưa đăng nhập |
 
 
 ---

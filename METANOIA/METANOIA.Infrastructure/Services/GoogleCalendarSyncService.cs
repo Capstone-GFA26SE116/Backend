@@ -17,10 +17,21 @@ namespace METANOIA.Infrastructure.Services
         private const string CalendarId = "primary";
         private const int PageSize = 250;
         private const int MaxLastSyncErrorLength = 500;
+        private const int MaxPushErrors = 5;
+
+        // Slot được đẩy lên Google: đã duyệt và đang làm
+        private static readonly string[] LiveSlotStatuses = ["Approved", "Due", "InProgress", "Overrun"];
+
+        // Slot đã đẩy mà sau đó không còn diễn ra ở giờ đó: xóa sự kiện trên Google (Done và Missed giữ lại như lịch sử)
+        private static readonly string[] RemovedSlotStatuses = ["Cancelled", "Skipped", "Postponed"];
+
+        // Khoảng thời gian UTC: FromUtc gồm, ToUtc không gồm. null là không giới hạn phía đó
+        private sealed record SyncRange(DateTime? FromUtc, DateTime? ToUtc);
 
         private readonly GoogleCalendarClientProvider _provider;
         private readonly IGoogleConnectionRepository _connectionRepository;
         private readonly IGoogleCalendarEventRepository _eventRepository;
+        private readonly IScheduleSlotRepository _slotRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<GoogleCalendarSyncService> _logger;
 
@@ -28,24 +39,37 @@ namespace METANOIA.Infrastructure.Services
             GoogleCalendarClientProvider provider,
             IGoogleConnectionRepository connectionRepository,
             IGoogleCalendarEventRepository eventRepository,
+            IScheduleSlotRepository slotRepository,
             IUnitOfWork unitOfWork,
             ILogger<GoogleCalendarSyncService> logger)
         {
             _provider = provider;
             _connectionRepository = connectionRepository;
             _eventRepository = eventRepository;
+            _slotRepository = slotRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
+        public Task<GoogleCalendarSyncResultDto> SyncAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return SyncAsync(userId, new GoogleCalendarSyncRequest(), cancellationToken);
+        }
+
         // Kết quả cho người gọi:
         //   chưa có GoogleConnection            -> 400 "Chưa kết nối Google Calendar"
+        //   To trước From                       -> 400
         //   Expired/Revoked, invalid_grant,
         //   không giải mã được token đã lưu     -> 409 "Cần kết nối lại Google Calendar" (không lộ chi tiết)
         //   Google lỗi / quá hạn / mất mạng     -> ghi LastSyncError, 502
         // Mọi exception đều được LogError trước khi trả về.
-        public async Task<GoogleCalendarSyncResultDto> SyncAsync(Guid userId, CancellationToken cancellationToken = default)
+        public async Task<GoogleCalendarSyncResultDto> SyncAsync(Guid userId, GoogleCalendarSyncRequest request, CancellationToken cancellationToken = default)
         {
+            if (request.From is { } from && request.To is { } to && to < from)
+            {
+                throw new UserFriendlyException("Ngày kết thúc (to) phải từ ngày bắt đầu (from) trở đi.");
+            }
+
             var connection = await _connectionRepository.GetByUserIdAsync(userId, cancellationToken);
             if (connection is null)
             {
@@ -61,21 +85,12 @@ namespace METANOIA.Infrastructure.Services
                 throw reconnect;
             }
 
+            var range = await ResolveRangeAsync(userId, request, cancellationToken);
+
             try
             {
                 var session = await _provider.OpenAsync(userId, cancellationToken);
-
-                try
-                {
-                    return await RunSyncAsync(session, cancellationToken);
-                }
-                catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.Gone)
-                {
-                    // syncToken đã hết hạn: Google yêu cầu đồng bộ lại từ đầu
-                    _logger.LogError(ex, "syncToken của user {UserId} đã hết hạn, đồng bộ lại từ đầu.", userId);
-                    session.Connection.SyncToken = null;
-                    return await RunSyncAsync(session, cancellationToken);
-                }
+                return await RunAsync(session, request, range, cancellationToken);
             }
             catch (GoogleCalendarNotConnectedException ex)
             {
@@ -124,6 +139,87 @@ namespace METANOIA.Infrastructure.Services
             }
         }
 
+        private async Task<GoogleCalendarSyncResultDto> RunAsync(
+            GoogleCalendarSession session, GoogleCalendarSyncRequest request, SyncRange? range, CancellationToken cancellationToken)
+        {
+            var result = new GoogleCalendarSyncResultDto
+            {
+                Direction = request.Direction,
+                Mode = range is null ? "Incremental" : "Range",
+                RangeFromUtc = range?.FromUtc is { } f ? new DateTimeOffset(f, TimeSpan.Zero) : null,
+                RangeToUtc = range?.ToUtc is { } t ? new DateTimeOffset(t, TimeSpan.Zero) : null
+            };
+
+            // Google -> METANOIA trước, rồi METANOIA -> Google
+            if (request.Direction != GoogleSyncDirection.ToGoogle)
+            {
+                if (range is null)
+                {
+                    try
+                    {
+                        await RunSyncAsync(session, result, cancellationToken);
+                    }
+                    catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.Gone)
+                    {
+                        // syncToken đã hết hạn: Google yêu cầu đồng bộ lại từ đầu
+                        _logger.LogError(ex, "syncToken của user {UserId} đã hết hạn, đồng bộ lại từ đầu.", session.Connection.UserId);
+                        session.Connection.SyncToken = null;
+                        await RunSyncAsync(session, result, cancellationToken);
+                    }
+                }
+                else
+                {
+                    await RunRangeSyncAsync(session, range, result, cancellationToken);
+                }
+            }
+
+            if (request.Direction != GoogleSyncDirection.FromGoogle)
+            {
+                await PushSlotsAsync(session, range, result, cancellationToken);
+            }
+
+            return result;
+        }
+
+        // Ngày From, To theo múi giờ của người dùng; To gồm trọn ngày đó
+        private async Task<SyncRange?> ResolveRangeAsync(Guid userId, GoogleCalendarSyncRequest request, CancellationToken cancellationToken)
+        {
+            if (request.From is null && request.To is null)
+            {
+                return null;
+            }
+
+            var zone = ResolveTimeZone(await _connectionRepository.GetUserTimeZoneAsync(userId, cancellationToken));
+            return new SyncRange(
+                request.From is { } from ? StartOfDayUtc(from, zone) : null,
+                request.To is { } to ? StartOfDayUtc(to.AddDays(1), zone) : null);
+        }
+
+        private static TimeZoneInfo ResolveTimeZone(string? id)
+        {
+            try
+            {
+                return string.IsNullOrWhiteSpace(id) ? TimeZoneInfo.Utc : TimeZoneInfo.FindSystemTimeZoneById(id);
+            }
+            catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+            {
+                return TimeZoneInfo.Utc;
+            }
+        }
+
+        private static DateTime StartOfDayUtc(DateOnly date, TimeZoneInfo zone)
+        {
+            var local = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+
+            // Một số múi giờ nhảy giờ đúng lúc nửa đêm: lùi sang giờ hợp lệ gần nhất
+            if (zone.IsInvalidTime(local))
+            {
+                local = local.AddHours(1);
+            }
+
+            return TimeZoneInfo.ConvertTimeToUtc(local, zone);
+        }
+
         private async Task RecordFailureAsync(GoogleConnection connection, string message, CancellationToken cancellationToken)
         {
             connection.LastSyncError = Trim(message);
@@ -148,10 +244,11 @@ namespace METANOIA.Infrastructure.Services
             return value.Length <= MaxLastSyncErrorLength ? value : value[..MaxLastSyncErrorLength];
         }
 
-        private async Task<GoogleCalendarSyncResultDto> RunSyncAsync(GoogleCalendarSession session, CancellationToken cancellationToken)
+        // ---------------------------------------------------------------- Google -> METANOIA
+
+        private async Task RunSyncAsync(GoogleCalendarSession session, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
         {
             var connection = session.Connection;
-            var result = new GoogleCalendarSyncResultDto();
             string? pageToken = null;
             string? nextSyncToken = null;
 
@@ -178,8 +275,36 @@ namespace METANOIA.Infrastructure.Services
             connection.LastSyncedAt = DateTime.UtcNow;
             connection.LastSyncError = null;
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
-            return result;
+        // Có chọn ngày: lấy đầy đủ sự kiện trong khoảng. Google không cho dùng syncToken cùng timeMin/timeMax,
+        // nên lần này KHÔNG đọc và KHÔNG ghi SyncToken (đồng bộ tự động theo webhook vẫn chạy bình thường)
+        private async Task RunRangeSyncAsync(GoogleCalendarSession session, SyncRange range, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
+        {
+            var connection = session.Connection;
+            string? pageToken = null;
+
+            do
+            {
+                var request = session.Service.Events.List(CalendarId);
+                request.ShowDeleted = true;
+                request.MaxResults = PageSize;
+                request.PageToken = pageToken;
+                if (range.FromUtc is { } from) request.TimeMinDateTimeOffset = new DateTimeOffset(from, TimeSpan.Zero);
+                if (range.ToUtc is { } to) request.TimeMaxDateTimeOffset = new DateTimeOffset(to, TimeSpan.Zero);
+
+                var page = await request.ExecuteAsync(cancellationToken);
+                foreach (var googleEvent in page.Items ?? [])
+                {
+                    await ApplyAsync(connection, googleEvent, result, cancellationToken);
+                }
+
+                pageToken = page.NextPageToken;
+            } while (pageToken is not null);
+
+            connection.LastSyncedAt = DateTime.UtcNow;
+            connection.LastSyncError = null;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         private async Task ApplyAsync(GoogleConnection connection, Event googleEvent, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
@@ -204,7 +329,8 @@ namespace METANOIA.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     GoogleConnectionId = connection.Id,
                     GoogleEventId = googleEvent.Id,
-                    IsCreatedByMetanoia = false
+                    // Sự kiện METANOIA đã đẩy lên (id có tiền tố riêng) kéo về thì vẫn là của METANOIA, không hiện trùng với slot
+                    IsCreatedByMetanoia = GoogleEventIds.IsFromMetanoia(googleEvent.Id)
                 };
                 await _eventRepository.AddAsync(local, cancellationToken);
                 result.Added++;
@@ -215,6 +341,160 @@ namespace METANOIA.Infrastructure.Services
             }
 
             GoogleEventMapping.Apply(local, googleEvent);
+        }
+
+        // ---------------------------------------------------------------- METANOIA -> Google
+
+        // Đẩy slot đã duyệt và đang làm (Approved, Due, InProgress, Overrun) trong khoảng ngày lên Google.
+        // Slot đã đẩy mà sau đó Cancelled, Skipped hoặc Postponed thì xóa sự kiện tương ứng. Mỗi slot lưu riêng, một slot lỗi không chặn các slot còn lại
+        private async Task PushSlotsAsync(GoogleCalendarSession session, SyncRange? range, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
+        {
+            var slots = await _slotRepository.GetForGooglePushAsync(
+                session.Connection.UserId, range?.FromUtc, range?.ToUtc, LiveSlotStatuses, RemovedSlotStatuses, cancellationToken);
+
+            foreach (var slot in slots)
+            {
+                try
+                {
+                    if (LiveSlotStatuses.Contains(slot.Status))
+                    {
+                        await UpsertSlotEventAsync(session, slot, result, cancellationToken);
+                    }
+                    else
+                    {
+                        await RemoveSlotEventAsync(session, slot, result, cancellationToken);
+                    }
+
+                    slot.SyncFailed = false;
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }
+                catch (GoogleApiException ex) when (ex.HttpStatusCode != HttpStatusCode.Unauthorized)
+                {
+                    // 401 là kết nối bị thu hồi: để lỗi đi lên xử lý chung. Lỗi khác chỉ đánh dấu slot này
+                    _logger.LogError(ex, "Không đẩy được slot {SlotId} lên Google Calendar ({StatusCode}).", slot.Id, (int)ex.HttpStatusCode);
+                    result.PushFailed++;
+                    if (result.PushErrors.Count < MaxPushErrors)
+                    {
+                        result.PushErrors.Add($"Slot {slot.Id}: Google trả lỗi {(int)ex.HttpStatusCode}.");
+                    }
+
+                    slot.SyncFailed = true;
+                    await TrySaveAsync(cancellationToken);
+                }
+            }
+
+            session.Connection.LastSyncedAt = DateTime.UtcNow;
+            await TrySaveAsync(cancellationToken);
+        }
+
+        private async Task UpsertSlotEventAsync(GoogleCalendarSession session, ScheduleSlot slot, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
+        {
+            var service = session.Service;
+            var hadEvent = !string.IsNullOrEmpty(slot.GoogleEventId);
+            var eventId = slot.GoogleEventId ?? GoogleEventIds.ForSlot(slot.Id);
+
+            Event? saved = null;
+            var created = !hadEvent;
+
+            if (hadEvent)
+            {
+                try
+                {
+                    saved = await service.Events.Update(ToGoogleEvent(slot, eventId), CalendarId, eventId).ExecuteAsync(cancellationToken);
+                }
+                catch (GoogleApiException ex) when (ex.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+                {
+                    // Người dùng đã xóa sự kiện trên Google: tạo lại
+                    created = true;
+                }
+            }
+
+            if (saved is null)
+            {
+                try
+                {
+                    saved = await service.Events.Insert(ToGoogleEvent(slot, eventId), CalendarId).ExecuteAsync(cancellationToken);
+                }
+                catch (GoogleApiException ex) when (ex.HttpStatusCode == HttpStatusCode.Conflict)
+                {
+                    // Id này đã có (từ lần đẩy trước chưa kịp lưu, hoặc sự kiện đã bị xóa): ghi đè và khôi phục
+                    saved = await service.Events.Update(ToGoogleEvent(slot, eventId), CalendarId, eventId).ExecuteAsync(cancellationToken);
+                }
+            }
+
+            if (created) result.PushedCreated++;
+            else result.PushedUpdated++;
+
+            slot.GoogleEventId = saved.Id;
+
+            // Ghi sự kiện vào bảng cache với cờ "do METANOIA tạo" để lịch gộp không hiện trùng với chính slot này
+            var connection = session.Connection;
+            var local = await _eventRepository.GetByGoogleEventIdAsync(connection.Id, saved.Id, cancellationToken);
+            if (local is null)
+            {
+                local = new GoogleCalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    GoogleConnectionId = connection.Id,
+                    GoogleEventId = saved.Id
+                };
+                await _eventRepository.AddAsync(local, cancellationToken);
+            }
+
+            local.IsCreatedByMetanoia = true;
+            GoogleEventMapping.Apply(local, saved);
+        }
+
+        private async Task RemoveSlotEventAsync(GoogleCalendarSession session, ScheduleSlot slot, GoogleCalendarSyncResultDto result, CancellationToken cancellationToken)
+        {
+            var eventId = slot.GoogleEventId;
+            if (string.IsNullOrEmpty(eventId))
+            {
+                return;
+            }
+
+            try
+            {
+                await session.Service.Events.Delete(CalendarId, eventId).ExecuteAsync(cancellationToken);
+            }
+            catch (GoogleApiException ex) when (ex.HttpStatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+            {
+                // Đã bị xóa từ trước: coi như xong
+            }
+
+            var local = await _eventRepository.GetByGoogleEventIdAsync(session.Connection.Id, eventId, cancellationToken);
+            if (local is not null && !local.IsCancelled)
+            {
+                local.IsCancelled = true;
+                local.UpdatedAt = DateTime.UtcNow;
+            }
+
+            slot.GoogleEventId = null;
+            result.PushedDeleted++;
+        }
+
+        private static Event ToGoogleEvent(ScheduleSlot slot, string eventId)
+        {
+            var title = slot.SubTask is null ? slot.Task.Title : $"{slot.Task.Title} - {slot.SubTask.Title}";
+
+            return new Event
+            {
+                Id = eventId,
+                Status = "confirmed",
+                Summary = title,
+                Description = $"Dự án: {slot.Task.Project.Name}\nTạo bởi METANOIA.",
+                Start = new EventDateTime { DateTimeDateTimeOffset = AsUtc(slot.StartTime) },
+                End = new EventDateTime { DateTimeDateTimeOffset = AsUtc(slot.EndTime) },
+                ExtendedProperties = new Event.ExtendedPropertiesData
+                {
+                    Private__ = new Dictionary<string, string> { ["metanoiaSlotId"] = slot.Id.ToString() }
+                }
+            };
+        }
+
+        private static DateTimeOffset AsUtc(DateTime value)
+        {
+            return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc));
         }
     }
 }

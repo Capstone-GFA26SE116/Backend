@@ -32,14 +32,20 @@ namespace METANOIA.Infrastructure.Services
         private readonly IGoogleCalendarConnectionService _googleConnection;
         private readonly IRefreshTokenRepository _refreshTokens;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IScheduleSlotRepository _slots;
+        private readonly IScheduleJobService _jobs;
 
         public MeService(
             IUserSetupRepository setup,
             IUnitOfWork unitOfWork,
             IGoogleCalendarConnectionService googleConnection,
             IRefreshTokenRepository refreshTokens,
-            IServiceScopeFactory scopeFactory)
+            IServiceScopeFactory scopeFactory,
+            IScheduleSlotRepository slots,
+            IScheduleJobService jobs)
         {
+            _slots = slots;
+            _jobs = jobs;
             _scopeFactory = scopeFactory;
             _refreshTokens = refreshTokens;
             _setup = setup;
@@ -93,6 +99,8 @@ namespace METANOIA.Infrastructure.Services
             ValidateMinutes(request.ReminderLeadMinutes, "Thời gian nhắc trước");
             var timeZone = ValidateTimeZone(request.TimeZone);
 
+            var leadChanged = user.ReminderLeadMinutes != request.ReminderLeadMinutes;
+
             user.WorkDayStart = request.WorkDayStart;
             user.WorkDayEnd = request.WorkDayEnd;
             user.WorksOnWeekend = request.WorksOnWeekend;
@@ -101,6 +109,17 @@ namespace METANOIA.Infrastructure.Services
             user.TimeZone = timeZone;
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Giờ nhắc trước đã được hẹn bằng số phút cũ: hẹn lại cho các slot đã duyệt và chưa tới giờ
+            if (leadChanged)
+            {
+                var upcoming = await _slots.GetUpcomingApprovedByUserAsync(userId, DateTime.UtcNow, cancellationToken);
+                foreach (var slot in upcoming)
+                {
+                    _jobs.ScheduleAllJobsForSlot(slot);
+                }
+            }
+
             return await ToDtoAsync(user, cancellationToken);
         }
 
@@ -282,7 +301,9 @@ namespace METANOIA.Infrastructure.Services
                         SubscriptionId = subscription.Id,
                         PlanId = subscription.PlanId,
                         PlanName = subscription.Plan.Name,
-                        EndAt = UtcTime.ToApi(subscription.EndAt)
+                        StartAt = UtcTime.ToApi(subscription.StartAt),
+                        EndAt = UtcTime.ToApi(subscription.EndAt),
+                        RemainingDays = UtcTime.RemainingDays(subscription.EndAt, DateTime.UtcNow)
                     }
             };
         }
