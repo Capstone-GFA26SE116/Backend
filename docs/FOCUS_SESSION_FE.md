@@ -364,7 +364,7 @@ await connection.start();
 
 | `actionType` | Khi nào | FE làm gì |
 |---|---|---|
-| `PRE_START_REMINDER` | 15 phút trước giờ | Toast "Sắp đến giờ" |
+| `PRE_START_REMINDER` | Trước giờ bắt đầu đúng **số phút nhắc trước** của người dùng (`reminderLeadMinutes` trong `PUT /api/me/settings`, mặc định 15; đặt `0` thì không nhắc trước) | Toast "Sắp đến giờ" (nội dung nêu số phút còn lại thật) |
 | `START_PROMPT` | Tới giờ, slot thành `Due` | Toast kèm nút **Start** |
 | `NOT_STARTED` | 20 phút sau giờ mà chưa Start | Nhắc lại |
 | `NEAR_END` | Còn 10 phút hết giờ dự kiến | Toast "Sắp hết giờ" |

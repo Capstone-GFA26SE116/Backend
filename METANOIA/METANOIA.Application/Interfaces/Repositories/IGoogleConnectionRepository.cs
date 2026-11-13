@@ -10,6 +10,9 @@ namespace METANOIA.Application.Interfaces.Repositories
         // Kèm các event đã cache, để xóa connection thì event đi theo
         Task<GoogleConnection?> GetWithEventsByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+        // Múi giờ (IANA) trong cài đặt của người dùng, để đổi ngày được chọn thành khoảng giờ UTC
+        Task<string?> GetUserTimeZoneAsync(Guid userId, CancellationToken cancellationToken = default);
+
         Task<GoogleConnection?> GetByWatchChannelIdAsync(string channelId, CancellationToken cancellationToken = default);
 
         Task AddAsync(GoogleConnection connection, CancellationToken cancellationToken = default);

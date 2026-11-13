@@ -36,6 +36,11 @@ namespace METANOIA.Test.Infrastructure
         // Mặc định thay IScheduleJobService bằng bản giả. Đặt true để giữ nguyên cách Program.cs đăng ký (Hangfire tắt thì phải dùng NullScheduleJobService)
         public bool KeepProgramJobService { get; set; }
 
+        // Google Calendar API giả (danh sách, thêm, sửa, xóa sự kiện). Mặc định tắt: các test cũ không gọi Google
+        public bool FakeCalendarApi { get; set; }
+
+        public FakeCalendarApiHandler CalendarApi { get; } = new();
+
         // Máy chủ token Google giả và bộ ghi log, dùng cho test lỗi đồng bộ Google Calendar
         public FakeGoogleHttpHandler GoogleHttp { get; } = new();
 
@@ -106,6 +111,17 @@ namespace METANOIA.Test.Infrastructure
                 services.RemoveAll<IGoogleCalendarSyncService>();
                 services.AddScoped<IGoogleCalendarSyncService>(sp => new RecordingGoogleSyncService(
                     GoogleSync, ActivatorUtilities.CreateInstance<GoogleCalendarSyncService>(sp)));
+
+                if (FakeCalendarApi)
+                {
+                    services.RemoveAll<GoogleCalendarClientProvider>();
+                    services.AddScoped<GoogleCalendarClientProvider>(sp => new FakeGoogleCalendarClientProvider(
+                        sp.GetRequiredService<IGoogleConnectionRepository>(),
+                        sp.GetRequiredService<IUnitOfWork>(),
+                        sp.GetRequiredService<GoogleOAuthClient>(),
+                        sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
+                        CalendarApi));
+                }
 
                 if (ForbidRefundRepository)
                 {

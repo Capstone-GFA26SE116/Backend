@@ -27,6 +27,9 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         Task<ProjectDocument?> GetByIdForUserAsync(Guid documentId, Guid userId, CancellationToken cancellationToken = default);
 
+        // Tổng dung lượng (byte) các tài liệu loại File của mọi dự án của người dùng; link không tính
+        Task<long> SumFileBytesByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+
         Task AddAsync(ProjectDocument document, CancellationToken cancellationToken = default);
 
         void Remove(ProjectDocument document);

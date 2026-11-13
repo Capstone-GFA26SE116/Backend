@@ -21,15 +21,18 @@ namespace METANOIA.Infrastructure.Services
         private readonly IProjectDocumentRepository _documentRepository;
         private readonly IFileStorage _fileStorage;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPlanLimitService _planLimits;
 
         public ProjectDocumentService(
             IProjectDocumentRepository documentRepository,
             IFileStorage fileStorage,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IPlanLimitService planLimits)
         {
             _documentRepository = documentRepository;
             _fileStorage = fileStorage;
             _unitOfWork = unitOfWork;
+            _planLimits = planLimits;
         }
 
         public async Task<IReadOnlyList<ProjectDocumentDto>> GetDocumentsAsync(Guid userId, Guid projectId, string? search, string? tag, CancellationToken cancellationToken = default)
@@ -95,6 +98,9 @@ namespace METANOIA.Infrastructure.Services
             {
                 throw new UserFriendlyException("File phải có dung lượng từ 1 byte đến 20 MB.");
             }
+
+            // Kiểm tra hạn mức dung lượng của gói TRƯỚC khi ghi file xuống kho, để bị chặn thì không để lại file rác
+            await _planLimits.EnsureCanAddFileAsync(userId, sizeBytes, cancellationToken);
 
             var document = new ProjectDocument
             {

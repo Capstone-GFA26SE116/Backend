@@ -19,14 +19,16 @@ public sealed class SlotBackgroundJobs(
     ITaskProgressService progress,
     ILogger<SlotBackgroundJobs> logger)
 {
-    // Còn 15 phút nữa đến giờ: chỉ nhắc khi slot đã được duyệt và chưa tới giờ
+    // Trước giờ bắt đầu theo số phút nhắc trước của người dùng (mặc định 15): chỉ nhắc khi slot đã được duyệt và chưa tới giờ
     public async Task PreStartReminder(Guid slotId)
     {
         var slot = await GetSlotAsync(slotId);
         if (slot is null || !Is(slot, ScheduleSlotStatus.Approved)) return;
 
+        var start = DateTime.SpecifyKind(slot.StartTime, DateTimeKind.Utc);
+        var minutes = Math.Max(1, (int)Math.Round((start - timeProvider.GetUtcNow().UtcDateTime).TotalMinutes));
         await Notify(slot, "Sắp đến giờ làm việc",
-            $"Công việc \"{slot.Task.Title}\" sẽ bắt đầu trong 15 phút nữa.", "PRE_START_REMINDER");
+            $"Công việc \"{slot.Task.Title}\" sẽ bắt đầu trong {minutes} phút nữa.", "PRE_START_REMINDER");
     }
 
     // Đến giờ: KHÔNG tự bấm giờ giúp người dùng, chỉ đổi trạng thái và hiện nút Start

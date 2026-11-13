@@ -115,8 +115,17 @@ Gửi `multipart/form-data`:
 
 | HTTP | Khi nào |
 |---|---|
-| 400 | File rỗng (0 byte) hoặc **lớn hơn 20 MB**; `Name` quá 255 ký tự; `Tag` sai |
+| 400 | File rỗng (0 byte) hoặc **lớn hơn 20 MB**; `Name` quá 255 ký tự; `Tag` sai; **vượt dung lượng của gói** (xem bên dưới) |
 | 413 | Request vượt khoảng 21 MB (bị chặn trước khi vào xử lý) |
+
+**Hạn mức dung lượng theo gói:** tổng dung lượng các **file** của người dùng (mọi dự án, link không tính) không được vượt `StorageLimitMb` của gói. Tải thêm file làm vượt thì `400` với `message` nêu đã dùng bao nhiêu MB và gợi ý xóa bớt file hoặc nâng cấp gói (file không được ghi). Xóa tài liệu thì có lại chỗ. Muốn hiện "40/100 MB" và tắt nút trước khi người dùng bấm, gọi `GET /api/me/usage`:
+
+```json
+{ "planName": "Pro", "projectsUsed": 2, "projectLimit": 5, "storageUsedBytes": 41943040, "storageLimitMb": 512,
+  "subscriptionStartAt": "2026-10-20T08:00:00+00:00", "subscriptionEndAt": "2026-11-19T08:00:00+00:00", "remainingDays": 6 }
+```
+`subscriptionStartAt` là ngày gói bắt đầu có hiệu lực, `subscriptionEndAt` là ngày hết hạn, `remainingDays` là số ngày còn lại (làm tiếp lên, không âm). Gói Miễn phí không hết hạn nên `subscriptionEndAt` và `remainingDays` là `null`. `GET /api/me` có cùng thông tin trong `currentSubscription` (`startAt`, `endAt`, `remainingDays`).
+`projectLimit` là `null` khi gói không giới hạn số dự án. `projectsUsed` không tính dự án lưu trữ và dự án "Cá nhân" mặc định. Cùng hạn mức này, `POST /api/projects` và `POST /api/projects/{id}/restore` trả `400` khi đã đủ số dự án của gói.
 | 404 | Dự án không phải của bạn |
 
 Nên **kiểm tra ngay ở FE**: `file.size > 20 * 1024 * 1024` thì báo lỗi, khỏi gửi lên.

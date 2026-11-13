@@ -31,7 +31,8 @@ namespace METANOIA.Infrastructure.Services
             _tokenProtector = dataProtectionProvider.CreateProtector("GoogleCalendar.Tokens");
         }
 
-        public async Task<GoogleCalendarSession> OpenAsync(Guid userId, CancellationToken cancellationToken)
+        // virtual để test thay bằng bản dùng Google giả
+        public virtual async Task<GoogleCalendarSession> OpenAsync(Guid userId, CancellationToken cancellationToken)
         {
             var connection = await _connectionRepository.GetByUserIdAsync(userId, cancellationToken);
             if (connection is null || connection.Status != "Active")

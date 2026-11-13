@@ -54,6 +54,30 @@ namespace METANOIA.Infrastructure.Repositories
             return await _context.ScheduleSlots.FindAsync(slotId);
         }
 
+        public async Task<IReadOnlyList<ScheduleSlot>> GetForGooglePushAsync(
+            Guid userId, DateTime? fromUtc, DateTime? toUtc,
+            IReadOnlyCollection<string> liveStatuses, IReadOnlyCollection<string> removedStatuses,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.ScheduleSlots
+                .Include(s => s.Task).ThenInclude(t => t.Project)
+                .Include(s => s.SubTask)
+                .Where(s => s.Task.Project.UserId == userId
+                    && (liveStatuses.Contains(s.Status) || (s.GoogleEventId != null && removedStatuses.Contains(s.Status))));
+
+            if (fromUtc is { } from) query = query.Where(s => s.StartTime >= from);
+            if (toUtc is { } to) query = query.Where(s => s.StartTime < to);
+
+            return await query.OrderBy(s => s.StartTime).ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetUpcomingApprovedByUserAsync(Guid userId, DateTime nowUtc, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .Where(s => s.Task.Project.UserId == userId && s.Status == "Approved" && s.StartTime > nowUtc)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<ScheduleSlot?> GetSlotWithSessionsAsync(Guid slotId, Guid userId)
         {
             return await _context.ScheduleSlots

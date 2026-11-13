@@ -27,6 +27,13 @@ namespace METANOIA.Controllers
             return Ok(await _meService.GetMeAsync(CurrentUserId, cancellationToken));
         }
 
+        // Mức đã dùng so với hạn mức của gói: số dự án đang hoạt động và dung lượng file
+        [HttpGet("usage")]
+        public async Task<ActionResult<PlanUsageDto>> GetUsage([FromServices] IPlanLimitService planLimits, CancellationToken cancellationToken)
+        {
+            return Ok(await planLimits.GetUsageAsync(CurrentUserId, cancellationToken));
+        }
+
         // Xóa mềm tài khoản (DeletedAt) và hủy liên kết Google Calendar. Token hiện tại bị từ chối ngay sau đó
         [HttpDelete]
         public async Task<IActionResult> DeleteMe(CancellationToken cancellationToken)

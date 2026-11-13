@@ -25,6 +25,11 @@ namespace METANOIA.Test.Infrastructure
             _inner = inner;
         }
 
+        public Task<GoogleCalendarSyncResultDto> SyncAsync(Guid userId, GoogleCalendarSyncRequest request, CancellationToken cancellationToken = default)
+        {
+            return _recorder.PassThrough ? _inner.SyncAsync(userId, request, cancellationToken) : SyncAsync(userId, cancellationToken);
+        }
+
         public Task<GoogleCalendarSyncResultDto> SyncAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             if (_recorder.PassThrough)

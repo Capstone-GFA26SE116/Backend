@@ -2,6 +2,7 @@ using System.Security.Claims;
 using METANOIA.Application.Dto;
 using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Services;
+using METANOIA.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,7 @@ namespace METANOIA.Controllers
         private readonly IGoogleCalendarConnectionService _connectionService;
         private readonly IGoogleCalendarEventService _eventService;
         private readonly IGoogleCalendarSyncService _syncService;
+        private readonly GoogleSyncGate _syncGate;
         private readonly IConfiguration _configuration;
         private readonly ILogger<GoogleCalendarController> _logger;
 
@@ -21,12 +23,14 @@ namespace METANOIA.Controllers
             IGoogleCalendarConnectionService connectionService,
             IGoogleCalendarEventService eventService,
             IGoogleCalendarSyncService syncService,
+            GoogleSyncGate syncGate,
             IConfiguration configuration,
             ILogger<GoogleCalendarController> logger)
         {
             _connectionService = connectionService;
             _eventService = eventService;
             _syncService = syncService;
+            _syncGate = syncGate;
             _configuration = configuration;
             _logger = logger;
         }
@@ -107,11 +111,22 @@ namespace METANOIA.Controllers
             return result == GoogleWebhookResult.Unauthorized ? StatusCode(StatusCodes.Status403Forbidden) : Ok();
         }
 
+        // Đồng bộ theo hướng và khoảng ngày người dùng chọn (xem GoogleCalendarSyncRequest). Không truyền gì thì hành vi như cũ:
+        // kéo từ Google về, theo syncToken. from, to là NGÀY (yyyy-MM-dd) theo múi giờ của người dùng, gồm trọn ngày đó:
+        // chỉ from thì từ ngày đó đến hết mọi lịch về sau; chỉ to thì từ đầu đến hết ngày đó.
+        // direction: FromGoogle (mặc định) | ToGoogle | Both
         [Authorize]
         [HttpPost("sync")]
-        public async Task<ActionResult<GoogleCalendarSyncResultDto>> Sync(CancellationToken cancellationToken)
+        public async Task<ActionResult<GoogleCalendarSyncResultDto>> Sync(
+            [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to,
+            CancellationToken cancellationToken,
+            [FromQuery] GoogleSyncDirection direction = GoogleSyncDirection.FromGoogle)
         {
-            return Ok(await _syncService.SyncAsync(CurrentUserId, cancellationToken));
+            var request = new GoogleCalendarSyncRequest { From = from, To = to, Direction = direction };
+
+            // Xếp hàng cùng các lần đồng bộ khác của người dùng này (webhook, bấm liên tiếp)
+            return Ok(await _syncGate.RunAsync(CurrentUserId, () => _syncService.SyncAsync(CurrentUserId, request, cancellationToken)));
         }
 
         [Authorize]

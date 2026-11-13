@@ -1,3 +1,4 @@
+using METANOIA.Application.Dto;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Domain.Entities;
 using METANOIA.Infrastructure.Data;
@@ -70,6 +71,14 @@ namespace METANOIA.Infrastructure.Repositories
         {
             return _context.UserSubscriptions.FirstOrDefaultAsync(
                 s => s.UserId == userId && s.Status == ActiveStatus, cancellationToken);
+        }
+
+        public Task<PlanLimits?> GetActivePlanLimitsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.UserSubscriptions
+                .Where(s => s.UserId == userId && s.Status == ActiveStatus)
+                .Select(s => new PlanLimits(s.Plan.Name, s.Plan.ProjectLimit, s.Plan.StorageLimitMb, s.StartAt, s.EndAt))
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         public Task<UserSubscription?> GetByPaymentIdAsync(Guid paymentId, CancellationToken cancellationToken = default)

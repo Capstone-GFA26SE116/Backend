@@ -15,6 +15,9 @@ public sealed class ScheduleJobService(
 {
     private static readonly string[] OverrunJobTypes = ["NearEndReminder", "OverrunReminder", "AutoTimeout"];
 
+    // Dùng khi không đọc được cài đặt của người dùng
+    private const int DefaultReminderLeadMinutes = 15;
+
     private sealed record PlannedJob(string JobType, DateTimeOffset RunAt, Expression<Action<SlotBackgroundJobs>> Call);
 
     public void ScheduleAllJobsForSlot(ScheduleSlot slot)
@@ -27,9 +30,9 @@ public sealed class ScheduleJobService(
         Run(slotId, "hẹn toàn bộ job", () =>
         {
             RemoveJobs(slotId, null);
-            Schedule(slotId,
-            [
-                new("PreStartReminder", start.AddMinutes(-15), x => x.PreStartReminder(slotId)),
+
+            var jobs = new List<PlannedJob>
+            {
                 new("SlotDue", start, x => x.SlotDue(slotId)),
                 new("NotStartedNudge", start.AddMinutes(20), x => x.NotStartedNudge(slotId)),
                 new("NearEndReminder", end.AddMinutes(-10), x => x.NearEndReminder(slotId)),
@@ -38,7 +41,16 @@ public sealed class ScheduleJobService(
                 new("CheckInRetry", end.AddMinutes(30), x => x.CheckInRetry(slotId)),
                 new("AutoTimeout", start.AddMinutes(planned * 2), x => x.AutoTimeout(slotId)),
                 new("MarkUnknown", end.AddHours(24), x => x.MarkUnknown(slotId))
-            ]);
+            };
+
+            // Số phút nhắc trước do người dùng đặt (PUT /api/me/settings). 0 nghĩa là không nhắc trước
+            var lead = ReminderLeadMinutes(slotId);
+            if (lead > 0)
+            {
+                jobs.Add(new("PreStartReminder", start.AddMinutes(-lead), x => x.PreStartReminder(slotId)));
+            }
+
+            Schedule(slotId, jobs);
         });
     }
 
@@ -77,6 +89,14 @@ public sealed class ScheduleJobService(
     public void CancelAllJobs(Guid slotId)
     {
         Run(slotId, "hủy mọi job", () => RemoveJobs(slotId, null));
+    }
+
+    private int ReminderLeadMinutes(Guid slotId)
+    {
+        return dbContext.ScheduleSlots
+            .Where(s => s.Id == slotId)
+            .Select(s => (int?)s.Task.Project.User.ReminderLeadMinutes)
+            .FirstOrDefault() ?? DefaultReminderLeadMinutes;
     }
 
     // Xóa job trên Hangfire và dòng theo dõi tương ứng. types = null nghĩa là mọi loại

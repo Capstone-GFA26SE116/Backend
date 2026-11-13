@@ -81,6 +81,12 @@ namespace METANOIA.Infrastructure.Repositories
             return _context.Clients.AnyAsync(c => c.Id == clientId && c.UserId == userId, cancellationToken);
         }
 
+        public Task<int> CountCountableAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return _context.Projects.CountAsync(
+                p => p.UserId == userId && !p.IsDefault && p.Status != ArchivedStatus, cancellationToken);
+        }
+
         public async Task AddAsync(Project project, CancellationToken cancellationToken = default)
         {
             await _context.Projects.AddAsync(project, cancellationToken);

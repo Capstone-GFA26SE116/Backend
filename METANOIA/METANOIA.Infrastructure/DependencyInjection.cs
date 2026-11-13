@@ -97,6 +97,7 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IScheduleJobService, ScheduleJobService>();
             services.AddScoped<ITaskProgressService, TaskProgressService>();
             services.AddScoped<IStatusResyncService, StatusResyncService>();
+            services.AddScoped<IPlanLimitService, PlanLimitService>();
             services.AddScoped<SlotBackgroundJobs>();
             services.AddHttpClient();
 

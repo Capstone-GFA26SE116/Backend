@@ -15,6 +15,13 @@ namespace METANOIA.Infrastructure.Repositories
             _context = context;
         }
 
+        public async Task<long> SumFileBytesByUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ProjectDocuments
+                .Where(d => d.Project.UserId == userId && d.SourceType == "File")
+                .SumAsync(d => d.SizeBytes ?? 0L, cancellationToken);
+        }
+
         public Task<bool> ProjectOwnedByUserAsync(Guid projectId, Guid userId, CancellationToken cancellationToken = default)
         {
             return _context.Projects.AnyAsync(p => p.Id == projectId && p.UserId == userId, cancellationToken);
