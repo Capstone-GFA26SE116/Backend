@@ -472,7 +472,11 @@ POST /api/schedule/propose { taskIds, language }
    → dịch vụ AI tính và trả bản đề xuất (suy ra từ code: ScheduleProposal Pending + các ScheduleSlot Proposed do dịch vụ AI ghi vào database dùng chung,
      vì backend chỉ đọc chúng ở bước pending/approve)
 GET  /api/schedule/proposals/pending       → đề xuất Pending gần nhất của user (204 nếu không có)
-POST /api/schedule/proposals/{id}/approve  → proposal và các slot Proposed → Approved (+ ghi ScheduleChangeLog hợp lệ)
+POST /api/schedule/proposals/{id}/approve  → đồng bộ Google rồi kiểm trùng; proposal và các slot Proposed → Approved (+ ghi ScheduleChangeLog hợp lệ)
+PUT  /api/schedule/proposals/{id}/slots/{slotId}         → sửa giờ một slot Proposed (FR-11)
+POST /api/schedule/proposals/{id}/slots/{slotId}/reject  → từ chối một slot (Proposed → Cancelled)
+GET  /api/schedule/proposals/{id}/conflicts              → xem trước slot trùng Google (dữ liệu đã lưu)
+Chi tiết cho FE: [SCHEDULE_REVIEW_FE.md](SCHEDULE_REVIEW_FE.md).
 ```
 Lỗi từ AI service được đổi thành thông báo tiếng Việt (429: hết hạn mức gọi AI trong ngày; 409: chưa có gói đang hoạt động; còn lại: AI gặp sự cố).
 
@@ -703,7 +707,10 @@ Các API danh sách đều nhận bộ lọc tùy chọn: `search` (tên chứa 
 | Method | Đường dẫn | Quyền |
 |---|---|---|
 | GET | `/api/schedule/proposals/pending` | Đăng nhập |
-| POST | `/api/schedule/proposals/{proposalId}/approve` | Đăng nhập |
+| POST | `/api/schedule/proposals/{proposalId}/approve?skipConflicts=` | Đăng nhập |
+| PUT | `/api/schedule/proposals/{proposalId}/slots/{slotId}` | Đăng nhập |
+| POST | `/api/schedule/proposals/{proposalId}/slots/{slotId}/reject` | Đăng nhập |
+| GET | `/api/schedule/proposals/{proposalId}/conflicts` | Đăng nhập |
 | POST | `/api/schedule/propose` | Đăng nhập |
 
 #### Slot lịch và lịch sử đổi giờ (`ScheduleSlotsController`)
@@ -2263,13 +2270,18 @@ stateDiagram-v2
 | BR-89 | Chỉ **duyệt** được đề xuất ở trạng thái `Pending` và **của chính người dùng** | `404` / `400` |
 | BR-90 | Duyệt đề xuất: đề xuất thành `Approved`, mọi slot `Proposed` của nó thành `Approved`, mỗi slot ghi log `Created` với nguồn `AI`, tất cả trong một lần lưu | không áp dụng |
 | BR-91 | Một người dùng xem được đề xuất `Pending` **mới nhất** của mình, kèm các slot `Proposed`. Không có thì trả `204` | `204` |
+| BR-91b | **Sửa một slot đề xuất:** chỉ khi đề xuất của chính người dùng còn `Pending` và slot còn `Proposed`. Giờ kết thúc sau giờ bắt đầu, giờ bắt đầu ở tương lai. Tính lại `ProposedMinutes`, đặt `IsManualOverride`, lưu `OriginalStartTime` lần dời giờ đầu, ghi log `Moved`/`Resized` nguồn `Manual`. Không hẹn job, không đổi task. Phản hồi kèm `googleConflicts` (theo dữ liệu đã lưu) | `400` / `404` |
+| BR-91c | **Từ chối một slot đề xuất:** `Proposed → Cancelled` (qua bảng luật slot), log `Deleted` nguồn `Manual`. Slot biến khỏi `GET /proposals/pending` và không được ghi khi duyệt. Duyệt khi không còn slot `Proposed` thì lỗi; đề xuất không còn `Pending` (ví dụ `Superseded`) thì mọi thao tác sửa, từ chối, duyệt đều bị từ chối | `400` / `404` |
+| BR-91d | **Kiểm Google Calendar khi duyệt:** đồng bộ gia tăng với Google ngay (lỗi đồng bộ thì dùng dữ liệu đã lưu, `googleCheck = Stale`; chưa kết nối thì `NotConnected`, không kiểm). Slot **giao nhau** với sự kiện Google (không tính chạm đầu mút, sự kiện cả ngày, sự kiện đã hủy, sự kiện do METANOIA tự đẩy lên) là xung đột: mặc định trả `409` `SCHEDULE_CONFLICT` kèm danh sách và **không đổi gì**; `skipConflicts=true` thì slot trùng thành `Cancelled` (log `Deleted`, nguồn `GoogleSync`) và duyệt phần còn lại. Mọi slot đều trùng thì `400` | `409` / `400` |
 
 ```mermaid
 stateDiagram-v2
     direction LR
     [*] --> Pending : AI tạo đề xuất
     Pending --> Approved : người dùng duyệt
+    Pending --> Superseded : người dùng xếp lịch lại (AI ghi)
     Approved --> [*]
+    Superseded --> [*]
 ```
 
 ### 18.8 Google Calendar

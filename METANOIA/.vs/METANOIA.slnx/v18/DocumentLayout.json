@@ -492,32 +492,6 @@
           "SelectedChildIndex": 205,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 77,
-              "Title": "ProjectRepository.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
-              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
-              "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAA+AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T17:01:22.923Z",
-              "IsPinned": true
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 51,
-              "Title": "ProjectService.cs",
-              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ProjectService.cs",
-              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\ProjectService.cs",
-              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ProjectService.cs",
-              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\ProjectService.cs",
-              "ViewState": "AgIAAA4AAAAAAAAAAAAgwB8AAABXAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T02:42:11.314Z",
-              "IsPinned": true
-            },
-            {
               "$type": "Bookmark",
               "Name": "ST:138:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
@@ -1328,6 +1302,32 @@
             {
               "$type": "Bookmark",
               "Name": "ST:40:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 77,
+              "Title": "ProjectRepository.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Repositories\\ProjectRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAA+AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-05T17:01:22.923Z",
+              "IsPinned": true
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 51,
+              "Title": "ProjectService.cs",
+              "DocumentMoniker": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ProjectService.cs",
+              "RelativeDocumentMoniker": "METANOIA.Infrastructure\\Services\\ProjectService.cs",
+              "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA.Infrastructure\\Services\\ProjectService.cs",
+              "RelativeToolTip": "METANOIA.Infrastructure\\Services\\ProjectService.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAgwB8AAABXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-14T02:42:11.314Z",
+              "IsPinned": true
             },
             {
               "$type": "Document",
