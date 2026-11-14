@@ -95,7 +95,7 @@ namespace METANOIA.Infrastructure.Services
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                throw new UserFriendlyException("Bạn đã dùng hết hạn mức gọi AI trong ngày (tối đa 50 lượt/ngày). Vui lòng thử lại vào ngày mai hoặc nâng cấp gói cước.");
+                throw new UserFriendlyException("Bạn đã dùng hết lượt AI của gói hiện tại. Lượt sẽ được làm mới khi sang kỳ mới, hoặc bạn có thể nâng cấp gói để dùng tiếp.");
             }
 
             if (response.StatusCode == HttpStatusCode.Conflict)
