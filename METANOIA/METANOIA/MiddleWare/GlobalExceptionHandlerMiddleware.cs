@@ -45,6 +45,16 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "Resource not found");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
             }
+            catch (ScheduleConflictException ex)
+            {
+                _logger.LogWarning(ex, "Schedule proposal conflicts with Google Calendar");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "SCHEDULE_CONFLICT",
+                    details = ex.Details
+                });
+            }
             catch (MilestoneOpenTasksException ex)
             {
                 _logger.LogWarning(ex, "Milestone still has open tasks");

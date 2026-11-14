@@ -27,5 +27,12 @@ namespace METANOIA.Application.Dto
         public DateTime CreatedAt { get; set; }
 
         public List<ScheduleSlotDto> Slots { get; set; } = new();
+
+        // Chỉ có khi duyệt (POST .../approve). Checked: đã đồng bộ Google rồi kiểm. Stale: đồng bộ lỗi nên kiểm theo dữ liệu đã lưu.
+        // NotConnected: chưa kết nối Google nên không kiểm
+        public string? GoogleCheck { get; set; }
+
+        // Các slot bị bỏ (không ghi) vì trùng Google khi duyệt với skipConflicts = true
+        public List<SlotConflictDto>? SkippedConflicts { get; set; }
     }
 }

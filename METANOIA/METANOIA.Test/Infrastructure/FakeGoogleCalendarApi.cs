@@ -43,6 +43,9 @@ namespace METANOIA.Test.Infrastructure
         // Trả lỗi này cho mọi lời gọi thêm (POST) khi khác null
         public HttpStatusCode? FailInsertWith { get; set; }
 
+        // Trả lỗi này cho lời gọi danh sách (GET) khi khác null, để thử đồng bộ lỗi
+        public HttpStatusCode? FailListWith { get; set; }
+
         public IReadOnlyList<CalendarApiCall> Calls { get { lock (_gate) { return _calls.ToList(); } } }
 
         public IEnumerable<CalendarApiCall> Of(string method) => Calls.Where(c => c.Method == method);
@@ -68,6 +71,7 @@ namespace METANOIA.Test.Infrastructure
             {
                 if (call.Method == "GET" && call.Path == eventsPath)
                 {
+                    if (FailListWith is { } listFailure) return Json(listFailure, new JsonObject { ["error"] = new JsonObject { ["code"] = (int)listFailure, ["message"] = "fake" } });
                     var items = new JsonArray();
                     foreach (var e in ListResponse ?? Events.Values.ToList()) items.Add(JsonNode.Parse(e.ToJsonString()));
                     var page = new JsonObject { ["items"] = items };

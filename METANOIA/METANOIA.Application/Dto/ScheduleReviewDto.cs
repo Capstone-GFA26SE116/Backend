@@ -1,0 +1,32 @@
+namespace METANOIA.Application.Dto
+{
+    public record GoogleEventBriefDto(string Title, DateTimeOffset Start, DateTimeOffset End);
+
+    // Một slot đề xuất trùng với sự kiện trên Google Calendar của người dùng
+    public record SlotConflictDto(
+        Guid SlotId, Guid TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, GoogleEventBriefDto Event);
+
+    // Sửa giờ của một slot đề xuất (PUT /api/schedule/proposals/{proposalId}/slots/{slotId})
+    public class ProposedSlotUpdateRequest
+    {
+        public DateTimeOffset StartTime { get; set; }
+
+        public DateTimeOffset EndTime { get; set; }
+    }
+
+    public class ProposedSlotUpdateResultDto
+    {
+        public ScheduleSlotDto Slot { get; set; } = null!;
+
+        // Gợi ý theo dữ liệu Google đã lưu (không gọi Google): sự kiện nào đang trùng giờ mới. Rỗng nếu không trùng hoặc chưa kết nối
+        public List<SlotConflictDto> GoogleConflicts { get; set; } = new();
+    }
+
+    public class ProposalConflictsDto
+    {
+        // NotConnected: chưa kết nối Google nên không kiểm. Cached: kiểm theo dữ liệu đã lưu (chưa đồng bộ lại lúc này)
+        public string GoogleCheck { get; set; } = "NotConnected";
+
+        public List<SlotConflictDto> Conflicts { get; set; } = new();
+    }
+}
