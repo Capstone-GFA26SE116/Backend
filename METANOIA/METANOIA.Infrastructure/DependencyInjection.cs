@@ -98,6 +98,8 @@ namespace METANOIA.Infrastructure
             services.AddScoped<ITaskProgressService, TaskProgressService>();
             services.AddScoped<IStatusResyncService, StatusResyncService>();
             services.AddScoped<IPlanLimitService, PlanLimitService>();
+            services.AddScoped<IRevenueRepository, RevenueRepository>();
+            services.AddScoped<IRevenueReportService, RevenueReportService>();
             services.AddScoped<SlotBackgroundJobs>();
             services.AddHttpClient();
 

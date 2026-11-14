@@ -37,6 +37,48 @@ namespace METANOIA.Infrastructure.Services
             return payments.Select(ToDto).ToList();
         }
 
+        private static readonly HashSet<string> FilterStatuses = new() { "Pending", "Succeeded", "Failed", "Cancelled", "Expired" };
+
+        public async Task<(IReadOnlyList<PaymentTransactionDto> Items, int TotalCount)> SearchPaymentsAsync(
+            Guid userId, bool isAdmin, PaymentTransactionFilter filter, CancellationToken cancellationToken = default)
+        {
+            if (filter.Status is not null && !FilterStatuses.Contains(filter.Status))
+            {
+                throw new UserFriendlyException("Trạng thái không hợp lệ. Chọn một trong: Pending, Succeeded, Failed, Cancelled, Expired.");
+            }
+
+            if (filter.From is { } from && filter.To is { } to && to <= from)
+            {
+                throw new UserFriendlyException("Khoảng thời gian không hợp lệ: 'to' phải lớn hơn 'from'.");
+            }
+
+            var (skip, take) = PagingArgs(filter.Page, filter.PageSize);
+            // Người dùng thường luôn chỉ thấy giao dịch của mình, bỏ qua userId trong bộ lọc
+            var scope = isAdmin ? filter.UserId : userId;
+            var (items, total) = await _paymentRepository.SearchAsync(
+                scope, filter.Status, filter.PlanId, filter.From?.UtcDateTime, filter.To?.UtcDateTime, skip, take, cancellationToken);
+
+            return (items.Select(ToDto).ToList(), total);
+        }
+
+        // Page hoặc PageSize có truyền thì phân trang (page từ 1, pageSize 1 đến 100, mặc định 20); không thì không phân trang
+        internal static (int? Skip, int? Take) PagingArgs(int? page, int? pageSize)
+        {
+            if (page is null && pageSize is null)
+            {
+                return (null, null);
+            }
+
+            var p = page ?? 1;
+            var size = pageSize ?? 20;
+            if (p < 1 || size < 1 || size > 100)
+            {
+                throw new UserFriendlyException("page phải từ 1 và pageSize từ 1 đến 100.");
+            }
+
+            return ((p - 1) * size, size);
+        }
+
         public async Task<PaymentTransactionDto> GetPaymentAsync(Guid userId, bool isAdmin, Guid paymentId, CancellationToken cancellationToken = default)
         {
             var payment = await GetExistingAsync(paymentId, cancellationToken);

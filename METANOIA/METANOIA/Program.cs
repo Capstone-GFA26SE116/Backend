@@ -41,6 +41,9 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Dán accessToken nhận từ POST /api/auth/google (không cần gõ chữ Bearer)."
     });
 
+    // Hiện ô nhập header X-Admin-Reason trên các API ghi của Admin
+    options.OperationFilter<METANOIA.Auditing.AdminReasonHeaderOperationFilter>();
+
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {

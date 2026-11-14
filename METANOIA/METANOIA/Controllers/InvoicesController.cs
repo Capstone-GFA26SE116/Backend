@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,15 @@ namespace METANOIA.Controllers
 
         private bool IsAdmin => User.IsInRole(AdminRole);
 
+        // Không truyền tham số thì trả mọi hóa đơn như cũ. Lọc: userId (chỉ Admin), from, to (theo ngày phát hành), search.
+        // Truyền page hoặc pageSize thì phân trang; tổng số dòng khớp nằm ở header X-Total-Count
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<InvoiceDto>>> GetInvoices(CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<InvoiceDto>>> GetInvoices(
+            [FromQuery] InvoiceFilter filter, CancellationToken cancellationToken)
         {
-            return Ok(await _invoiceService.GetInvoicesAsync(CurrentUserId, IsAdmin, cancellationToken));
+            var (items, total) = await _invoiceService.SearchInvoicesAsync(CurrentUserId, IsAdmin, filter, cancellationToken);
+            Response.Headers["X-Total-Count"] = total.ToString();
+            return Ok(items);
         }
 
         [HttpGet("{invoiceId:guid}")]
@@ -37,6 +43,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost]
         public async Task<ActionResult<InvoiceDto>> CreateInvoice([FromBody] InvoiceRequestDto request, CancellationToken cancellationToken)
         {
@@ -46,6 +53,7 @@ namespace METANOIA.Controllers
 
         // Hóa đơn đã phát hành: chỉ sửa thông tin người mua
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPut("{invoiceId:guid}")]
         public async Task<ActionResult<InvoiceDto>> UpdateInvoice(
             Guid invoiceId,
@@ -56,6 +64,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpDelete("{invoiceId:guid}")]
         public async Task<IActionResult> DeleteInvoice(Guid invoiceId, CancellationToken cancellationToken)
         {

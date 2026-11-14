@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,15 @@ namespace METANOIA.Controllers
 
         private bool IsAdmin => User.IsInRole(AdminRole);
 
+        // Không truyền tham số thì trả mọi giao dịch như cũ. Lọc: status, userId (chỉ Admin), planId, from, to (theo ngày tạo).
+        // Truyền page hoặc pageSize thì phân trang; tổng số dòng khớp nằm ở header X-Total-Count
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<PaymentTransactionDto>>> GetPayments(CancellationToken cancellationToken)
+        public async Task<ActionResult<IReadOnlyList<PaymentTransactionDto>>> GetPayments(
+            [FromQuery] PaymentTransactionFilter filter, CancellationToken cancellationToken)
         {
-            return Ok(await _paymentService.GetPaymentsAsync(CurrentUserId, IsAdmin, cancellationToken));
+            var (items, total) = await _paymentService.SearchPaymentsAsync(CurrentUserId, IsAdmin, filter, cancellationToken);
+            Response.Headers["X-Total-Count"] = total.ToString();
+            return Ok(items);
         }
 
         [HttpGet("{paymentId:guid}")]
@@ -38,6 +44,7 @@ namespace METANOIA.Controllers
 
         // Giao dịch thường được tạo khi người dùng bấm thanh toán; hiện Admin quản lý thủ công
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost]
         public async Task<ActionResult<PaymentTransactionDto>> CreatePayment(
             [FromBody] PaymentTransactionRequestDto request,
@@ -48,6 +55,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPut("{paymentId:guid}")]
         public async Task<ActionResult<PaymentTransactionDto>> UpdatePayment(
             Guid paymentId,
@@ -58,6 +66,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpDelete("{paymentId:guid}")]
         public async Task<IActionResult> DeletePayment(Guid paymentId, CancellationToken cancellationToken)
         {

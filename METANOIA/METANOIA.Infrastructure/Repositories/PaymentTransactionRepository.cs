@@ -15,6 +15,24 @@ namespace METANOIA.Infrastructure.Repositories
             _context = context;
         }
 
+        public async Task<(IReadOnlyList<PaymentTransaction> Items, int TotalCount)> SearchAsync(
+            Guid? userId, string? status, Guid? planId, DateTime? from, DateTime? to, int? skip, int? take,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.PaymentTransactions.AsQueryable();
+            if (userId is { } id) query = query.Where(p => p.UserId == id);
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(p => p.Status == status);
+            if (planId is { } plan) query = query.Where(p => p.PlanId == plan);
+            if (from is { } start) query = query.Where(p => p.CreatedAt >= start);
+            if (to is { } end) query = query.Where(p => p.CreatedAt < end);
+
+            var total = await query.CountAsync(cancellationToken);
+            var ordered = query.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id);
+            var paged = skip is { } s && take is { } t ? ordered.Skip(s).Take(t) : ordered;
+
+            return (await paged.ToListAsync(cancellationToken), total);
+        }
+
         public async Task<IReadOnlyList<PaymentTransaction>> GetAsync(Guid? userId, CancellationToken cancellationToken = default)
         {
             var query = _context.PaymentTransactions.AsQueryable();

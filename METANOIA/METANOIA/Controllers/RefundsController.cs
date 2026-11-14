@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,6 +40,7 @@ namespace METANOIA.Controllers
 
         // Duyệt: thu hồi gói đăng ký gắn với giao dịch. Sau đó admin tự chuyển khoản hoàn tiền cho khách.
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost("{refundId:guid}/approve")]
         public async Task<ActionResult<RefundDto>> Approve(Guid refundId, [FromBody] RefundProcessDto request, CancellationToken cancellationToken)
         {
@@ -46,6 +48,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost("{refundId:guid}/reject")]
         public async Task<ActionResult<RefundDto>> Reject(Guid refundId, [FromBody] RefundProcessDto request, CancellationToken cancellationToken)
         {
@@ -54,6 +57,7 @@ namespace METANOIA.Controllers
 
         // Đóng yêu cầu sau khi đã chuyển khoản: bắt buộc nhập bankReference
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost("{refundId:guid}/complete")]
         public async Task<ActionResult<RefundDto>> Complete(Guid refundId, [FromBody] RefundProcessDto request, CancellationToken cancellationToken)
         {

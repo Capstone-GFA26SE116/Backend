@@ -21,6 +21,8 @@ namespace METANOIA.Test.Infrastructure
 
             var auth = (await response.Content.ReadFromJsonAsync<AuthResponseDto>())!;
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
+            // Thao tác nhạy cảm của Admin bắt buộc có lý do; test mặc định gửi sẵn (test về việc thiếu lý do tự bỏ header này)
+            client.DefaultRequestHeaders.Add("X-Admin-Reason", "ly-do-kiem-thu");
             return (client, auth);
         }
     }

@@ -3,6 +3,7 @@ using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
+using Microsoft.Extensions.Options;
 using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
@@ -13,17 +14,24 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly ISubscriptionPlanRepository _planRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly SubscriptionOptions _options;
 
-        public SubscriptionPlanService(ISubscriptionPlanRepository planRepository, IUnitOfWork unitOfWork)
+        public SubscriptionPlanService(ISubscriptionPlanRepository planRepository, IUnitOfWork unitOfWork, IOptions<SubscriptionOptions> options)
         {
             _planRepository = planRepository;
             _unitOfWork = unitOfWork;
+            _options = options.Value;
         }
 
-        public async Task<IReadOnlyList<SubscriptionPlanDto>> GetPlansAsync(CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<SubscriptionPlanDto>> GetPlansAsync(CancellationToken cancellationToken = default)
+        {
+            return GetPlansAsync(includeInactive: true, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<SubscriptionPlanDto>> GetPlansAsync(bool includeInactive, CancellationToken cancellationToken = default)
         {
             var plans = await _planRepository.GetAllAsync(cancellationToken);
-            return plans.Select(ToDto).ToList();
+            return plans.Where(p => includeInactive || p.IsActive).Select(ToDto).ToList();
         }
 
         public async Task<SubscriptionPlanDto> GetPlanAsync(Guid planId, CancellationToken cancellationToken = default)
@@ -52,6 +60,12 @@ namespace METANOIA.Infrastructure.Services
             ValidateRequest(request);
             await EnsureNameFreeAsync(request.Name, planId, cancellationToken);
 
+            // Gói Miễn phí là chỗ rơi về khi gói trả phí hết hạn và là gói của người đăng ký mới: phải luôn bật và miễn phí
+            if (planId == _options.FreePlanId && (!request.IsActive || request.Price != 0))
+            {
+                throw new UserFriendlyException("Gói Miễn phí phải luôn đang bật (IsActive = true) và có giá 0. Có thể sửa tên và hạn mức.");
+            }
+
             ApplyRequest(plan, request);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -61,6 +75,11 @@ namespace METANOIA.Infrastructure.Services
         public async Task DeletePlanAsync(Guid planId, CancellationToken cancellationToken = default)
         {
             var plan = await GetExistingAsync(planId, cancellationToken);
+
+            if (planId == _options.FreePlanId)
+            {
+                throw new UserFriendlyException("Không thể xóa gói Miễn phí của hệ thống.");
+            }
 
             if (await _planRepository.IsInUseAsync(planId, cancellationToken))
             {

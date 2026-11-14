@@ -15,6 +15,28 @@ namespace METANOIA.Infrastructure.Repositories
             _context = context;
         }
 
+        public async Task<(IReadOnlyList<Invoice> Items, int TotalCount)> SearchAsync(
+            Guid? userId, DateTime? from, DateTime? to, string? search, int? skip, int? take,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.Invoices.AsQueryable();
+            if (userId is { } id) query = query.Where(i => i.PaymentTransaction.UserId == id);
+            if (from is { } start) query = query.Where(i => i.IssuedAt >= start);
+            if (to is { } end) query = query.Where(i => i.IssuedAt < end);
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(i => i.InvoiceNumber.ToLower().Contains(term) || i.PlanName.ToLower().Contains(term)
+                    || i.BillingName.ToLower().Contains(term) || i.BillingEmail.ToLower().Contains(term));
+            }
+
+            var total = await query.CountAsync(cancellationToken);
+            var ordered = query.OrderByDescending(i => i.IssuedAt).ThenBy(i => i.Id);
+            var paged = skip is { } s && take is { } t ? ordered.Skip(s).Take(t) : ordered;
+
+            return (await paged.ToListAsync(cancellationToken), total);
+        }
+
         public async Task<IReadOnlyList<Invoice>> GetAsync(Guid? userId, CancellationToken cancellationToken = default)
         {
             var query = _context.Invoices.AsQueryable();
