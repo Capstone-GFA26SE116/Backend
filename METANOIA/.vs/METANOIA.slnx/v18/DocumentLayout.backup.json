@@ -1337,7 +1337,7 @@
               "RelativeDocumentMoniker": "METANOIA\\Controllers\\MeController.cs",
               "ToolTip": "D:\\Capstone\\META\\Backend\\METANOIA\\METANOIA\\Controllers\\MeController.cs",
               "RelativeToolTip": "METANOIA\\Controllers\\MeController.cs",
-              "ViewState": "AgIAACcAAAAAAAAAAAAswCUAAAAUAAAAAAAAAA==",
+              "ViewState": "AgIAABsAAAAAAAAAAAAkwCUAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-11-13T08:10:01.077Z",
               "EditorCaption": ""
@@ -1364,8 +1364,7 @@
               "RelativeToolTip": "METANOIA.Domain\\Enums\\CaptureMethod.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-20T01:55:35.134Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-20T01:55:35.134Z"
             },
             {
               "$type": "Document",
@@ -1389,8 +1388,7 @@
               "RelativeToolTip": "METANOIA\\Controllers\\GoogleCalendarController.cs",
               "ViewState": "AgIAAGsAAAAAAAAAAAAmwLEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-05T11:56:01.186Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-05T11:56:01.186Z"
             },
             {
               "$type": "Document",

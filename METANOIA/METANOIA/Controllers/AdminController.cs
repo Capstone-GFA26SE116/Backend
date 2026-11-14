@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,10 +54,14 @@ namespace METANOIA.Controllers
             [FromBody] AdminUserRequestDto request,
             CancellationToken cancellationToken)
         {
+            // Đổi role là việc nhạy cảm: bắt buộc ghi lý do (các chỉnh sửa khác thì tùy chọn)
+            if (!string.IsNullOrWhiteSpace(request.Role)) AdminReason.Require(HttpContext);
+
             return Ok(await _service.UpdateAsync(userId, request, cancellationToken));
         }
 
         // Xóa mềm: thu hồi mọi phiên đăng nhập, hủy liên kết Google Calendar. Không tự xóa mình, không xóa Admin cuối cùng
+        [RequireAdminReason]
         [HttpDelete("{userId:guid}")]
         public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken)
         {
@@ -88,6 +93,31 @@ namespace METANOIA.Controllers
         // groupBy: feature (mặc định) | model | day. from/to mặc định là 30 ngày gần nhất, tối đa 366 ngày
         [HttpGet]
         public async Task<ActionResult<AiUsageReportDto>> Get(
+            [FromQuery] string? groupBy,
+            [FromQuery] DateTimeOffset? from,
+            [FromQuery] DateTimeOffset? to,
+            CancellationToken cancellationToken)
+        {
+            return Ok(await _service.GetReportAsync(groupBy, from, to, cancellationToken));
+        }
+    }
+
+    // Báo cáo doanh thu theo ngày, tháng hoặc gói. Chỉ đọc
+    [Authorize(Roles = "Admin")]
+    [Route("api/admin/revenue")]
+    [ApiController]
+    public class AdminRevenueController : ControllerBase
+    {
+        private readonly IRevenueReportService _service;
+
+        public AdminRevenueController(IRevenueReportService service)
+        {
+            _service = service;
+        }
+
+        // groupBy: day (mặc định) | month | plan. from/to mặc định là 30 ngày gần nhất, tối đa 366 ngày. Giờ UTC; gồm from, không gồm to
+        [HttpGet]
+        public async Task<ActionResult<RevenueReportDto>> Get(
             [FromQuery] string? groupBy,
             [FromQuery] DateTimeOffset? from,
             [FromQuery] DateTimeOffset? to,
@@ -186,6 +216,9 @@ namespace METANOIA.Controllers
         [HttpPost]
         public async Task<ActionResult<StatusResyncReportDto>> Run([FromQuery] bool dryRun = true, CancellationToken cancellationToken = default)
         {
+            // Chạy thật sửa dữ liệu của nhiều người dùng: bắt buộc ghi lý do (chạy thử thì không)
+            if (!dryRun) AdminReason.Require(HttpContext);
+
             return Ok(await _service.ResyncAsync(dryRun, cancellationToken));
         }
     }

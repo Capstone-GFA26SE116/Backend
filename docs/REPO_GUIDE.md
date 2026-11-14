@@ -482,13 +482,17 @@ Lỗi từ AI service được đổi thành thông báo tiếng Việt (429: h�
 ### 7.7 Quản trị và nhật ký thao tác (AdminActionLog)
 - API quản trị gắn `[Authorize(Roles = "Admin")]`. Hiện có: danh sách/chi tiết/tạo/sửa/xóa mềm/khôi phục user (`/api/admin/users`),
   báo cáo chi phí AI theo `feature|model|day` (`/api/admin/ai-usage`), thư viện nhạc (`/api/admin/focus-tracks`), đọc nhật ký (`/api/admin/audit-logs`),
-  cùng các CRUD quản trị khác (gói, domain, hóa đơn, giao dịch, gói của user).
+  báo cáo doanh thu (`/api/admin/revenue`), đồng bộ lại trạng thái dữ liệu cũ (`/api/admin/status-resync`),
+  cùng các CRUD quản trị khác (gói, domain, hóa đơn, giao dịch, gói của user). Hướng dẫn cho FE: [ADMIN_FE.md](ADMIN_FE.md).
 - **Nhật ký tự động:** [AdminAuditFilter](../METANOIA/METANOIA/Auditing/HttpAdminAuditContext.cs) đánh dấu request là "thao tác ghi của Admin"
   (endpoint có role Admin và không phải GET). [AdminAuditSaveChangesInterceptor](../METANOIA/METANOIA.Infrastructure/Data/AdminAuditSaveChangesInterceptor.cs)
   chặn `SaveChanges` và, **trong cùng transaction**, thêm dòng `AdminActionLog` (`Action = "<Bảng>.<Create|Update|Delete>"`, giá trị cũ/mới dạng JSON,
   lý do lấy từ header `X-Admin-Reason`) cho các bảng: `Domain`, `SubscriptionPlan`, `UserSubscription`, `Invoice`, `PaymentTransaction`,
   `PaymentRefund`, `FocusTrack`, `User`. Nhờ vậy thêm endpoint Admin mới không cần tự viết code ghi log. Thay đổi do hệ thống (webhook, worker)
-  hay do user thường tự làm thì không được ghi.
+  hay do user thường tự làm thì không được ghi. Ngoại lệ có ghi riêng: `POST /api/admin/status-resync?dryRun=false` ghi MỘT dòng tóm tắt
+  (`StatusResync.Run`) vì nó sửa Task, Milestone, ScheduleSlot (không thuộc các bảng trên).
+- **Lý do bắt buộc:** thao tác nhạy cảm gắn `[RequireAdminReason]` ([RequireAdminReasonAttribute](../METANOIA/METANOIA/Auditing/RequireAdminReasonAttribute.cs)):
+  thiếu header `X-Admin-Reason` thì `400` và không thực hiện gì (xem BR-107b).
 - Tạo user bởi Admin: `GoogleSubjectId` là giá trị giữ chỗ `pending:<guid>`; người đó đăng nhập Google lần đầu bằng đúng email sẽ nhận tài khoản (7.1).
   Không xóa/hạ quyền Admin cuối cùng; Admin không tự xóa mình qua API này.
 
@@ -512,6 +516,12 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 | Method | Đường dẫn | Quyền |
 |---|---|---|
 | GET | `/api/admin/ai-usage` | Admin |
+
+#### Admin: báo cáo doanh thu (`AdminRevenueController`)
+
+| Method | Đường dẫn | Quyền |
+|---|---|---|
+| GET | `/api/admin/revenue?groupBy=&from=&to=` | Admin |
 
 #### Admin: nhật ký thao tác (`AdminAuditLogsController`)
 
@@ -2289,6 +2299,11 @@ stateDiagram-v2
 | BR-104 | Thay đổi do webhook, worker hoặc người dùng thường **không** ghi `AdminActionLog` | không áp dụng |
 | BR-105 | Báo cáo dùng AI: nhóm theo `feature`, `model` hoặc `day`. Khoảng thời gian `to` lớn hơn `from`, mặc định 30 ngày, tối đa **366 ngày** | `400` |
 | BR-106 | Nhạc tập trung: tên bài tối đa 150, nghệ sĩ tối đa 100, `FileUrl` là `http(s)` hợp lệ tối đa 500, thời lượng lớn hơn 0 giây | `400` |
+| BR-107b | **Lý do bắt buộc** (header `X-Admin-Reason`, thiếu thì `400` và không đổi gì) cho: sửa hoặc xóa gói; tạo, sửa, xóa gói đăng ký của người dùng, giao dịch, hóa đơn; duyệt, từ chối, hoàn tất hoàn tiền; xóa người dùng; đổi role người dùng; chạy thật `status-resync`. Các thao tác Admin khác (đổi tên người dùng, tạo gói, thư viện nhạc...) vẫn tùy chọn, thiếu thì ghi "Không ghi lý do" | `400` |
+| BR-108b | Báo cáo doanh thu `GET /api/admin/revenue`: doanh thu = tổng `Amount` giao dịch `Succeeded` theo **ngày thanh toán** (`PaidAt`); hoàn tiền (`PaymentRefund` `Completed`) tính vào kỳ **xử lý xong** (`ProcessedAt`); doanh thu ròng = gộp trừ hoàn. `groupBy` là `day` (mặc định), `month` hoặc `plan`; ngày và tháng theo giờ UTC và có đủ mọi mốc kể cả mốc bằng 0. Khoảng `[from, to)` mặc định 30 ngày gần nhất, tối đa 366 ngày | `400` |
+| BR-109b | `GET /api/payment-transactions` và `GET /api/invoices` nhận bộ lọc tùy chọn (giao dịch: `status`, `userId`, `planId`, `from`, `to` theo ngày tạo; hóa đơn: `userId`, `from`, `to` theo ngày phát hành, `search`) và phân trang (`page`, `pageSize` 1 đến 100, tổng số dòng ở header `X-Total-Count`). Không truyền gì thì trả đầy đủ như cũ. Người dùng thường luôn chỉ thấy dữ liệu của mình, `userId` bị bỏ qua | `400` |
+| BR-110b | `GET /api/subscription-plans`: người dùng thường chỉ thấy gói đang bán (`IsActive = true`), Admin thấy tất cả. **Gói Miễn phí** (`Subscription:FreePlanId`) luôn phải bật và giá 0, không xóa được; vẫn sửa được tên và hạn mức | `400` |
+| BR-111b | Hệ thống luôn còn ít nhất một Admin: chặn xóa Admin cuối cùng cả qua `DELETE /api/admin/users/{id}` lẫn khi chính Admin đó gọi `DELETE /api/me` | `400` |
 
 ### 18.10 Bảng tra nhanh các giá trị cho phép
 

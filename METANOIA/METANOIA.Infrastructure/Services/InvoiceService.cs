@@ -29,6 +29,22 @@ namespace METANOIA.Infrastructure.Services
             return invoices.Select(ToDto).ToList();
         }
 
+        public async Task<(IReadOnlyList<InvoiceDto> Items, int TotalCount)> SearchInvoicesAsync(
+            Guid userId, bool isAdmin, InvoiceFilter filter, CancellationToken cancellationToken = default)
+        {
+            if (filter.From is { } from && filter.To is { } to && to <= from)
+            {
+                throw new UserFriendlyException("Khoảng thời gian không hợp lệ: 'to' phải lớn hơn 'from'.");
+            }
+
+            var (skip, take) = PaymentTransactionService.PagingArgs(filter.Page, filter.PageSize);
+            var scope = isAdmin ? filter.UserId : userId;
+            var (items, total) = await _invoiceRepository.SearchAsync(
+                scope, filter.From?.UtcDateTime, filter.To?.UtcDateTime, filter.Search, skip, take, cancellationToken);
+
+            return (items.Select(ToDto).ToList(), total);
+        }
+
         public async Task<InvoiceDto> GetInvoiceAsync(Guid userId, bool isAdmin, Guid invoiceId, CancellationToken cancellationToken = default)
         {
             var invoice = await GetExistingAsync(invoiceId, cancellationToken);

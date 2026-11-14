@@ -1,11 +1,12 @@
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace METANOIA.Controllers
 {
-    // Danh mục gói đăng ký: mọi user đăng nhập đều xem được, chỉ Admin được thay đổi
+    // Danh mục gói đăng ký: user thường chỉ thấy gói đang bán (IsActive), Admin thấy tất cả; chỉ Admin được thay đổi
     [Authorize]
     [Route("api/subscription-plans")]
     [ApiController]
@@ -23,7 +24,7 @@ namespace METANOIA.Controllers
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<SubscriptionPlanDto>>> GetPlans(CancellationToken cancellationToken)
         {
-            return Ok(await _planService.GetPlansAsync(cancellationToken));
+            return Ok(await _planService.GetPlansAsync(includeInactive: User.IsInRole(AdminRole), cancellationToken));
         }
 
         [HttpGet("{planId:guid}")]
@@ -43,6 +44,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPut("{planId:guid}")]
         public async Task<ActionResult<SubscriptionPlanDto>> UpdatePlan(
             Guid planId,
@@ -53,6 +55,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpDelete("{planId:guid}")]
         public async Task<IActionResult> DeletePlan(Guid planId, CancellationToken cancellationToken)
         {

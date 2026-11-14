@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using METANOIA.Application.Dto;
+using METANOIA.Auditing;
 using METANOIA.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +39,7 @@ namespace METANOIA.Controllers
 
         // Gói thường được tạo khi thanh toán thành công; hiện Admin tạo thủ công
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPost]
         public async Task<ActionResult<UserSubscriptionDto>> CreateSubscription(
             [FromBody] UserSubscriptionRequestDto request,
@@ -48,6 +50,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpPut("{subscriptionId:guid}")]
         public async Task<ActionResult<UserSubscriptionDto>> UpdateSubscription(
             Guid subscriptionId,
@@ -58,6 +61,7 @@ namespace METANOIA.Controllers
         }
 
         [Authorize(Roles = AdminRole)]
+        [RequireAdminReason]
         [HttpDelete("{subscriptionId:guid}")]
         public async Task<IActionResult> DeleteSubscription(Guid subscriptionId, CancellationToken cancellationToken)
         {

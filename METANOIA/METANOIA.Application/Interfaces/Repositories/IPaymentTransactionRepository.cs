@@ -7,6 +7,11 @@ namespace METANOIA.Application.Interfaces.Repositories
     {
         Task<IReadOnlyList<PaymentTransaction>> GetAsync(Guid? userId, CancellationToken cancellationToken = default);
 
+        // Lọc theo trạng thái, gói, khoảng ngày tạo [from, to); skip/take = null nghĩa là không phân trang. Trả kèm tổng số dòng khớp bộ lọc
+        Task<(IReadOnlyList<PaymentTransaction> Items, int TotalCount)> SearchAsync(
+            Guid? userId, string? status, Guid? planId, DateTime? from, DateTime? to, int? skip, int? take,
+            CancellationToken cancellationToken = default);
+
         Task<PaymentTransaction?> GetByIdAsync(Guid paymentId, CancellationToken cancellationToken = default);
 
         Task<bool> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default);

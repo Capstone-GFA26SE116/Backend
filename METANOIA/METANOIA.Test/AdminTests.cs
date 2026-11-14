@@ -309,6 +309,9 @@ namespace METANOIA.Test
             using var factory = new ApiFactory();
             var (admin, _, adminId, _) = await SetupAsync(factory);
 
+            // Client test gửi sẵn một lý do mặc định; bỏ nó đi để kiểm tra giá trị "Không ghi lý do" khi Admin không nhập
+            admin.DefaultRequestHeaders.Remove("X-Admin-Reason");
+
             var created = await (await admin.PostAsJsonAsync("/api/domains", new DomainRequestDto { Name = "Writing", IsActive = true }))
                 .Content.ReadFromJsonAsync<DomainDto>();
 

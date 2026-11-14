@@ -24,11 +24,19 @@ namespace METANOIA.Auditing
         public Guid? AdminId =>
             Guid.TryParse(_accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
+        // Header HTTP chỉ chứa được ký tự Latin-1: trình duyệt (và Swagger) từ chối gửi chữ có dấu tiếng Việt như "đổi giá".
+        // Vì vậy lý do có thể được gửi dạng percent-encoding (encodeURIComponent) và được giải mã ở đây. Lý do viết thẳng vẫn dùng được
+        public static string Decode(string? value)
+        {
+            var trimmed = value?.Trim() ?? string.Empty;
+            return trimmed.Contains('%') ? Uri.UnescapeDataString(trimmed).Trim() : trimmed;
+        }
+
         public string Reason
         {
             get
             {
-                var header = _accessor.HttpContext?.Request.Headers[ReasonHeader].ToString().Trim();
+                var header = Decode(_accessor.HttpContext?.Request.Headers[ReasonHeader].ToString());
                 return string.IsNullOrEmpty(header) ? DefaultReason : header;
             }
         }

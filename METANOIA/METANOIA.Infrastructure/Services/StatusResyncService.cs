@@ -1,3 +1,4 @@
+using System.Text.Json;
 using METANOIA.Application.Dto;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
@@ -17,11 +18,13 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly AppDbContext _context;
         private readonly ITaskProgressService _progress;
+        private readonly IAdminAuditContext _auditContext;
 
-        public StatusResyncService(AppDbContext context, ITaskProgressService progress)
+        public StatusResyncService(AppDbContext context, ITaskProgressService progress, IAdminAuditContext auditContext)
         {
             _context = context;
             _progress = progress;
+            _auditContext = auditContext;
         }
 
         public async Task<StatusResyncReportDto> ResyncAsync(bool dryRun, CancellationToken cancellationToken = default)
@@ -64,7 +67,37 @@ namespace METANOIA.Infrastructure.Services
                 await CommitBatchAsync(report, new List<ProgressResult>(), dryRun, cancellationToken);
             }
 
+            await WriteAuditLogAsync(report, cancellationToken);
             return report;
+        }
+
+        // Task, Milestone, ScheduleSlot không thuộc các bảng được tự động ghi nhật ký, nên ghi MỘT dòng tóm tắt khi Admin chạy thật
+        private async Task WriteAuditLogAsync(StatusResyncReportDto report, CancellationToken cancellationToken)
+        {
+            if (report.DryRun || !_auditContext.IsActive || _auditContext.AdminId is not { } adminId)
+            {
+                return;
+            }
+
+            var reason = _auditContext.Reason.Length > 1000 ? _auditContext.Reason[..1000] : _auditContext.Reason;
+            _context.AdminActionLogs.Add(new AdminActionLog
+            {
+                Id = Guid.NewGuid(),
+                AdminId = adminId,
+                Action = "StatusResync.Run",
+                TargetType = "StatusResync",
+                TargetId = Guid.Empty,
+                NewValue = JsonSerializer.Serialize(new
+                {
+                    report.TasksChecked,
+                    report.TasksChanged,
+                    report.MilestonesChanged,
+                    report.SlotsCancelled
+                }),
+                Reason = reason,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         // Ghi nhận thay đổi từ ChangeTracker; chạy thật thì lưu rồi làm các việc sau lưu (hủy job, báo AI); xong thì xóa theo dõi

@@ -34,6 +34,7 @@ namespace METANOIA.Infrastructure.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IScheduleSlotRepository _slots;
         private readonly IScheduleJobService _jobs;
+        private readonly IAdminUserRepository _admins;
 
         public MeService(
             IUserSetupRepository setup,
@@ -42,8 +43,10 @@ namespace METANOIA.Infrastructure.Services
             IRefreshTokenRepository refreshTokens,
             IServiceScopeFactory scopeFactory,
             IScheduleSlotRepository slots,
-            IScheduleJobService jobs)
+            IScheduleJobService jobs,
+            IAdminUserRepository admins)
         {
+            _admins = admins;
             _slots = slots;
             _jobs = jobs;
             _scopeFactory = scopeFactory;
@@ -62,6 +65,13 @@ namespace METANOIA.Infrastructure.Services
         public async Task DeleteAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var user = await GetUserAsync(userId, cancellationToken);
+
+            // Cùng luật với DELETE /api/admin/users/{id}: hệ thống luôn phải còn ít nhất một Admin
+            if (user.Role.Name == "Admin" && await _admins.CountActiveAdminsAsync(cancellationToken) <= 1)
+            {
+                throw new UserFriendlyException("Không thể xóa Admin cuối cùng của hệ thống.");
+            }
+
             user.DeletedAt = DateTime.UtcNow;
 
             // Thu hồi mọi phiên đăng nhập (refresh token) của tài khoản
