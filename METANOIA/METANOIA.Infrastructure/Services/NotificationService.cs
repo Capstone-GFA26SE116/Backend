@@ -3,6 +3,7 @@ using METANOIA.Application.Exceptions;
 using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Configuration;
+using METANOIA.Domain.Enums;
 using Notification = METANOIA.Domain.Entities.Notification;
 using METANOIA.Infrastructure.Notifications;
 using Microsoft.AspNetCore.SignalR;
@@ -20,7 +21,8 @@ public sealed class NotificationService(
     IOptions<VapidSettings> vapidSettings,
     ILogger<NotificationService> logger) : INotificationService
 {
-    public async System.Threading.Tasks.Task SendAsync(Guid userId, string title, string message, string type, Guid? scheduleSlotId = null)
+    public async System.Threading.Tasks.Task SendAsync(
+        Guid userId, string title, string message, string type, Guid? scheduleSlotId = null, Guid? groupId = null, Guid? groupTaskId = null)
     {
         var now = DateTime.UtcNow;
         var notification = new Notification
@@ -28,6 +30,8 @@ public sealed class NotificationService(
             Id = Guid.NewGuid(),
             UserId = userId,
             ScheduleSlotId = scheduleSlotId,
+            GroupId = groupId,
+            GroupTaskId = groupTaskId,
             Type = ToStoredType(type),
             Title = title,
             Message = message,
@@ -52,7 +56,7 @@ public sealed class NotificationService(
 
         try
         {
-            await SendWebPushAsync(userId, title, message, type, vapidSettings.Value);
+            await SendWebPushAsync(userId, title, message, type, vapidSettings.Value, groupId, groupTaskId);
         }
         catch (Exception ex)
         {
@@ -65,8 +69,15 @@ public sealed class NotificationService(
     // để giao diện biết phải làm gì; cột Type trong DB chỉ lưu nhóm lớn. Ghi loại chi tiết thẳng vào DB sẽ bị Postgres từ chối.
     public const string MissedSlotAction = "MISSED_SLOT";
 
+    // Thông báo của nhánh Group (GroupAssigned, GroupMention, GroupStatusChanged, GroupInvited) lưu nguyên giá trị vào cột Type.
+    // Cần đã nới CHECK Notification_Type_check (docs/sql/005_group_tables.sql, bước 4), nếu chưa thì Postgres từ chối dòng đó.
     private static string ToStoredType(string actionType)
     {
+        if (GroupNotificationTypes.IsGroupType(actionType))
+        {
+            return actionType;
+        }
+
         return actionType == MissedSlotAction ? "MissedSlot" : "SlotReminder";
     }
 
@@ -112,7 +123,9 @@ public sealed class NotificationService(
         string title,
         string message,
         string actionType,
-        VapidSettings settings)
+        VapidSettings settings,
+        Guid? groupId = null,
+        Guid? groupTaskId = null)
     {
         var subscriptions = await pushSubscriptionRepository.GetByUserIdAsync(userId);
         if (subscriptions.Count == 0 || string.IsNullOrWhiteSpace(settings.Subject)
@@ -126,7 +139,9 @@ public sealed class NotificationService(
         {
             title,
             body = message,
-            action = actionType
+            action = actionType,
+            groupId,
+            groupTaskId
         });
 
         var removeExpired = false;
@@ -165,6 +180,8 @@ public sealed class NotificationService(
             Title = notification.Title,
             Message = notification.Message,
             ScheduleSlotId = notification.ScheduleSlotId,
+            GroupId = notification.GroupId,
+            GroupTaskId = notification.GroupTaskId,
             SentAt = ToApi(notification.SentAt ?? notification.ScheduledAt),
             IsRead = notification.IsRead,
             ReadAt = notification.ReadAt is { } readAt ? ToApi(readAt) : null

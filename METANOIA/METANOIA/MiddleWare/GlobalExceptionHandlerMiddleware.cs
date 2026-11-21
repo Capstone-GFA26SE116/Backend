@@ -94,6 +94,25 @@ namespace METANOIA.MiddleWare
                     code = "FOCUS_SESSION_FORBIDDEN"
                 });
             }
+            catch (GroupAssigneeBusyException ex)
+            {
+                _logger.LogWarning(ex, "Group assignee is busy or overloaded");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "GROUP_ASSIGNEE_BUSY",
+                    details = ex.Details
+                });
+            }
+            catch (GroupForbiddenException ex)
+            {
+                _logger.LogWarning(ex, "User role is not allowed to do this in the group");
+                await WriteResponseAsync(context, HttpStatusCode.Forbidden, new
+                {
+                    message = ex.Message,
+                    code = "GROUP_FORBIDDEN"
+                });
+            }
             catch (GoogleCalendarNotConnectedException ex)
             {
                 _logger.LogWarning(ex, "Google Calendar is not connected");

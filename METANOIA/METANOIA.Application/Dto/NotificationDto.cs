@@ -13,6 +13,11 @@ namespace METANOIA.Application.Dto
 
         public Guid? ScheduleSlotId { get; set; }
 
+        // Thông báo nhóm: nhóm và việc liên quan (GroupTaskId rỗng với lời mời vào nhóm). Rỗng với thông báo khác
+        public Guid? GroupId { get; set; }
+
+        public Guid? GroupTaskId { get; set; }
+
         public DateTimeOffset? SentAt { get; set; }
 
         public bool IsRead { get; set; }

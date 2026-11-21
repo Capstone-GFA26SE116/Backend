@@ -11,6 +11,12 @@ public partial class Notification
 
     public Guid? ScheduleSlotId { get; set; }
 
+    // Thông báo của nhánh Group: liên kết tới nhóm và việc để FE mở thẳng. Rỗng với thông báo cũ và thông báo của nhánh cá nhân
+    // (cột thêm bởi docs/sql/005_group_tables.sql bước 3; chỉ khai báo cột, DB có FK ON DELETE SET NULL)
+    public Guid? GroupId { get; set; }
+
+    public Guid? GroupTaskId { get; set; }
+
     public string Type { get; set; } = null!;
 
     public string Title { get; set; } = null!;
