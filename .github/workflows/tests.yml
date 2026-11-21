@@ -1,0 +1,52 @@
+name: Tests
+
+# Runs the xUnit tests with code coverage on every pull request and every push to develop.
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  MIN_LINE_COVERAGE: '80'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Tests use EF Core InMemory and fake Google / PayOS: no secret or database needed.
+      - name: Run tests with coverage
+        run: >
+          dotnet test METANOIA/METANOIA.Test/METANOIA.Test.csproj
+          --configuration Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./test-results
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: Check line coverage
+        run: |
+          file=$(find ./test-results -name coverage.cobertura.xml | head -1)
+          rate=$(grep -o 'line-rate="[0-9.]*"' "$file" | head -1 | grep -o '[0-9.]*')
+          percent=$(awk "BEGIN { printf \"%.1f\", $rate * 100 }")
+          echo "Line coverage: $percent% (minimum $MIN_LINE_COVERAGE%)"
+          echo "### Line coverage: $percent%" >> "$GITHUB_STEP_SUMMARY"
+          awk "BEGIN { exit !($percent >= $MIN_LINE_COVERAGE) }"
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: ./test-results

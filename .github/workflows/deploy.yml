@@ -29,6 +29,10 @@ jobs:
       - name: Build app
         run: dotnet build METANOIA/METANOIA/METANOIA.csproj --configuration Release --no-restore
 
+      # Do not deploy when a test fails (coverage is checked in tests.yml)
+      - name: Run tests
+        run: dotnet test METANOIA/METANOIA.Test/METANOIA.Test.csproj --configuration Release
+
       - name: Publish app
         run: dotnet publish METANOIA/METANOIA/METANOIA.csproj -c Release -o ./publish
 
