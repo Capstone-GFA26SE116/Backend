@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>METANOIA - Thử nhánh Group (làm việc nhóm)</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1d1d1f; }
+    main { max-width: 1180px; margin: 0 auto; padding: 0 16px 80px; }
+    h1 { font-size: 22px; margin: 18px 0 4px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    h3 { font-size: 14px; margin: 14px 0 4px; }
+    section { background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    label { display: block; font-size: 13px; color: #555; margin-top: 8px; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 9px; margin-top: 3px; border: 1px solid #ccd0d6; border-radius: 6px; font: inherit; background: #fff; }
+    input[type=checkbox] { width: auto; margin-right: 6px; }
+    textarea { min-height: 60px; }
+    button { margin: 8px 6px 0 0; padding: 7px 14px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; cursor: pointer; font: inherit; }
+    button:disabled { background: #b8c2d0; cursor: not-allowed; }
+    button.secondary { background: #6b7280; } button.danger { background: #d93025; } button.good { background: #188038; } button.warn { background: #b06000; }
+    button.small { padding: 3px 9px; margin: 2px 4px 2px 0; font-size: 12px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .row4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 860px) { .row, .row3, .row4 { grid-template-columns: 1fr; } }
+    .muted { color: #666; font-size: 13px; }
+    .notice { position: sticky; top: 64px; z-index: 9; padding: 8px 12px; border-radius: 6px; background: #eef4ff; margin: 8px 0; display: none; white-space: pre-wrap; border: 1px solid #cfe0ff; }
+    .notice.error { background: #fdecea; border-color: #f5c6c2; } .notice.ok { background: #e6f4ea; border-color: #c4e3cc; } .notice.warn { background: #fff4e5; border-color: #f3d9a8; }
+    /* Thanh chọn tài khoản luôn nằm trên cùng */
+    #bar { position: sticky; top: 0; z-index: 10; background: #1f2937; color: #fff; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #bar .who { font-size: 13px; opacity: .85; margin-right: 4px; }
+    #bar button { margin: 0; background: #374151; padding: 5px 12px; }
+    #bar button.on { background: #1a73e8; font-weight: 600; }
+    #bar button.off { opacity: .45; }
+    #bar select { width: auto; margin: 0; padding: 4px 8px; }
+    #roleHint { background: #fff; border-radius: 8px; padding: 8px 14px; margin: 12px 0; font-size: 13px; border-left: 4px solid #1a73e8; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #e8eaed; color: #3c4043; font-size: 12px; font-weight: 600; }
+    .badge.ToDo, .badge.Planned, .badge.Pending, .badge.Viewer, .badge.Low { background: #eceff1; color: #455a64; }
+    .badge.InProgress, .badge.Active, .badge.Accepted, .badge.Member, .badge.Medium { background: #e6f4ea; color: #137333; }
+    .badge.Done, .badge.Approved, .badge.Leader { background: #c6dafc; color: #0b3d91; }
+    .badge.Delivered { background: #f3e8fd; color: #6a1b9a; }
+    .badge.InRevision, .badge.High, .badge.Declined { background: #fef0d6; color: #a15c00; }
+    .badge.Skipped, .badge.Archived, .badge.Cancelled, .badge.Expired, .badge.Revoked { background: #e0e0e0; color: #616161; }
+    .badge.Rejected { background: #fce8e6; color: #c5221f; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+    th, td { border-bottom: 1px solid #eceef1; padding: 6px 8px; text-align: left; vertical-align: top; }
+    tr.sel td { background: #eef4ff; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 260px; margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
+    details { margin-top: 8px; } summary { cursor: pointer; color: #1a73e8; }
+    code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; }
+    ol, ul { margin: 6px 0 0 18px; padding: 0; font-size: 14px; }
+    .card { border: 1px solid #e3e6ea; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 14px; }
+    .timer { font-size: 44px; font-variant-numeric: tabular-nums; font-weight: 600; margin: 2px 0; }
+    .bar { height: 10px; background: #e8eaed; border-radius: 6px; overflow: hidden; margin: 4px 0 8px; }
+    .bar > div { height: 100%; background: #188038; }
+    .ok { color: #137333; } .fail { color: #c5221f; font-weight: 600; } .skip { color: #a15c00; }
+    .scn { border: 1px solid #e3e6ea; border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+    .scn h3 { margin: 0; font-size: 14px; }
+    .scn .lines { font-size: 12px; margin: 6px 0 0; }
+    .scn .lines div { padding: 1px 0; }
+    .tag { font-size: 11px; background: #eef0f3; border-radius: 4px; padding: 1px 6px; margin-left: 4px; color: #555; }
+  </style>
+</head>
+<body>
+<div id="bar"></div>
+<main>
+  <h1>METANOIA - Thử nhánh Group (làm việc nhóm)</h1>
+  <p class="muted">Trang này gọi <b>toàn bộ API của nhánh Group</b> (đợt 1 và đợt 2). Cần nhiều tài khoản Google để thử vai trò khác nhau: đăng nhập từng tài khoản vào một ô ở mục 1, rồi đổi qua lại bằng thanh phía trên. Hướng dẫn từng bước và danh sách ca cần thử: <code>docs/GROUP_TEST_GUIDE.md</code>.</p>
+  <div id="notice" class="notice"></div>
+  <div id="roleHint"></div>
+
+  <!-- 1. Tài khoản -->
+  <section>
+    <h2>1. Tài khoản thử (đăng nhập từng người vào từng ô)</h2>
+    <p class="muted">Tối thiểu 2 tài khoản (Leader + Member) cho phần lớn ca; đủ 5 để chạy hết các kịch bản tự động ở mục 12. Token lưu trong trình duyệt này (localStorage), tự làm mới bằng refresh token khi hết hạn.</p>
+    <table id="accountTable"><thead><tr><th>Ô</th><th>Tài khoản</th><th>Email</th><th></th></tr></thead><tbody></tbody></table>
+    <h3>Đăng nhập cho ô</h3>
+    <div class="row3">
+      <label>Gán tài khoản vào ô <select id="loginFor"></select></label>
+      <label>Google Client ID (cùng ID trong appsettings) <input id="clientId" placeholder="xxxx.apps.googleusercontent.com" /></label>
+      <div><button onclick="renderGoogleButton()">Tải nút đăng nhập Google</button></div>
+    </div>
+    <div id="googleButton" style="margin-top:10px"></div>
+    <details><summary>Cách khác: dán Google ID token (lấy từ login-test.html) hoặc accessToken (từ Swagger)</summary>
+      <label>Google ID token <input id="idTokenInput" placeholder="eyJhbGciOi..." /></label>
+      <button class="secondary" onclick="loginWithIdToken()">Đăng nhập bằng ID token</button>
+      <label>accessToken của METANOIA <input id="tokenInput" placeholder="eyJhbGciOi..." /></label>
+      <button class="secondary" onclick="useAccessToken()">Dùng accessToken này</button>
+    </details>
+    <p class="muted">Mẹo: Google tự chọn lại tài khoản gần nhất. Để đăng nhập tài khoản khác, bấm nút Google, chọn <b>"Use another account"</b>; hoặc dùng mỗi tài khoản một cửa sổ ẩn danh rồi dán accessToken vào đây.</p>
+  </section>
+
+  <!-- 2. Nhóm -->
+  <section>
+    <h2>2. Nhóm <span id="groupBadge"></span></h2>
+    <div class="row">
+      <label>Nhóm của tôi (theo tài khoản đang chọn)
+        <select id="groupSelect" onchange="onGroupChange()"></select></label>
+      <div><button class="secondary" onclick="loadGroups()">Tải lại danh sách</button>
+        <label style="display:inline"><input type="checkbox" id="showArchived" onchange="loadGroups()" />hiện nhóm đã lưu trữ</label></div>
+    </div>
+    <div class="row3">
+      <label>Tên nhóm <input id="gName" value="[Thử] Nhóm đồ án" /></label>
+      <label>Ngày bắt đầu <input id="gStart" type="date" /></label>
+      <label>Deadline <input id="gDeadline" type="date" /></label>
+    </div>
+    <label>Mô tả <input id="gDesc" /></label>
+    <button class="good" onclick="createGroup()">Tạo nhóm (người tạo thành Leader)</button>
+    <button onclick="updateGroup()">Sửa nhóm đang chọn (Leader)</button>
+    <button class="warn" onclick="archiveGroup()">Lưu trữ</button>
+    <button class="secondary" onclick="restoreGroup()">Khôi phục</button>
+    <div id="groupInfo" class="card" style="display:none"></div>
+  </section>
+
+  <!-- 3. Thành viên và lời mời -->
+  <section>
+    <h2>3. Thành viên và lời mời</h2>
+    <h3>Thành viên</h3>
+    <table id="memberTable"><thead><tr><th>Tên</th><th>Email</th><th>Vai trò</th><th>Vào lúc</th><th>Thao tác</th></tr></thead><tbody></tbody></table>
+    <button class="danger" onclick="leaveGroup()">Rời nhóm (tài khoản đang chọn)</button>
+
+    <h3>Mời thành viên (Leader)</h3>
+    <div class="row3">
+      <label>Email người được mời
+        <input id="inviteEmail" list="emailList" placeholder="chọn tài khoản thử hoặc gõ email" /></label>
+      <datalist id="emailList"></datalist>
+      <label>Vai trò <select id="inviteRole"><option>Member</option><option>Viewer</option><option>Leader</option></select></label>
+      <div><button class="good" onclick="invite()">Gửi lời mời</button></div>
+    </div>
+    <div id="inviteResult" class="card" style="display:none"></div>
+    <p class="muted">Chưa có email: sau khi mời, người được mời đăng nhập rồi chọn tài khoản đó ở thanh trên, xem mục "Lời mời gửi tới tôi" bên dưới và bấm Chấp nhận. Hoặc gửi <b>acceptToken</b> cho họ.</p>
+
+    <h3>Lời mời của nhóm này (Leader)</h3>
+    <table id="groupInviteTable"><thead><tr><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Hết hạn</th><th></th></tr></thead><tbody></tbody></table>
+
+    <h3>Lời mời gửi tới tôi (tài khoản đang chọn)</h3>
+    <table id="myInviteTable"><thead><tr><th>Nhóm</th><th>Người mời</th><th>Vai trò</th><th>Hết hạn</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row">
+      <label>Chấp nhận bằng token <input id="acceptToken" placeholder="dán acceptToken" /></label>
+      <div><button onclick="acceptByToken()">Chấp nhận bằng token</button></div>
+    </div>
+  </section>
+
+  <!-- 4. Giai đoạn -->
+  <section>
+    <h2>4. Giai đoạn (Milestone)</h2>
+    <table id="milestoneTable"><thead><tr><th>#</th><th>Tên</th><th>Status</th><th>Hạn</th><th>Lần chỉnh sửa</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row4">
+      <label>Tên <input id="msName" value="Giai đoạn 1" /></label>
+      <label>Số thứ tự <input id="msOrder" type="number" value="1" min="1" /></label>
+      <label>Hạn <input id="msDue" type="date" /></label>
+      <label>Status <select id="msStatus"><option value="">(giữ nguyên / Planned)</option><option>Planned</option><option>InProgress</option><option>Delivered</option><option>InRevision</option><option>Approved</option></select></label>
+    </div>
+    <button class="good" onclick="createMilestone()">Tạo giai đoạn</button>
+    <button onclick="updateMilestone()">Cập nhật giai đoạn đang chọn</button>
+    <button class="danger" onclick="deleteMilestone()">Xóa</button>
+    <p class="muted">Luật chuyển: Planned → InProgress; InProgress → Planned hoặc Delivered; Delivered → InRevision hoặc Approved; InRevision → Delivered; Approved → InRevision. Chuyển sang <b>Delivered</b> khi còn việc chưa xong sẽ hiện hộp thoại xác nhận (409). Planned tự lên InProgress khi có việc bắt đầu.</p>
+  </section>
+
+  <!-- 5. Việc -->
+  <section>
+    <h2>5. Việc (Task) <span id="taskBadge"></span></h2>
+    <div class="row3">
+      <label>Lọc theo status <select id="fStatus" onchange="loadTasks()"><option value="">(tất cả)</option><option>ToDo</option><option>InProgress</option><option>Done</option><option>Skipped</option></select></label>
+      <label>Lọc theo người được giao <select id="fAssignee" onchange="loadTasks()"></select></label>
+      <label>Lọc theo giai đoạn <select id="fMilestone" onchange="loadTasks()"></select></label>
+    </div>
+    <table id="taskTable"><thead><tr><th>Việc</th><th>Status</th><th>Ưu tiên</th><th>Người được giao</th><th>Giờ cố định</th><th>Deadline</th><th>Ước lượng</th><th>Việc con</th><th></th></tr></thead><tbody></tbody></table>
+
+    <h3>Tạo hoặc sửa việc (Leader)</h3>
+    <div class="row3">
+      <label>Tiêu đề <input id="tTitle" value="Viết báo cáo" /></label>
+      <label>Ưu tiên <select id="tPriority"><option>Medium</option><option>Low</option><option>High</option></select></label>
+      <label>Ước lượng (phút) <input id="tEst" type="number" min="1" placeholder="vd 120" /></label>
+    </div>
+    <div class="row3">
+      <label>Giai đoạn <select id="tMilestone"></select></label>
+      <label>Giao cho (khi tạo) <select id="tAssignee"></select></label>
+      <label>Deadline <input id="tDeadline" type="datetime-local" /></label>
+    </div>
+    <div class="row3">
+      <label>Giờ cố định - bắt đầu (họp, hẹn) <input id="tFixedStart" type="datetime-local" /></label>
+      <label>Giờ cố định - kết thúc <input id="tFixedEnd" type="datetime-local" /></label>
+      <label>Mô tả <input id="tDesc" /></label>
+    </div>
+    <button class="good" onclick="createTask()">Tạo việc</button>
+    <button onclick="updateTask()">Cập nhật việc đang chọn</button>
+    <button class="danger" onclick="deleteTask()">Xóa việc đang chọn</button>
+    <p class="muted">Có giờ cố định hoặc deadline + ước lượng thì khi <b>giao việc</b> hệ thống kiểm tra lịch người nhận: trùng giờ hoặc quá tải sẽ hiện hộp thoại xác nhận (409 <code>GROUP_ASSIGNEE_BUSY</code>).</p>
+
+    <h3>Việc đang chọn: <span id="selTaskName" class="muted">(chưa chọn)</span></h3>
+    <div>Status: <span id="selTaskStatus"></span></div>
+    <div id="taskStatusButtons"></div>
+    <div class="row3">
+      <label>Giao việc cho <select id="assignSelect"></select></label>
+      <div><button onclick="assignTask()">Giao việc (Leader)</button>
+        <button class="secondary" onclick="checkAssignee()">Kiểm tra lịch người nhận (Leader)</button></div>
+    </div>
+    <div id="availability" class="card" style="display:none"></div>
+  </section>
+
+  <!-- 6. Việc con -->
+  <section>
+    <h2>6. Việc con (Subtask) của việc đang chọn</h2>
+    <table id="subTable"><thead><tr><th>#</th><th>Việc con</th><th>Status</th><th>Người được giao</th><th>Ước lượng</th><th>Thao tác</th></tr></thead><tbody></tbody></table>
+    <div class="row4">
+      <label>Tiêu đề <input id="sTitle" value="Phần việc" /></label>
+      <label>Ước lượng (phút) <input id="sEst" type="number" min="1" /></label>
+      <label>Số thứ tự (bỏ trống = xếp cuối) <input id="sOrder" type="number" min="1" /></label>
+      <label>Giao cho <select id="sAssignee"></select></label>
+    </div>
+    <button class="good" onclick="createSubTask()">Tạo việc con (Leader)</button>
+    <p class="muted">Mỗi việc con một người được giao. Status việc cha tự suy: có việc con InProgress hoặc Done → InProgress; mọi việc con xong và có ít nhất một Done → Done; thêm việc con mới thì việc Done được mở lại; việc Skipped không tự đổi. Đóng việc bằng tay thì việc con còn dở thành Skipped.</p>
+  </section>
+
+  <!-- 7. Bình luận -->
+  <section>
+    <h2>7. Bình luận của việc đang chọn</h2>
+    <div id="commentList"></div>
+    <label>Nội dung (gõ <code>@email</code> của thành viên để nhắc tên, họ nhận thông báo) <textarea id="cText"></textarea></label>
+    <button class="good" onclick="addComment()">Gửi bình luận</button>
+  </section>
+
+  <!-- 8. Bấm giờ -->
+  <section>
+    <h2>8. Bấm giờ làm việc (Start/Stop)</h2>
+    <p class="muted">Chỉ người được giao bấm được. Việc có việc con thì chọn việc con. Mỗi người một phiên chạy một lúc (kể cả phiên cá nhân).</p>
+    <div class="card"><b>Phiên đang chạy của tài khoản này:</b>
+      <div id="currentSession" class="muted">Không có.</div></div>
+    <div class="row3">
+      <label>Việc (đang chọn ở mục 5) <input id="focusTask" disabled /></label>
+      <label>Việc con (bắt buộc nếu việc có việc con) <select id="focusSub"></select></label>
+      <div><button class="good" onclick="startFocus()">Start</button></div>
+    </div>
+    <div class="row3">
+      <label>Lý do dừng <select id="stopReason"><option>Completed</option><option>Interrupted</option><option>Blocked</option><option>Other</option></select></label>
+      <label>Ghi chú (bắt buộc với Blocked và Other) <input id="stopNote" /></label>
+      <div><button class="danger" onclick="stopFocus()">Stop</button></div>
+    </div>
+    <h3>Giờ làm thực tế của việc đang chọn</h3>
+    <div id="timeReport" class="muted">Chọn một việc ở mục 5.</div>
+  </section>
+
+  <!-- 9. Đề xuất đổi giờ -->
+  <section>
+    <h2>9. Đề xuất đổi giờ</h2>
+    <p class="muted">Người được giao việc (hoặc một việc con) đề xuất; Leader duyệt hoặc từ chối. Chọn việc ở mục 5 rồi điền dưới đây.</p>
+    <div class="row4">
+      <label>Giờ cố định mới - bắt đầu <input id="crStart" type="datetime-local" /></label>
+      <label>Giờ cố định mới - kết thúc <input id="crEnd" type="datetime-local" /></label>
+      <label>Deadline mới <input id="crDeadline" type="datetime-local" /></label>
+      <label>Lý do <input id="crReason" placeholder="bắt buộc" /></label>
+    </div>
+    <button class="good" onclick="createChangeRequest()">Gửi đề xuất</button>
+    <label>Lọc danh sách đề xuất của nhóm
+      <select id="crFilter" onchange="loadChangeRequests()"><option value="">(tất cả)</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Cancelled</option></select></label>
+    <table id="crTable"><thead><tr><th>Việc</th><th>Người đề xuất</th><th>Đổi sang</th><th>Lý do</th><th>Status</th><th>Thao tác</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <!-- 10. Tiến độ, nhật ký, việc của tôi -->
+  <section>
+    <h2>10. Tiến độ, nhật ký, việc của tôi</h2>
+    <div id="progress" class="muted">Chọn một nhóm.</div>
+    <h3>Việc được giao cho tôi (mọi nhóm đang hoạt động)</h3>
+    <div id="myWork" class="muted"></div>
+    <h3>Nhật ký hoạt động của nhóm (Leader và Member xem được)</h3>
+    <table id="activityTable"><thead><tr><th>Lúc</th><th>Ai</th><th>Đối tượng</th><th>Hành động</th><th>Cũ</th><th>Mới</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <!-- 11. Thông báo -->
+  <section>
+    <h2>11. Thông báo của tài khoản đang chọn</h2>
+    <button class="secondary" onclick="loadNotifications()">Tải lại</button>
+    <button class="secondary" onclick="readAll()">Đánh dấu đã đọc hết</button>
+    <label style="display:inline"><input type="checkbox" id="autoRefresh" onchange="toggleAuto()" /> tự tải lại mỗi 4 giây (thông báo, phiên đang chạy)</label>
+    <div id="notifyList"></div>
+    <p class="muted">Loại: <code>GroupInvited</code>, <code>GroupAssigned</code>, <code>GroupStatusChanged</code>, <code>GroupMention</code>, <code>GroupChangeRequested</code>, <code>GroupChangeDecided</code>. Bấm "Mở" để nhảy tới nhóm và việc liên quan.</p>
+  </section>
+
+  <!-- 12. Kịch bản -->
+  <section>
+    <h2>12. Kịch bản tự động</h2>
+    <p class="muted">Mỗi kịch bản tạo nhóm "[Thử] ..." riêng bằng các tài khoản ở mục 1, kiểm tra hàng chục luật và báo đúng/sai từng bước (kèm HTTP thật nếu sai), rồi lưu trữ nhóm đó. Kịch bản thiếu tài khoản sẽ được bỏ qua.</p>
+    <button class="good" onclick="runScenarios(false)">Chạy tất cả</button>
+    <button class="secondary" onclick="runScenarios(true)">Chỉ chạy các kịch bản đã tick</button>
+    <button class="secondary" onclick="toggleTicks(true)">Tick hết</button>
+    <button class="secondary" onclick="toggleTicks(false)">Bỏ tick hết</button>
+    <div id="scnSummary" class="card" style="display:none"></div>
+    <div id="scnList"></div>
+  </section>
+
+  <!-- 13. Log -->
+  <section>
+    <h2>13. Nhật ký gọi API</h2>
+    <button class="secondary" onclick="document.getElementById('apiLog').textContent=''">Xóa</button>
+    <pre id="apiLog"></pre>
+    <details><summary>Phản hồi thô gần nhất</summary><pre id="lastRaw"></pre></details>
+  </section>
+</main>
+
+<script src="/group-test-scenarios.js"></script>
+<script>
+  // ================================================================ Tiện ích
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const KEYS = ['leader', 'm1', 'm2', 'viewer', 'outsider'];
+  const LABEL = GroupScenarios.LABEL;
+  const ROLE_HINT = {
+    Leader: 'Leader: quản lý nhóm, thành viên, lời mời, giai đoạn, việc, việc con, giao việc; duyệt đề xuất đổi giờ; đổi status mọi việc.',
+    Member: 'Member: chỉ đổi status việc/việc con được giao cho mình, bấm giờ việc của mình, bình luận, đề xuất đổi giờ. Không tạo/sửa/xóa việc, không mời, không giao việc.',
+    Viewer: 'Viewer: chỉ xem (nhóm, việc, bình luận, tiến độ, báo cáo giờ). Mọi thao tác ghi đều 403; không xem nhật ký và đề xuất.'
+  };
+
+  const state = { active: sessionStorage.getItem('gt.active') || 'leader', accounts: JSON.parse(localStorage.getItem('gt.accounts') || '{}'),
+    group: null, groups: [], members: [], milestones: [], tasks: [], subs: [], selMilestone: null, selTask: null, current: null, timer: null, auto: null };
+  const pick = (id) => $(id).value || null;
+  const isoOf = (v) => (v ? new Date(v).toISOString() : null);
+  const num = (id) => { const v = $(id).value; return v === '' ? null : Number(v); };
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString('vi-VN') : '');
+  const badge = (s) => `<span class="badge ${esc(s)}">${esc(s)}</span>`;
+  const localInput = (iso) => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+  function notify(message, kind) {
+    const el = $('notice');
+    el.textContent = message;
+    el.className = 'notice ' + (kind || '');
+    el.style.display = 'block';
+  }
+  const ok = (m) => notify(m, 'ok');
+  const fail = (r, prefix) => notify((prefix ? prefix + ': ' : '') + `HTTP ${r.status} - ` + ((r.data && (r.data.message || r.data.code)) || 'lỗi'), 'error');
+
+  function logApi(as, method, path, status) {
+    const line = `${new Date().toLocaleTimeString('vi-VN')}  [${LABEL[as] || as}] ${method} ${path} -> ${status}\n`;
+    $('apiLog').textContent = (line + $('apiLog').textContent).slice(0, 30000);
+  }
+
+  // ================================================================ Gọi API theo tài khoản
+  function saveAccounts() { localStorage.setItem('gt.accounts', JSON.stringify(state.accounts)); }
+
+  async function refreshToken(key) {
+    const acc = state.accounts[key];
+    if (!acc || !acc.refreshToken) return false;
+    const response = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: acc.refreshToken }) });
+    if (!response.ok) return false;
+    const data = await response.json();
+    acc.accessToken = data.accessToken;
+    acc.refreshToken = data.refreshToken || acc.refreshToken;
+    saveAccounts();
+    return true;
+  }
+
+  async function callAs(key, method, path, body, retried) {
+    const acc = state.accounts[key];
+    const headers = { 'Content-Type': 'application/json' };
+    if (acc && acc.accessToken) headers.Authorization = 'Bearer ' + acc.accessToken;
+    let response;
+    try { response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
+    catch (e) { logApi(key, method, path, 'LỖI MẠNG'); return { ok: false, status: 0, data: { message: 'Không gọi được server: ' + e.message } }; }
+    if (response.status === 401 && !retried && await refreshToken(key)) return callAs(key, method, path, body, true);
+    const text = await response.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+    logApi(key, method, path, response.status);
+    $('lastRaw').textContent = `${method} ${path}\n${response.status}\n${JSON.stringify(data, null, 2)}`.slice(0, 20000);
+    return { ok: response.ok, status: response.status, data };
+  }
+  const api = (method, path, body) => callAs(state.active, method, path, body);
+
+  // ================================================================ 1. Tài khoản
+  function who(key) { return state.accounts[key]; }
+
+  function renderAccounts() {
+    $('loginFor').replaceChildren(...KEYS.map((k) => Object.assign(document.createElement('option'), { value: k, textContent: LABEL[k] })));
+    $('accountTable').querySelector('tbody').innerHTML = KEYS.map((k) => {
+      const a = who(k);
+      return `<tr><td><b>${LABEL[k]}</b> <span class="tag">${k}</span></td><td>${a ? esc(a.fullName) : '<span class="muted">chưa đăng nhập</span>'}</td><td>${a ? esc(a.email) : ''}</td>
+        <td>${a ? `<button class="small" onclick="setActive('${k}')">Dùng tài khoản này</button><button class="small secondary" onclick="logoutAccount('${k}')">Đăng xuất ô này</button>` : ''}</td></tr>`;
+    }).join('');
+    $('emailList').innerHTML = KEYS.filter(who).map((k) => `<option value="${esc(who(k).email)}">${LABEL[k]}</option>`).join('');
+    $('bar').innerHTML = `<span class="who">Đang thao tác bằng:</span>` + KEYS.map((k) =>
+      `<button class="${k === state.active ? 'on' : ''} ${who(k) ? '' : 'off'}" onclick="setActive('${k}')" title="${who(k) ? esc(who(k).email) : 'chưa đăng nhập'}">${LABEL[k]}${who(k) ? ': ' + esc(who(k).fullName.split(' ').pop()) : ''}</button>`).join('') +
+      `<span class="who" style="margin-left:12px">Nhóm:</span><select id="barGroup" onchange="$('groupSelect').value=this.value; onGroupChange()"></select>`;
+    renderBarGroups();
+  }
+
+  function renderBarGroups() {
+    const s = $('barGroup'); if (!s) return;
+    s.innerHTML = '<option value="">(chưa chọn)</option>' + state.groups.map((g) => `<option value="${g.id}" ${state.group && g.id === state.group.id ? 'selected' : ''}>${esc(g.name)} - ${esc(g.myRole)}</option>`).join('');
+  }
+
+  async function fillProfile(key) {
+    const me = await callAs(key, 'GET', '/api/me');
+    if (!me.ok) { delete state.accounts[key]; saveAccounts(); renderAccounts(); return fail(me, 'Token không dùng được'); }
+    Object.assign(state.accounts[key], { userId: me.data.id, email: me.data.email, fullName: me.data.fullName });
+    saveAccounts();
+  }
+
+  async function storeLogin(key, auth) {
+    state.accounts[key] = { accessToken: auth.accessToken, refreshToken: auth.refreshToken, fullName: auth.fullName, email: auth.email, userId: auth.userId };
+    saveAccounts();
+    setActive(key, true);
+    ok(`Đã đăng nhập ${auth.fullName} (${auth.email}) vào ô ${LABEL[key]}.`);
+  }
+
+  function renderGoogleButton() {
+    const clientId = $('clientId').value.trim();
+    if (!clientId) return notify('Nhập Google Client ID trước.', 'error');
+    localStorage.setItem('googleClientId', clientId);
+    google.accounts.id.initialize({ client_id: clientId, callback: onGoogleCredential, auto_select: false });
+    google.accounts.id.disableAutoSelect();
+    google.accounts.id.renderButton($('googleButton'), { theme: 'outline', size: 'large' });
+  }
+
+  async function onGoogleCredential(response) {
+    const key = $('loginFor').value;
+    const r = await callAs(key, 'POST', '/api/auth/google', { idToken: response.credential });
+    if (!r.ok) return fail(r, 'Đăng nhập thất bại');
+    await storeLogin(key, r.data);
+  }
+
+  async function loginWithIdToken() {
+    const key = $('loginFor').value;
+    const r = await callAs(key, 'POST', '/api/auth/google', { idToken: $('idTokenInput').value.trim() });
+    if (!r.ok) return fail(r, 'Đăng nhập thất bại');
+    await storeLogin(key, r.data);
+    $('idTokenInput').value = '';
+  }
+
+  async function useAccessToken() {
+    const key = $('loginFor').value;
+    const value = $('tokenInput').value.trim().replace(/^Bearer\s+/i, '');
+    if (!value) return;
+    state.accounts[key] = { accessToken: value, fullName: '?', email: '?' };
+    await fillProfile(key);
+    if (state.accounts[key]) { setActive(key, true); ok('Đã dùng accessToken cho ô ' + LABEL[key] + ' (hết hạn sau khoảng 1 giờ, không có refresh token).'); }
+    $('tokenInput').value = '';
+  }
+
+  function logoutAccount(key) { delete state.accounts[key]; saveAccounts(); renderAccounts(); renderScenarios(); }
+
+  function setActive(key, quiet) {
+    if (!who(key)) return notify(`Ô ${LABEL[key]} chưa đăng nhập. Đăng nhập ở mục 1.`, 'error');
+    state.active = key;
+    sessionStorage.setItem('gt.active', key);
+    renderAccounts();
+    renderScenarios();
+    loadGroups().then(() => { if (!quiet) ok('Đang thao tác bằng ' + LABEL[key] + ' (' + who(key).fullName + ').'); });
+  }
+
+  // ================================================================ 2. Nhóm
+  const myRole = () => (state.group ? state.group.myRole : null);
+  const gid = () => (state.group ? state.group.id : null);
+  const needGroup = () => { if (!gid()) { notify('Chọn hoặc tạo một nhóm ở mục 2 trước.', 'warn'); return false; } return true; };
+  const needTask = () => { if (!state.selTask) { notify('Chọn một việc ở mục 5 trước.', 'warn'); return false; } return true; };
+
+  async function loadGroups() {
+    if (!who(state.active)) { state.groups = []; renderGroups(); return; }
+    const r = await api('GET', '/api/groups?includeArchived=' + $('showArchived').checked);
+    state.groups = r.ok ? r.data : [];
+    const keep = state.group && state.groups.find((g) => g.id === state.group.id);
+    state.group = keep || (sessionStorage.getItem('gt.group') && state.groups.find((g) => g.id === sessionStorage.getItem('gt.group'))) || null;
+    renderGroups();
+    await refreshAll();
+  }
+
+  function renderGroups() {
+    const s = $('groupSelect');
+    s.innerHTML = '<option value="">(chưa chọn)</option>' + state.groups.map((g) => `<option value="${g.id}">${esc(g.name)} - ${g.myRole} - ${g.status}</option>`).join('');
+    s.value = state.group ? state.group.id : '';
+    renderBarGroups();
+    const info = $('groupInfo');
+    if (!state.group) { info.style.display = 'none'; $('groupBadge').innerHTML = ''; $('roleHint').textContent = 'Chọn hoặc tạo nhóm để bắt đầu. Tài khoản đang dùng: ' + (who(state.active) ? who(state.active).fullName : 'chưa đăng nhập') + '.'; return; }
+    const g = state.group;
+    $('groupBadge').innerHTML = badge(g.status) + ' ' + badge(g.myRole);
+    info.style.display = 'block';
+    info.innerHTML = `<b>${esc(g.name)}</b> ${badge(g.status)} - bạn là ${badge(g.myRole)} - ${g.memberCount} thành viên<br><span class="muted">id ${g.id} - ${g.startDate || ''} → ${g.deadline || ''}</span><br>${esc(g.description || '')}`;
+    $('roleHint').innerHTML = `<b>${LABEL[state.active]}</b> (${esc(who(state.active).fullName)}) là <b>${g.myRole}</b> trong "${esc(g.name)}". ${ROLE_HINT[g.myRole]}` + (g.status === 'Archived' ? ' <b>Nhóm đã lưu trữ: chỉ xem.</b>' : '');
+  }
+
+  async function onGroupChange() {
+    const id = $('groupSelect').value;
+    state.group = state.groups.find((g) => g.id === id) || null;
+    state.selTask = null; state.selMilestone = null;
+    if (id) sessionStorage.setItem('gt.group', id); else sessionStorage.removeItem('gt.group');
+    renderGroups();
+    await refreshAll();
+  }
+
+  async function createGroup() {
+    const r = await api('POST', '/api/groups', { name: $('gName').value, description: $('gDesc').value || null, startDate: $('gStart').value || null, deadline: $('gDeadline').value || null });
+    if (!r.ok) return fail(r, 'Tạo nhóm');
+    state.group = r.data; sessionStorage.setItem('gt.group', r.data.id);
+    ok('Đã tạo nhóm. Bạn là Leader.');
+    await loadGroups();
+  }
+
+  async function updateGroup() {
+    if (!needGroup()) return;
+    const r = await api('PUT', `/api/groups/${gid()}`, { name: $('gName').value, description: $('gDesc').value || null, startDate: $('gStart').value || null, deadline: $('gDeadline').value || null });
+    if (!r.ok) return fail(r, 'Sửa nhóm');
+    ok('Đã sửa nhóm.'); await loadGroups();
+  }
+
+  async function archiveGroup() { if (!needGroup()) return; const r = await api('POST', `/api/groups/${gid()}/archive`); if (!r.ok) return fail(r, 'Lưu trữ'); ok('Đã lưu trữ nhóm (chỉ xem).'); await loadGroups(); }
+  async function restoreGroup() { if (!needGroup()) return; const r = await api('POST', `/api/groups/${gid()}/restore`); if (!r.ok) return fail(r, 'Khôi phục'); ok('Đã khôi phục nhóm.'); await loadGroups(); }
+
+  // ================================================================ Làm mới mọi thứ theo nhóm đang chọn
+  async function refreshAll() {
+    renderGroups();
+    await Promise.all([loadInvitesForMe(), loadNotifications(), loadMyWork(), loadCurrentFocus()]);
+    if (!state.group) { clearGroupViews(); return; }
+    await loadMembers();
+    await Promise.all([loadMilestones(), loadProgress(), loadActivity(), loadGroupInvites(), loadChangeRequests()]);
+    await loadTasks();
+  }
+
+  function clearGroupViews() {
+    for (const id of ['memberTable', 'milestoneTable', 'taskTable', 'subTable', 'activityTable', 'groupInviteTable', 'crTable']) $(id).querySelector('tbody').innerHTML = '';
+    $('commentList').innerHTML = ''; $('progress').textContent = 'Chọn một nhóm.'; $('timeReport').textContent = 'Chọn một việc ở mục 5.';
+  }
+
+  // ================================================================ 3. Thành viên và lời mời
+  async function loadMembers() {
+    const r = await api('GET', `/api/groups/${gid()}/members`);
+    state.members = r.ok ? r.data : [];
+    const meId = who(state.active).userId;
+    const isLeader = myRole() === 'Leader';
+    $('memberTable').querySelector('tbody').innerHTML = state.members.map((m) => `<tr>
+      <td>${esc(m.fullName)}${m.userId === meId ? ' <span class="tag">tôi</span>' : ''}</td><td>${esc(m.email)}</td><td>${badge(m.role)}</td><td>${fmt(m.joinedAt)}</td>
+      <td>${isLeader || true ? `<select id="role_${m.userId}" style="width:auto"><option>Leader</option><option>Member</option><option>Viewer</option></select>
+        <button class="small" onclick="changeRole('${m.userId}')">Đổi vai trò</button><button class="small danger" onclick="removeMember('${m.userId}')">Xóa khỏi nhóm</button>` : ''}</td></tr>`).join('');
+    state.members.forEach((m) => { const s = $('role_' + m.userId); if (s) s.value = m.role; });
+    const options = '<option value="">(chưa giao)</option>' + state.members.map((m) => `<option value="${m.userId}">${esc(m.fullName)} - ${m.role}</option>`).join('');
+    for (const id of ['tAssignee', 'assignSelect', 'sAssignee']) { const v = $(id).value; $(id).innerHTML = options; $(id).value = v; }
+    const f = $('fAssignee'); const fv = f.value; f.innerHTML = '<option value="">(mọi người)</option>' + state.members.map((m) => `<option value="${m.userId}">${esc(m.fullName)}</option>`).join(''); f.value = fv;
+  }
+
+  async function changeRole(userId) { const r = await api('PUT', `/api/groups/${gid()}/members/${userId}`, { role: $('role_' + userId).value }); if (!r.ok) return fail(r, 'Đổi vai trò'); ok('Đã đổi vai trò.'); await loadGroups(); }
+  async function removeMember(userId) { if (!confirm('Xóa thành viên này? Việc đang giao cho họ sẽ về chưa giao.')) return; const r = await api('DELETE', `/api/groups/${gid()}/members/${userId}`); if (!r.ok) return fail(r, 'Xóa thành viên'); ok('Đã xóa khỏi nhóm.'); await loadGroups(); }
+  async function leaveGroup() { if (!needGroup()) return; const r = await api('POST', `/api/groups/${gid()}/leave`); if (!r.ok) return fail(r, 'Rời nhóm'); ok('Đã rời nhóm.'); state.group = null; await loadGroups(); }
+
+  async function invite() {
+    if (!needGroup()) return;
+    const r = await api('POST', `/api/groups/${gid()}/invitations`, { email: $('inviteEmail').value.trim(), role: $('inviteRole').value });
+    const box = $('inviteResult');
+    if (!r.ok) { box.style.display = 'none'; return fail(r, 'Mời'); }
+    box.style.display = 'block';
+    box.innerHTML = `Đã mời <b>${esc(r.data.email)}</b> vai trò ${badge(r.data.role)}, hết hạn ${fmt(r.data.expiresAt)}.<br>acceptToken (chỉ hiện một lần): <code id="tok">${esc(r.data.acceptToken)}</code> <button class="small secondary" onclick="navigator.clipboard.writeText($('tok').textContent)">Copy</button>`;
+    ok('Đã gửi lời mời.'); await loadGroupInvites();
+  }
+
+  async function loadGroupInvites() {
+    const body = $('groupInviteTable').querySelector('tbody');
+    if (myRole() !== 'Leader') { body.innerHTML = '<tr><td colspan="5" class="muted">Chỉ Leader xem được.</td></tr>'; return; }
+    const r = await api('GET', `/api/groups/${gid()}/invitations`);
+    body.innerHTML = (r.ok ? r.data : []).map((i) => `<tr><td>${esc(i.email)}</td><td>${badge(i.role)}</td><td>${badge(i.status)}</td><td>${fmt(i.expiresAt)}</td>
+      <td>${i.status === 'Pending' ? `<button class="small danger" onclick="revokeInvite('${i.id}')">Thu hồi</button>` : ''}</td></tr>`).join('');
+  }
+  async function revokeInvite(id) { const r = await api('DELETE', `/api/groups/${gid()}/invitations/${id}`); if (!r.ok) return fail(r, 'Thu hồi'); ok('Đã thu hồi lời mời.'); await loadGroupInvites(); }
+
+  async function loadInvitesForMe() {
+    const r = who(state.active) ? await api('GET', '/api/group-invitations') : { ok: false };
+    $('myInviteTable').querySelector('tbody').innerHTML = (r.ok ? r.data : []).map((i) => `<tr><td>${esc(i.groupName)}</td><td>${esc(i.invitedByName)}</td><td>${badge(i.role)}</td><td>${fmt(i.expiresAt)}</td>
+      <td><button class="small good" onclick="answerInvite('${i.id}', true)">Chấp nhận</button><button class="small secondary" onclick="answerInvite('${i.id}', false)">Từ chối</button></td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">Không có lời mời nào đang chờ.</td></tr>';
+  }
+  async function answerInvite(id, accept) {
+    const r = await api('POST', `/api/group-invitations/${id}/${accept ? 'accept' : 'decline'}`);
+    if (!r.ok) return fail(r, accept ? 'Chấp nhận' : 'Từ chối');
+    ok(accept ? 'Đã vào nhóm.' : 'Đã từ chối lời mời.');
+    if (accept && r.data && r.data.id) state.group = r.data;
+    await loadGroups();
+  }
+  async function acceptByToken() {
+    const r = await api('POST', '/api/group-invitations/accept-by-token', { token: $('acceptToken').value.trim() });
+    if (!r.ok) return fail(r, 'Chấp nhận bằng token');
+    ok('Đã vào nhóm bằng token.'); state.group = r.data; await loadGroups();
+  }
+
+  // ================================================================ 4. Giai đoạn
+  async function loadMilestones() {
+    const r = await api('GET', `/api/groups/${gid()}/milestones`);
+    state.milestones = r.ok ? r.data : [];
+    $('milestoneTable').querySelector('tbody').innerHTML = state.milestones.map((m) => `<tr class="${state.selMilestone === m.id ? 'sel' : ''}">
+      <td>${m.orderIndex}</td><td>${esc(m.name)}</td><td>${badge(m.status)}</td><td>${m.dueDate || ''}</td><td>${m.revisionCount}</td>
+      <td><button class="small" onclick="pickMilestone('${m.id}')">Chọn</button></td></tr>`).join('');
+    const opts = '<option value="">(không)</option>' + state.milestones.map((m) => `<option value="${m.id}">${m.orderIndex}. ${esc(m.name)} (${m.status})</option>`).join('');
+    const a = $('tMilestone'), b = $('fMilestone'); const av = a.value, bv = b.value;
+    a.innerHTML = opts; b.innerHTML = '<option value="">(mọi giai đoạn)</option>' + opts.split('<option value="">(không)</option>')[1]; a.value = av; b.value = bv;
+  }
+  function pickMilestone(id) {
+    const m = state.milestones.find((x) => x.id === id); if (!m) return;
+    state.selMilestone = id;
+    $('msName').value = m.name; $('msOrder').value = m.orderIndex; $('msDue').value = m.dueDate || ''; $('msStatus').value = '';
+    loadMilestones();
+    ok(`Đã chọn giai đoạn "${m.name}" (${m.status}). Chọn status mới (nếu muốn đổi) rồi bấm Cập nhật.`);
+  }
+  const msBody = (confirmOpenTasks) => ({ name: $('msName').value, orderIndex: Number($('msOrder').value), dueDate: $('msDue').value || null, status: $('msStatus').value || null, confirmOpenTasks });
+
+  async function createMilestone() { if (!needGroup()) return; const r = await api('POST', `/api/groups/${gid()}/milestones`, msBody(false)); if (!r.ok) return fail(r, 'Tạo giai đoạn'); ok('Đã tạo giai đoạn.'); await loadMilestones(); }
+  async function updateMilestone() {
+    if (!state.selMilestone) return notify('Bấm "Chọn" ở một giai đoạn trước.', 'warn');
+    let r = await api('PUT', `/api/group-milestones/${state.selMilestone}`, msBody(false));
+    if (r.status === 409 && r.data.code === 'MILESTONE_HAS_OPEN_TASKS') {
+      const list = (r.data.details.tasks || []).map((t) => `- ${t.title} (${t.status}, ${t.openSubTaskCount} việc con mở)`).join('\n');
+      if (!confirm(r.data.message + '\n\n' + list + '\n\nVẫn giao giai đoạn?')) return notify('Đã hủy. Giai đoạn giữ nguyên (409 MILESTONE_HAS_OPEN_TASKS).', 'warn');
+      r = await api('PUT', `/api/group-milestones/${state.selMilestone}`, msBody(true));
+    }
+    if (!r.ok) return fail(r, 'Cập nhật giai đoạn');
+    ok('Đã cập nhật giai đoạn: ' + r.data.status); await refreshAll();
+  }
+  async function deleteMilestone() { if (!state.selMilestone) return; const r = await api('DELETE', `/api/group-milestones/${state.selMilestone}`); if (!r.ok) return fail(r, 'Xóa giai đoạn'); state.selMilestone = null; ok('Đã xóa giai đoạn.'); await refreshAll(); }
+
+  // ================================================================ 5. Việc
+  async function loadTasks() {
+    if (!gid()) return;
+    const q = new URLSearchParams(); if ($('fStatus').value) q.set('status', $('fStatus').value); if ($('fAssignee').value) q.set('assigneeId', $('fAssignee').value); if ($('fMilestone').value) q.set('milestoneId', $('fMilestone').value);
+    const r = await api('GET', `/api/groups/${gid()}/tasks?` + q);
+    state.tasks = r.ok ? r.data : [];
+    if (state.selTask && !state.tasks.some((t) => t.id === state.selTask.id)) { const keep = state.selTask; state.selTask = null; if (!q.toString()) { /* việc đã bị xóa */ } else state.selTask = keep; }
+    else if (state.selTask) state.selTask = state.tasks.find((t) => t.id === state.selTask.id);
+    $('taskTable').querySelector('tbody').innerHTML = state.tasks.map((t) => `<tr class="${state.selTask && state.selTask.id === t.id ? 'sel' : ''}">
+      <td>${esc(t.title)}</td><td>${badge(t.status)}</td><td>${badge(t.priority)}</td><td>${esc(t.assigneeName || '—')}</td>
+      <td>${t.fixedStart ? fmt(t.fixedStart) + '<br>→ ' + fmt(t.fixedEnd) : ''}</td><td>${fmt(t.deadline)}</td><td>${t.estimatedMinutes ?? ''}</td><td>${t.subTaskDoneCount}/${t.subTaskCount}</td>
+      <td><button class="small" onclick="pickTask('${t.id}')">Chọn</button></td></tr>`).join('') || '<tr><td colspan="9" class="muted">Chưa có việc.</td></tr>';
+    renderSelectedTask();
+    await Promise.all([loadSubs(), loadComments(), loadTime(), loadChangeRequests()]);
+  }
+
+  function pickTask(id) {
+    const t = state.tasks.find((x) => x.id === id); if (!t) return;
+    state.selTask = t;
+    $('tTitle').value = t.title; $('tDesc').value = t.description || ''; $('tPriority').value = t.priority; $('tEst').value = t.estimatedMinutes ?? '';
+    $('tMilestone').value = t.milestoneId || ''; $('tDeadline').value = localInput(t.deadline); $('tFixedStart').value = localInput(t.fixedStart); $('tFixedEnd').value = localInput(t.fixedEnd);
+    $('assignSelect').value = t.assigneeId || '';
+    loadTasks();
+  }
+
+  function renderSelectedTask() {
+    const t = state.selTask;
+    $('selTaskName').textContent = t ? t.title : '(chưa chọn)';
+    $('selTaskStatus').innerHTML = t ? badge(t.status) + (t.completedAt ? ' xong lúc ' + fmt(t.completedAt) : '') : '';
+    $('taskStatusButtons').innerHTML = t ? ['ToDo', 'InProgress', 'Done', 'Skipped'].map((s) => `<button class="small ${s === t.status ? 'secondary' : ''}" onclick="setTaskStatus('${s}')">→ ${s}</button>`).join('')
+      + '<span class="muted"> (Member chỉ đổi việc của mình và không có việc con; việc có việc con tự suy status)</span>' : '';
+    $('taskBadge').innerHTML = t ? badge(t.status) : '';
+    $('focusTask').value = t ? t.title : '';
+  }
+
+  const taskBody = (confirmConflicts) => ({
+    title: $('tTitle').value, description: $('tDesc').value || null, priority: $('tPriority').value, milestoneId: pick('tMilestone'), assigneeId: pick('tAssignee'),
+    deadline: isoOf($('tDeadline').value), estimatedMinutes: num('tEst'), fixedStart: isoOf($('tFixedStart').value), fixedEnd: isoOf($('tFixedEnd').value), confirmConflicts
+  });
+
+  // Gọi API có thể trả 409 GROUP_ASSIGNEE_BUSY: hỏi xác nhận rồi gửi lại kèm confirmConflicts
+  async function withBusyConfirm(call) {
+    let r = await call(false);
+    if (r.status === 409 && r.data.code === 'GROUP_ASSIGNEE_BUSY') {
+      const d = r.data.details || {};
+      const lines = (d.conflicts || []).map((c) => `- ${c.source}: ${fmt(c.start)} → ${fmt(c.end)}`).join('\n');
+      const w = d.workload ? `\nKhối lượng: ${d.workload.assignedMinutes}/${d.workload.capacityMinutes} phút` : '';
+      if (!confirm(r.data.message + '\n\n' + lines + w + '\n\nVẫn tiếp tục?')) { notify('Đã hủy (409 GROUP_ASSIGNEE_BUSY): ' + r.data.message, 'warn'); return null; }
+      r = await call(true);
+    }
+    return r;
+  }
+
+  async function createTask() {
+    if (!needGroup()) return;
+    const r = await withBusyConfirm((c) => api('POST', `/api/groups/${gid()}/tasks`, taskBody(c)));
+    if (!r) return;
+    if (!r.ok) return fail(r, 'Tạo việc');
+    ok('Đã tạo việc.'); state.selTask = r.data; await refreshAll();
+  }
+  async function updateTask() {
+    if (!needTask()) return;
+    const r = await withBusyConfirm((c) => api('PUT', `/api/group-tasks/${state.selTask.id}`, taskBody(c)));
+    if (!r) return;
+    if (!r.ok) return fail(r, 'Cập nhật việc');
+    ok('Đã cập nhật việc (status và người được giao đổi bằng nút riêng).'); await refreshAll();
+  }
+  async function deleteTask() { if (!needTask()) return; if (!confirm('Xóa việc này cùng việc con và bình luận?')) return; const r = await api('DELETE', `/api/group-tasks/${state.selTask.id}`); if (!r.ok) return fail(r, 'Xóa việc'); state.selTask = null; ok('Đã xóa việc.'); await refreshAll(); }
+  async function setTaskStatus(status) { if (!needTask()) return; const r = await api('PUT', `/api/group-tasks/${state.selTask.id}/status`, { status }); if (!r.ok) return fail(r, 'Đổi status'); ok('Status việc: ' + r.data.status); await refreshAll(); }
+  async function assignTask() {
+    if (!needTask()) return;
+    const assigneeId = pick('assignSelect');
+    const r = await withBusyConfirm((c) => api('PUT', `/api/group-tasks/${state.selTask.id}/assignee`, { assigneeId, confirmConflicts: c }));
+    if (!r) return;
+    if (!r.ok) return fail(r, 'Giao việc');
+    ok(assigneeId ? 'Đã giao việc cho ' + (r.data.assigneeName || '') : 'Đã bỏ giao việc.'); await refreshAll();
+  }
+  async function checkAssignee() {
+    if (!needTask()) return;
+    const assigneeId = pick('assignSelect'); if (!assigneeId) return notify('Chọn người nhận ở ô "Giao việc cho" trước.', 'warn');
+    const r = await api('GET', `/api/group-tasks/${state.selTask.id}/assignee-check?assigneeId=${assigneeId}`);
+    const box = $('availability'); box.style.display = 'block';
+    if (!r.ok) { box.innerHTML = `<span class="fail">HTTP ${r.status}: ${esc(r.data.message || r.data.code || '')}</span>`; return; }
+    const d = r.data;
+    box.innerHTML = `${d.isBusy ? '<span class="fail">BẬN</span>' : '<span class="ok">RẢNH</span>'} vào giờ cố định của việc này.`
+      + (d.conflicts.length ? '<ul>' + d.conflicts.map((c) => `<li>${esc(c.source)}: ${fmt(c.start)} → ${fmt(c.end)}</li>`).join('') + '</ul>' : '')
+      + (d.workload ? `<div>Khối lượng tuần của deadline: ${d.workload.assignedMinutes}/${d.workload.capacityMinutes} phút ${d.workload.isOverloaded ? '<span class="fail">(quá tải)</span>' : '<span class="ok">(ổn)</span>'}</div>` : '<div class="muted">Việc chưa có deadline hoặc ước lượng nên không tính khối lượng.</div>')
+      + `<div class="muted">Chỉ có bận hay rảnh: không có tên dự án hay tiêu đề lịch cá nhân. needsConfirmation = ${d.needsConfirmation}</div>`;
+  }
+
+  // ================================================================ 6. Việc con
+  async function loadSubs() {
+    const body = $('subTable').querySelector('tbody');
+    if (!state.selTask) { state.subs = []; body.innerHTML = '<tr><td colspan="6" class="muted">Chọn một việc ở mục 5.</td></tr>'; $('focusSub').innerHTML = '<option value="">(không)</option>'; return; }
+    const r = await api('GET', `/api/group-tasks/${state.selTask.id}/subtasks`);
+    state.subs = r.ok ? r.data : [];
+    const people = '<option value="">(chưa giao)</option>' + state.members.map((m) => `<option value="${m.userId}">${esc(m.fullName)}</option>`).join('');
+    body.innerHTML = state.subs.map((s) => `<tr><td>${s.orderIndex}</td><td>${esc(s.title)}</td><td>${badge(s.status)}</td><td>${esc(s.assigneeName || '—')}</td><td>${s.estimatedMinutes ?? ''}</td>
+      <td>${['ToDo', 'InProgress', 'Done', 'Skipped'].map((x) => `<button class="small ${x === s.status ? 'secondary' : ''}" onclick="setSubStatus('${s.id}','${x}')">${x}</button>`).join('')}
+        <select id="sa_${s.id}" style="width:auto">${people}</select><button class="small" onclick="assignSub('${s.id}')">Giao</button>
+        <button class="small secondary" onclick="renameSub('${s.id}')">Sửa tên</button><button class="small danger" onclick="deleteSub('${s.id}')">Xóa</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Việc này chưa có việc con.</td></tr>';
+    state.subs.forEach((s) => { const el = $('sa_' + s.id); if (el) el.value = s.assigneeId || ''; });
+    const prev = $('focusSub').value;
+    $('focusSub').innerHTML = '<option value="">(không - việc không có việc con)</option>' + state.subs.map((s) => `<option value="${s.id}">${esc(s.title)} (${s.status})</option>`).join('');
+    $('focusSub').value = prev;
+  }
+  async function createSubTask() {
+    if (!needTask()) return;
+    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/subtasks`, { title: $('sTitle').value, estimatedMinutes: num('sEst'), orderIndex: num('sOrder'), assigneeId: pick('sAssignee') });
+    if (!r.ok) return fail(r, 'Tạo việc con'); ok('Đã tạo việc con.'); await loadTasks();
+  }
+  async function setSubStatus(id, status) { const r = await api('PUT', `/api/group-subtasks/${id}/status`, { status }); if (!r.ok) return fail(r, 'Đổi status việc con'); ok(`Việc con → ${r.data.status}. Xem status việc cha ở bảng trên (tự suy lại).`); await loadTasks(); }
+  async function assignSub(id) { const r = await api('PUT', `/api/group-subtasks/${id}/assignee`, { assigneeId: $('sa_' + id).value || null }); if (!r.ok) return fail(r, 'Giao việc con'); ok('Đã giao việc con.'); await loadTasks(); }
+  async function renameSub(id) {
+    const s = state.subs.find((x) => x.id === id); const title = prompt('Tên mới của việc con:', s.title); if (!title) return;
+    const r = await api('PUT', `/api/group-subtasks/${id}`, { title, estimatedMinutes: s.estimatedMinutes, orderIndex: s.orderIndex });
+    if (!r.ok) return fail(r, 'Sửa việc con'); ok('Đã sửa.'); await loadTasks();
+  }
+  async function deleteSub(id) { const r = await api('DELETE', `/api/group-subtasks/${id}`); if (!r.ok) return fail(r, 'Xóa việc con'); ok('Đã xóa việc con (status việc cha được suy lại).'); await loadTasks(); }
+
+  // ================================================================ 7. Bình luận
+  async function loadComments() {
+    if (!state.selTask) { $('commentList').innerHTML = '<span class="muted">Chọn một việc ở mục 5.</span>'; return; }
+    const r = await api('GET', `/api/group-tasks/${state.selTask.id}/comments`);
+    $('commentList').innerHTML = (r.ok ? r.data : []).map((c) => `<div class="card"><b>${esc(c.authorName)}</b> <span class="muted">${fmt(c.createdAt)}${c.editedAt ? ' (đã sửa)' : ''}</span><br>${esc(c.content)}<br>
+      <button class="small secondary" onclick="editComment('${c.id}')">Sửa</button><button class="small danger" onclick="deleteComment('${c.id}')">Xóa</button></div>`).join('') || '<span class="muted">Chưa có bình luận.</span>';
+  }
+  async function addComment() { if (!needTask()) return; const r = await api('POST', `/api/group-tasks/${state.selTask.id}/comments`, { content: $('cText').value }); if (!r.ok) return fail(r, 'Bình luận'); $('cText').value = ''; ok('Đã bình luận.'); await loadComments(); }
+  async function editComment(id) { const c = prompt('Nội dung mới:'); if (!c) return; const r = await api('PUT', `/api/group-comments/${id}`, { content: c }); if (!r.ok) return fail(r, 'Sửa bình luận'); ok('Đã sửa.'); await loadComments(); }
+  async function deleteComment(id) { const r = await api('DELETE', `/api/group-comments/${id}`); if (!r.ok) return fail(r, 'Xóa bình luận'); ok('Đã xóa.'); await loadComments(); }
+
+  // ================================================================ 8. Bấm giờ
+  async function loadCurrentFocus() {
+    clearInterval(state.timer);
+    const r = who(state.active) ? await api('GET', '/api/group-focus/current') : { status: 204 };
+    const el = $('currentSession');
+    if (r.status !== 200) { state.current = null; el.className = 'muted'; el.textContent = 'Không có.'; return; }
+    state.current = r.data;
+    const draw = () => {
+      const secs = Math.floor((Date.now() - new Date(r.data.startedAt).getTime()) / 1000);
+      const h = String(Math.floor(secs / 3600)).padStart(2, '0'), m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0'), s = String(secs % 60).padStart(2, '0');
+      el.className = ''; el.innerHTML = `<div class="timer">${h}:${m}:${s}</div>${esc(r.data.groupName)} › ${esc(r.data.taskTitle)}${r.data.subTaskTitle ? ' › ' + esc(r.data.subTaskTitle) : ''}<br><span class="muted">bắt đầu ${fmt(r.data.startedAt)}${r.data.estimatedMinutes ? ', ước lượng ' + r.data.estimatedMinutes + ' phút' : ''} - phiên ${r.data.sessionId}</span>`;
+    };
+    draw(); state.timer = setInterval(draw, 1000);
+  }
+  async function startFocus() {
+    if (!needTask()) return;
+    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/focus/start`, { subTaskId: pick('focusSub') });
+    if (r.status === 409) { const d = r.data.details || {}; return notify(`${r.data.message} (nguồn: ${d.source || '?'})`, 'warn'); }
+    if (!r.ok) return fail(r, 'Start');
+    ok(`Đã Start. Việc: ${r.data.taskStatus}${r.data.subTaskStatus ? ', việc con: ' + r.data.subTaskStatus : ''}.`); await refreshAll();
+  }
+  async function stopFocus() {
+    if (!state.current) return notify('Tài khoản này không có phiên đang chạy.', 'warn');
+    const r = await api('POST', `/api/group-focus/${state.current.sessionId}/stop`, { stopReason: $('stopReason').value, note: $('stopNote').value || null });
+    if (!r.ok) return fail(r, 'Stop');
+    ok(`Đã Stop: ${r.data.sessionMinutes} phút (của tôi trên việc: ${r.data.myTaskMinutes}, cả nhóm: ${r.data.taskTotalMinutes}). Việc: ${r.data.taskStatus}${r.data.subTaskStatus ? ', việc con: ' + r.data.subTaskStatus : ''}${r.data.wasCapped ? ' - phiên bị cắt còn 12 giờ' : ''}.`);
+    $('stopNote').value = ''; await refreshAll();
+  }
+  async function loadTime() {
+    const el = $('timeReport');
+    if (!state.selTask) { el.textContent = 'Chọn một việc ở mục 5.'; return; }
+    const r = await api('GET', `/api/group-tasks/${state.selTask.id}/time`);
+    if (!r.ok) { el.innerHTML = `<span class="fail">HTTP ${r.status}</span>`; return; }
+    const d = r.data; const pct = d.estimatedMinutes ? Math.min(100, Math.round(100 * d.totalMinutes / d.estimatedMinutes)) : 0;
+    el.className = '';
+    el.innerHTML = `<b>${d.totalMinutes} phút</b> / ${d.estimatedMinutes ?? '?'} phút ước lượng (${d.sessionCount} phiên)<div class="bar"><div style="width:${pct}%"></div></div>
+      <div class="row"><div><b>Theo người</b><table><tbody>${d.byUser.map((u) => `<tr><td>${esc(u.fullName)}</td><td>${u.minutes} phút</td><td>${u.sessionCount} phiên</td></tr>`).join('') || '<tr><td class="muted">chưa có</td></tr>'}</tbody></table></div>
+      <div><b>Theo việc con</b><table><tbody>${d.bySubTask.map((s) => `<tr><td>${esc(s.title || '(cả việc)')}</td><td>${s.minutes} phút</td></tr>`).join('') || '<tr><td class="muted">chưa có</td></tr>'}</tbody></table></div></div>
+      <details><summary>${d.sessions.length} phiên</summary><table><tbody>${d.sessions.map((s) => `<tr><td>${esc(s.userName)}</td><td>${fmt(s.startedAt)}</td><td>${s.isRunning ? '<span class="ok">đang chạy</span>' : fmt(s.endedAt)}</td><td>${s.minutes} phút</td><td>${esc(s.stopReason || '')}</td><td>${esc(s.note || '')}</td></tr>`).join('')}</tbody></table></details>`;
+  }
+
+  // ================================================================ 9. Đề xuất đổi giờ
+  async function createChangeRequest() {
+    if (!needTask()) return;
+    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/change-requests`, { newFixedStart: isoOf($('crStart').value), newFixedEnd: isoOf($('crEnd').value), newDeadline: isoOf($('crDeadline').value), reason: $('crReason').value });
+    if (!r.ok) return fail(r, 'Gửi đề xuất'); ok('Đã gửi đề xuất. Leader nhận thông báo GroupChangeRequested.'); await loadChangeRequests();
+  }
+  async function loadChangeRequests() {
+    const body = $('crTable').querySelector('tbody');
+    if (!gid()) return;
+    if (myRole() === 'Viewer') { body.innerHTML = '<tr><td colspan="6" class="muted">Viewer không xem được đề xuất.</td></tr>'; return; }
+    const r = await api('GET', `/api/groups/${gid()}/change-requests?status=${$('crFilter').value}`);
+    body.innerHTML = (r.ok ? r.data : []).map((c) => {
+      const to = [c.newFixedStart ? 'giờ ' + fmt(c.newFixedStart) + ' → ' + fmt(c.newFixedEnd) : '', c.newDeadline ? 'deadline ' + fmt(c.newDeadline) : ''].filter(Boolean).join('<br>');
+      const acts = c.status !== 'Pending' ? esc(c.decisionNote || '') : `<button class="small good" onclick="decide('${c.id}','approve')">Duyệt</button><button class="small danger" onclick="decide('${c.id}','reject')">Từ chối</button><button class="small secondary" onclick="decide('${c.id}','cancel')">Rút lại</button>`;
+      return `<tr><td>${esc(c.taskTitle)}</td><td>${esc(c.requestedByName)}</td><td>${to}</td><td>${esc(c.reason)}</td><td>${badge(c.status)}</td><td>${acts}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">Chưa có đề xuất.</td></tr>';
+  }
+  async function decide(id, action) {
+    let r;
+    if (action === 'approve') {
+      const note = prompt('Ghi chú khi duyệt (có thể để trống):') ?? '';
+      r = await withBusyConfirm((c) => api('POST', `/api/group-change-requests/${id}/approve`, { note: note || null, confirmConflicts: c }));
+    } else if (action === 'reject') {
+      const note = prompt('Lý do từ chối (bắt buộc):'); if (note === null) return;
+      r = await api('POST', `/api/group-change-requests/${id}/reject`, { note });
+    } else r = await api('POST', `/api/group-change-requests/${id}/cancel`);
+    if (!r) return;
+    if (!r.ok) return fail(r, 'Xử lý đề xuất'); ok('Đề xuất: ' + r.data.status + (action === 'approve' ? ' - việc đã đổi sang giờ mới.' : '')); await refreshAll();
+  }
+
+  // ================================================================ 10. Tiến độ, nhật ký, việc của tôi
+  async function loadProgress() {
+    const r = await api('GET', `/api/groups/${gid()}/progress`);
+    if (!r.ok) { $('progress').innerHTML = `<span class="fail">HTTP ${r.status}</span>`; return; }
+    const p = r.data; $('progress').className = '';
+    $('progress').innerHTML = `<b>${p.completedPercent}% hoàn thành</b> - ${p.totalTasks} việc: ${Object.entries(p.tasksByStatus).map(([k, v]) => `${badge(k)} ${v}`).join(' ')} - còn lại ${p.remainingTasks}, chưa giao ${p.unassignedTasks}
+      <div class="bar"><div style="width:${p.completedPercent}%"></div></div>Giờ làm thực tế cả nhóm: <b>${p.totalTrackedMinutes}</b> phút / ước lượng ${p.totalEstimatedMinutes} phút
+      <table><thead><tr><th>Thành viên</th><th>Vai trò</th><th>Việc (xong)</th><th>Việc con (xong)</th><th>Giờ làm</th></tr></thead><tbody>${p.members.map((m) => `<tr><td>${esc(m.fullName)}</td><td>${badge(m.role)}</td><td>${m.assignedTasks} (${m.doneTasks})</td><td>${m.assignedSubTasks} (${m.doneSubTasks})</td><td>${m.trackedMinutes} phút</td></tr>`).join('')}</tbody></table>
+      <table><thead><tr><th>Giai đoạn</th><th>Status</th><th>Hạn</th><th>Việc (xong)</th></tr></thead><tbody>${p.milestones.map((m) => `<tr><td>${esc(m.name)}</td><td>${badge(m.status)}</td><td>${m.dueDate || ''}</td><td>${m.totalTasks} (${m.doneTasks})</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Chưa có giai đoạn.</td></tr>'}</tbody></table>`;
+  }
+  async function loadActivity() {
+    const body = $('activityTable').querySelector('tbody');
+    if (myRole() === 'Viewer') { body.innerHTML = '<tr><td colspan="6" class="muted">Viewer không xem được nhật ký (403).</td></tr>'; return; }
+    const r = await api('GET', `/api/groups/${gid()}/activity?take=60`);
+    body.innerHTML = (r.ok ? r.data : []).map((l) => `<tr><td>${fmt(l.createdAt)}</td><td>${esc(l.actorName)}</td><td>${esc(l.entityType)}</td><td><b>${esc(l.action)}</b></td><td>${esc(l.oldValue || '')}</td><td>${esc(l.newValue || '')}</td></tr>`).join('');
+  }
+  async function loadMyWork() {
+    if (!who(state.active)) return;
+    const r = await api('GET', '/api/my-group-tasks');
+    if (!r.ok) return;
+    $('myWork').className = '';
+    $('myWork').innerHTML = `<table><tbody>${r.data.tasks.map((t) => `<tr><td>Việc</td><td>${esc(t.groupName)}</td><td>${esc(t.title)}</td><td>${badge(t.status)}</td><td>${t.fixedStart ? fmt(t.fixedStart) : fmt(t.deadline)}</td><td><button class="small" onclick="openTask('${t.groupId}','${t.taskId}')">Mở</button></td></tr>`).join('')}
+      ${r.data.subTasks.map((s) => `<tr><td>Việc con</td><td>${esc(s.groupName)}</td><td>${esc(s.taskTitle)} › ${esc(s.title)}</td><td>${badge(s.status)}</td><td></td><td><button class="small" onclick="openTask('${s.groupId}','${s.taskId}')">Mở</button></td></tr>`).join('')}</tbody></table>` || '';
+    if (!r.data.tasks.length && !r.data.subTasks.length) $('myWork').textContent = 'Không có việc nào được giao cho tài khoản này.';
+  }
+
+  async function openTask(groupId, taskId) {
+    if (!state.groups.some((g) => g.id === groupId)) await loadGroups();
+    state.group = state.groups.find((g) => g.id === groupId) || state.group; sessionStorage.setItem('gt.group', groupId);
+    renderGroups(); await refreshAll();
+    if (taskId) { pickTask(taskId); window.scrollTo({ top: $('taskTable').offsetTop - 120, behavior: 'smooth' }); }
+  }
+
+  // ================================================================ 11. Thông báo
+  async function loadNotifications() {
+    if (!who(state.active)) return;
+    const r = await api('GET', '/api/notifications?take=40');
+    $('notifyList').innerHTML = (r.ok ? r.data : []).map((n) => `<div class="card" style="${n.isRead ? 'opacity:.6' : ''}"><span class="tag">${esc(n.type)}</span> <b>${esc(n.title)}</b> <span class="muted">${fmt(n.sentAt)}</span><br>${esc(n.message)}
+      ${n.groupId ? `<br><span class="muted">groupId ${n.groupId}${n.groupTaskId ? ', groupTaskId ' + n.groupTaskId : ''}</span> <button class="small" onclick="openTask('${n.groupId}', ${n.groupTaskId ? `'${n.groupTaskId}'` : 'null'})">Mở</button>` : ''}
+      ${n.isRead ? '' : `<button class="small secondary" onclick="readOne('${n.id}')">Đã đọc</button>`}</div>`).join('') || '<span class="muted">Chưa có thông báo.</span>';
+  }
+  async function readOne(id) { await api('POST', `/api/notifications/${id}/read`); loadNotifications(); }
+  async function readAll() { await api('POST', '/api/notifications/read-all'); loadNotifications(); }
+  function toggleAuto() {
+    clearInterval(state.auto);
+    if ($('autoRefresh').checked) state.auto = setInterval(() => { loadNotifications(); loadCurrentFocus(); loadInvitesForMe(); }, 4000);
+  }
+
+  // ================================================================ 12. Kịch bản tự động
+  const env = {
+    call: (as, method, path, body) => callAs(as, method, path, body),
+    has: (key) => !!(state.accounts[key] && state.accounts[key].userId),
+    userId: (key) => state.accounts[key].userId,
+    email: (key) => state.accounts[key].email
+  };
+
+  function renderScenarios() {
+    $('scnList').innerHTML = GroupScenarios.scenarios.map((s) => {
+      const missing = s.needs.filter((k) => !env.has(k));
+      return `<div class="scn" id="scn_${s.id}"><label style="margin:0"><input type="checkbox" class="scnTick" value="${s.id}" ${missing.length ? '' : 'checked'} /> <b>${esc(s.title)}</b>
+        <span class="tag">cần: ${s.needs.map((k) => LABEL[k]).join(', ')}</span>${missing.length ? `<span class="tag skip">thiếu ${missing.map((k) => LABEL[k]).join(', ')}</span>` : ''}</label>
+        <button class="small" onclick="runOne('${s.id}')">Chạy riêng</button><span id="res_${s.id}"></span><div class="lines" id="lines_${s.id}"></div></div>`;
+    }).join('');
+  }
+  function toggleTicks(on) { document.querySelectorAll('.scnTick').forEach((c) => { c.checked = on; }); }
+
+  async function runScenario(s) {
+    const lines = $('lines_' + s.id), res = $('res_' + s.id);
+    lines.innerHTML = ''; res.innerHTML = ' <span class="muted">đang chạy...</span>';
+    const out = await GroupScenarios.run(env, s, (l) => { lines.insertAdjacentHTML('beforeend', `<div class="${l.ok ? 'ok' : 'fail'}">${l.ok ? '✓' : '✗'} ${esc(l.label)}${l.ok ? '' : ' <span class="muted">(' + esc(l.detail) + ')</span>'}</div>`); });
+    if (out.skipped) res.innerHTML = ` <span class="skip">bỏ qua (thiếu ${out.missing.map((k) => LABEL[k]).join(', ')})</span>`;
+    else res.innerHTML = ` <span class="${out.fail ? 'fail' : 'ok'}">${out.pass} đúng, ${out.fail} sai</span>`;
+    return out;
+  }
+  async function runOne(id) { const s = GroupScenarios.scenarios.find((x) => x.id === id); await runScenario(s); await loadGroups(); }
+  async function runScenarios(onlyTicked) {
+    const ticked = [...document.querySelectorAll('.scnTick')].filter((c) => c.checked).map((c) => c.value);
+    const list = GroupScenarios.scenarios.filter((s) => !onlyTicked || ticked.includes(s.id));
+    let pass = 0, failN = 0, skipped = 0;
+    const box = $('scnSummary'); box.style.display = 'block'; box.textContent = 'Đang chạy...';
+    for (const s of list) {
+      const out = await runScenario(s);
+      if (out.skipped) skipped++; else { pass += out.pass; failN += out.fail; }
+      box.innerHTML = `Đã chạy ${list.indexOf(s) + 1}/${list.length} kịch bản: <span class="ok">${pass} đúng</span>, <span class="${failN ? 'fail' : 'ok'}">${failN} sai</span>, ${skipped} kịch bản bị bỏ qua.`;
+    }
+    box.innerHTML += failN ? ' <b class="fail">Có bước sai: xem các dòng ✗ ở trên (kèm HTTP thật).</b>' : ' <b class="ok">Tất cả bước đều đúng.</b>';
+    await loadGroups();
+  }
+
+  // ================================================================ Khởi động
+  (function init() {
+    $('clientId').value = localStorage.getItem('googleClientId') || '';
+    renderAccounts(); renderScenarios();
+    if (!who(state.active)) { const first = KEYS.find(who); if (first) state.active = first; }
+    renderAccounts();
+    if (who(state.active)) loadGroups(); else { renderGroups(); notify('Chưa đăng nhập. Làm mục 1: đăng nhập ít nhất Leader và một Member.', 'warn'); }
+  })();
+</script>
+</body>
+</html>

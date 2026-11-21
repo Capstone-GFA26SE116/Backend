@@ -6,7 +6,9 @@ namespace METANOIA.Application.Interfaces.Services
     {
         // Ghi một dòng vào bảng Notification rồi đẩy qua SignalR và Web Push. Lỗi ở hai kênh đẩy chỉ được ghi log,
         // không làm hỏng việc gọi (job nền không bị chạy lại và gửi trùng).
-        System.Threading.Tasks.Task SendAsync(Guid userId, string title, string message, string type, Guid? scheduleSlotId = null);
+        // groupId và groupTaskId chỉ dùng cho thông báo của nhánh Group (liên kết để FE mở thẳng nhóm hoặc việc)
+        System.Threading.Tasks.Task SendAsync(
+            Guid userId, string title, string message, string type, Guid? scheduleSlotId = null, Guid? groupId = null, Guid? groupTaskId = null);
 
         // Hộp thư của người dùng, mới nhất trước
         Task<IReadOnlyList<NotificationDto>> GetAsync(Guid userId, bool unreadOnly, int take);

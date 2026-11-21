@@ -101,6 +101,24 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IRevenueRepository, RevenueRepository>();
             services.AddScoped<IRevenueReportService, RevenueReportService>();
             services.AddScoped<SlotBackgroundJobs>();
+
+            // Nhánh Group (làm việc nhóm), docs/GROUP_FEATURE.md
+            services.AddScoped<IGroupRepository, GroupRepository>();
+            services.AddScoped<IGroupWorkRepository, GroupWorkRepository>();
+            services.AddScoped<IGroupAccessService, GroupAccessService>();
+            services.AddScoped<IGroupNotifier, GroupNotifier>();
+            services.AddScoped<IGroupService, GroupService>();
+            services.AddScoped<IGroupInvitationService, GroupInvitationService>();
+            services.AddScoped<IGroupMilestoneService, GroupMilestoneService>();
+            services.AddScoped<IGroupTaskService, GroupTaskService>();
+            services.AddScoped<IGroupCommentService, GroupCommentService>();
+            services.AddScoped<IGroupProgressService, GroupProgressService>();
+
+            // Nhánh Group đợt 2: bấm giờ, kiểm tra lịch người nhận việc, đề xuất đổi giờ
+            services.AddScoped<GroupTaskProgress>();
+            services.AddScoped<IGroupFocusService, GroupFocusService>();
+            services.AddScoped<IGroupAvailabilityService, GroupAvailabilityService>();
+            services.AddScoped<IGroupChangeRequestService, GroupChangeRequestService>();
             services.AddHttpClient();
 
             return services;
