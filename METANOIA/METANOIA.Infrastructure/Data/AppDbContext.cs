@@ -22,8 +22,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<AiusageLog> AiusageLogs { get; set; }
 
-    public virtual DbSet<BlindTestSession> BlindTestSessions { get; set; }
-
     public virtual DbSet<ChatConversation> ChatConversations { get; set; }
 
     public virtual DbSet<ChatMessage> ChatMessages { get; set; }
@@ -36,8 +34,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<FocusSession> FocusSessions { get; set; }
 
-    public virtual DbSet<FocusTrack> FocusTracks { get; set; }
-
     public virtual DbSet<GoogleCalendarEvent> GoogleCalendarEvents { get; set; }
 
     public virtual DbSet<GoogleConnection> GoogleConnections { get; set; }
@@ -49,8 +45,6 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<Milestone> Milestones { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
-
-    public virtual DbSet<PaymentRefund> PaymentRefunds { get; set; }
 
     public virtual DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 
@@ -172,19 +166,6 @@ public partial class AppDbContext : DbContext
         });
 
 
-        modelBuilder.Entity<BlindTestSession>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("BlindTestSession_pkey");
-
-            entity.ToTable("BlindTestSession");
-
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
-            entity.Property(e => e.Status)
-                .HasMaxLength(10)
-                .HasDefaultValueSql("'Pending'::character varying");
-        });
-
         modelBuilder.Entity<ChatConversation>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("ChatConversation_pkey");
@@ -205,6 +186,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Project).WithMany(p => p.ChatConversations)
                 .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("ChatConversation_ProjectId_fkey");
 
             entity.HasOne(d => d.Task).WithMany(p => p.ChatConversations)
@@ -306,11 +288,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.StartedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.StopReason).HasMaxLength(20);
 
-            entity.HasOne(d => d.FocusTrack).WithMany(p => p.FocusSessions)
-                .HasForeignKey(d => d.FocusTrackId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FocusSession_FocusTrackId_fkey");
-
             entity.HasOne(d => d.ScheduleSlot).WithMany(p => p.FocusSessions)
                 .HasForeignKey(d => d.ScheduleSlotId)
                 .OnDelete(DeleteBehavior.SetNull)
@@ -325,19 +302,6 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.TaskId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FocusSession_TaskId_fkey");
-        });
-
-        modelBuilder.Entity<FocusTrack>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("FocusTrack_pkey");
-
-            entity.ToTable("FocusTrack");
-
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Artist).HasMaxLength(100);
-            entity.Property(e => e.FileUrl).HasMaxLength(500);
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.Title).HasMaxLength(150);
         });
 
         modelBuilder.Entity<GoogleCalendarEvent>(entity =>
@@ -493,34 +457,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("Notification_UserId_fkey");
         });
 
-        modelBuilder.Entity<PaymentRefund>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PaymentRefund_pkey");
-
-            entity.ToTable("PaymentRefund");
-
-            entity.HasIndex(e => e.Status, "IX_PaymentRefund_Status");
-
-            entity.HasIndex(e => e.PaymentTransactionId, "UX_PaymentRefund_OneOpenPerPayment")
-                .IsUnique()
-                .HasFilter("((\"Status\")::text <> 'Rejected'::text)");
-
-            entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.AdminNote).HasMaxLength(500);
-            entity.Property(e => e.BankReference).HasMaxLength(100);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
-            entity.Property(e => e.Reason).HasMaxLength(500);
-            entity.Property(e => e.Source).HasMaxLength(10);
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'Requested'::character varying");
-
-            entity.HasOne(d => d.PaymentTransaction).WithMany(p => p.PaymentRefunds)
-                .HasForeignKey(d => d.PaymentTransactionId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("PaymentRefund_PaymentTransactionId_fkey");
-        });
-
         modelBuilder.Entity<PaymentTransaction>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PaymentTransaction_pkey");
@@ -667,10 +603,6 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt }, "IX_ScheduleProposal_UserId_CreatedAt");
 
-            entity.HasIndex(e => new { e.BlindTestSessionId, e.Level }, "UQ_ScheduleProposal_Blind_Level").IsUnique();
-
-            entity.HasIndex(e => new { e.BlindTestSessionId, e.DisplayPosition }, "UQ_ScheduleProposal_Blind_Position").IsUnique();
-
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.IsFeasible).HasDefaultValue(true);
@@ -678,11 +610,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Pending'::character varying");
-
-            entity.HasOne(d => d.BlindTestSession).WithMany(p => p.ScheduleProposals)
-                .HasForeignKey(d => d.BlindTestSessionId)
-                .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("ScheduleProposal_BlindTestSessionId_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.ScheduleProposals)
                 .HasForeignKey(d => d.UserId)

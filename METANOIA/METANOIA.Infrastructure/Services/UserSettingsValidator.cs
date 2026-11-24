@@ -50,5 +50,8 @@ namespace METANOIA.Infrastructure.Services
         // Tài khoản do Admin tạo trước khi chủ nhân đăng nhập Google lần đầu có GoogleSubjectId giữ chỗ bắt đầu bằng tiền tố này.
         // Lần đăng nhập Google đầu tiên bằng đúng email (Google đã xác minh) sẽ nhận tài khoản và thay bằng GoogleSubjectId thật.
         public const string PendingSubjectPrefix = "pending:";
+
+        // Múi giờ tạm của tài khoản mới (không gắn với nước nào) cho đến khi người dùng tự chọn ở onboarding
+        public const string PlaceholderTimeZone = "UTC";
     }
 }

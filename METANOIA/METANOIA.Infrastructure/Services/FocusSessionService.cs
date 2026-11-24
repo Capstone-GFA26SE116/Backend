@@ -37,7 +37,6 @@ namespace METANOIA.Infrastructure.Services
         private readonly IScheduleSlotRepository _slotRepository;
         private readonly ITaskRepository _taskRepository;
         private readonly ISubTaskRepository _subTaskRepository;
-        private readonly IFocusTrackRepository _focusTrackRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly TimeProvider _timeProvider;
         private readonly IScheduleJobService _jobService;
@@ -48,7 +47,6 @@ namespace METANOIA.Infrastructure.Services
             IScheduleSlotRepository slotRepository,
             ITaskRepository taskRepository,
             ISubTaskRepository subTaskRepository,
-            IFocusTrackRepository focusTrackRepository,
             IUnitOfWork unitOfWork,
             TimeProvider timeProvider,
             IScheduleJobService jobService,
@@ -58,7 +56,6 @@ namespace METANOIA.Infrastructure.Services
             _slotRepository = slotRepository;
             _taskRepository = taskRepository;
             _subTaskRepository = subTaskRepository;
-            _focusTrackRepository = focusTrackRepository;
             _unitOfWork = unitOfWork;
             _timeProvider = timeProvider;
             _jobService = jobService;
@@ -101,8 +98,6 @@ namespace METANOIA.Infrastructure.Services
                 }
             }
 
-            await EnsureTrackUsableAsync(request.FocusTrackId);
-
             var slot = await GetStartableSlotAsync(userId, request.TaskId, request.ScheduleSlotId);
 
             var session = new FocusSession
@@ -111,7 +106,6 @@ namespace METANOIA.Infrastructure.Services
                 TaskId = request.TaskId,
                 SubTaskId = request.SubTaskId,
                 ScheduleSlotId = slot?.Id,
-                FocusTrackId = request.FocusTrackId,
                 StartedAt = now.UtcDateTime,
                 CaptureMethod = CaptureMethod.Timer.ToString(),
                 IsConfirmed = true
@@ -560,20 +554,6 @@ namespace METANOIA.Infrastructure.Services
             }
 
             return slot;
-        }
-
-        private async Task EnsureTrackUsableAsync(Guid? trackId)
-        {
-            if (trackId is not { } id)
-            {
-                return;
-            }
-
-            var track = await _focusTrackRepository.GetByIdAsync(id);
-            if (track is null || !track.IsActive)
-            {
-                throw new UserFriendlyException("Bài nhạc tập trung không tồn tại hoặc đã bị tắt.");
-            }
         }
 
         private static void EnsureOwner(FocusSession session, Guid userId)

@@ -24,14 +24,8 @@ namespace METANOIA.Test.Infrastructure
         // Id gói Miễn phí được seed khi có user đăng nhập lần đầu (giống dòng seed ở Supabase)
         public static readonly Guid FreePlanId = Guid.Parse("1b6f3a2e-0c4d-4f8a-9e21-5d7c8b9a0f01");
 
-        // Bật để giả lập lỗi ở bước tạo project "Cá nhân" khi khởi tạo user mới
-        public bool FailOnProjectCreate { get; set; }
-
-        // Mặc định bật hoàn tiền để các test hoàn tiền hiện có chạy; test "hoàn tiền tắt" đặt false
-        public bool RefundsEnabled { get; set; } = true;
-
-        // Thay repository hoàn tiền bằng bản ném lỗi khi bị gọi, để chứng minh luồng thanh toán không đụng tới nó
-        public bool ForbidRefundRepository { get; set; }
+        // Bật để giả lập lỗi ở bước cấp gói Miễn phí khi khởi tạo user mới
+        public bool FailOnSubscriptionCreate { get; set; }
 
         // Mặc định thay IScheduleJobService bằng bản giả. Đặt true để giữ nguyên cách Program.cs đăng ký (Hangfire tắt thì phải dùng NullScheduleJobService)
         public bool KeepProgramJobService { get; set; }
@@ -80,9 +74,7 @@ namespace METANOIA.Test.Infrastructure
                 ["Hangfire:Enabled"] = "false",
                 ["VapidSettings:PublicKey"] = VapidPublicKey,
                 ["Payments:ReconciliationEnabled"] = "false",
-                ["Payments:LinkExpiryMinutes"] = "15",
-                ["Payments:RefundWindowDays"] = "7",
-                ["Payments:RefundsEnabled"] = RefundsEnabled ? "true" : "false"
+                ["Payments:LinkExpiryMinutes"] = "15"
             }));
 
             builder.ConfigureServices(services =>
@@ -106,7 +98,7 @@ namespace METANOIA.Test.Infrastructure
 
                 services.RemoveAll<IUserSetupRepository>();
                 services.AddScoped<IUserSetupRepository>(sp =>
-                    new FailingUserSetupRepository(sp.GetRequiredService<AppDbContext>(), () => FailOnProjectCreate));
+                    new FailingUserSetupRepository(sp.GetRequiredService<AppDbContext>(), () => FailOnSubscriptionCreate));
 
                 services.RemoveAll<IGoogleCalendarSyncService>();
                 services.AddScoped<IGoogleCalendarSyncService>(sp => new RecordingGoogleSyncService(
@@ -121,12 +113,6 @@ namespace METANOIA.Test.Infrastructure
                         sp.GetRequiredService<GoogleOAuthClient>(),
                         sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
                         CalendarApi));
-                }
-
-                if (ForbidRefundRepository)
-                {
-                    services.RemoveAll<IPaymentRefundRepository>();
-                    services.AddScoped<IPaymentRefundRepository, ForbiddenPaymentRefundRepository>();
                 }
 
                 services.AddHttpClient(string.Empty).ConfigurePrimaryHttpMessageHandler(() => GoogleHttp);

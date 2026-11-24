@@ -5,24 +5,24 @@ using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Test.Infrastructure
 {
-    // Repository thật nhưng có thể được bật để ném lỗi ở bước tạo project, mô phỏng sự cố giữa chừng khi khởi tạo user
+    // Repository thật nhưng có thể được bật để ném lỗi ở bước cấp gói, mô phỏng sự cố giữa chừng khi khởi tạo user
     public class FailingUserSetupRepository : UserSetupRepository
     {
-        private readonly Func<bool> _failOnProjectCreate;
+        private readonly Func<bool> _failOnSubscriptionCreate;
 
-        public FailingUserSetupRepository(AppDbContext context, Func<bool> failOnProjectCreate) : base(context)
+        public FailingUserSetupRepository(AppDbContext context, Func<bool> failOnSubscriptionCreate) : base(context)
         {
-            _failOnProjectCreate = failOnProjectCreate;
+            _failOnSubscriptionCreate = failOnSubscriptionCreate;
         }
 
-        public override Task AddProjectAsync(Project project, CancellationToken cancellationToken = default)
+        public override Task AddSubscriptionAsync(UserSubscription subscription, CancellationToken cancellationToken = default)
         {
-            if (_failOnProjectCreate())
+            if (_failOnSubscriptionCreate())
             {
-                throw new InvalidOperationException("Lỗi giả lập khi tạo project.");
+                throw new InvalidOperationException("Lỗi giả lập khi cấp gói.");
             }
 
-            return base.AddProjectAsync(project, cancellationToken);
+            return base.AddSubscriptionAsync(subscription, cancellationToken);
         }
     }
 }

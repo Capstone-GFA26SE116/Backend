@@ -28,11 +28,6 @@ namespace METANOIA.Infrastructure.Repositories
             return _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == planId, cancellationToken);
         }
 
-        public Task<bool> HasDefaultProjectAsync(Guid userId, CancellationToken cancellationToken = default)
-        {
-            return _context.Projects.AnyAsync(p => p.UserId == userId && p.IsDefault, cancellationToken);
-        }
-
         public Task<bool> HasActiveSubscriptionAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             return _context.UserSubscriptions.AnyAsync(s => s.UserId == userId && s.Status == ActiveStatus, cancellationToken);
@@ -74,20 +69,14 @@ namespace METANOIA.Infrastructure.Repositories
         {
             return await _context.Users
                 .Where(u => u.DeletedAt == null
-                    && (!_context.Projects.Any(p => p.UserId == u.Id && p.IsDefault)
-                        || !_context.UserSubscriptions.Any(s => s.UserId == u.Id && s.Status == ActiveStatus)
+                    && (!_context.UserSubscriptions.Any(s => s.UserId == u.Id && s.Status == ActiveStatus)
                         || _context.UserCircadianProfiles.Count(c => c.UserId == u.Id) < HoursPerDay))
                 .OrderBy(u => u.CreatedAt)
                 .Select(u => u.Id)
                 .ToListAsync(cancellationToken);
         }
 
-        public virtual async Task AddProjectAsync(Project project, CancellationToken cancellationToken = default)
-        {
-            await _context.Projects.AddAsync(project, cancellationToken);
-        }
-
-        public async Task AddSubscriptionAsync(UserSubscription subscription, CancellationToken cancellationToken = default)
+        public virtual async Task AddSubscriptionAsync(UserSubscription subscription, CancellationToken cancellationToken = default)
         {
             await _context.UserSubscriptions.AddAsync(subscription, cancellationToken);
         }

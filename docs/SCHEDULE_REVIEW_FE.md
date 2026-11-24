@@ -9,6 +9,7 @@ Sau khi AI xếp lịch, người dùng xem một **đề xuất** (`SchedulePro
 3. Người dùng **kéo thả hoặc đổi giờ** một slot: `PUT .../slots/{slotId}`. Phản hồi cho biết ngay giờ mới có trùng Google không.
 4. Người dùng **bỏ** một slot: `POST .../slots/{slotId}/reject`. Slot biến khỏi danh sách.
 5. Bấm **Duyệt**: `POST /api/schedule/proposals/{id}/approve`.
+   - Có slot **chồng giờ lên slot đang có** của chính người dùng: nhận `409` mã `SLOT_OVERLAP` kèm `details.overlaps` (xem mục 2). Cũng xử lý như bên dưới (sửa giờ / từ chối rồi duyệt lại, hoặc `?skipConflicts=true` để bỏ các slot đó).
    - Có slot trùng Google: nhận `409` kèm danh sách. Hiện hộp thoại: sửa giờ / từ chối các slot đó rồi duyệt lại, hoặc **"Bỏ các slot trùng và duyệt phần còn lại"** (gọi lại với `?skipConflicts=true`).
    - Không trùng: `200`, các slot `Approved`.
 
@@ -56,6 +57,7 @@ Mặc định `skipConflicts=false` (hành vi cũ khi không có xung đột). K
 ```
 - `googleCheck`: `Checked` (đã đồng bộ rồi kiểm), `Stale` (đồng bộ Google lỗi nên kiểm theo dữ liệu đã lưu; vẫn duyệt được, có thể hiện cảnh báo "chưa kiểm được lịch Google mới nhất"), `NotConnected`.
 - `skippedConflicts`: các slot bị bỏ vì trùng (chỉ khác rỗng khi gọi với `skipConflicts=true`).
+- `skippedOverlaps`: các slot bị bỏ vì chồng giờ lên slot đang có (cũng chỉ khi `skipConflicts=true`), mỗi phần tử có `slotId`, `taskId`, `taskTitle`, `start`, `end` và `with` (slot đang chiếm giờ).
 
 **409** khi có slot trùng và `skipConflicts=false` (**không đổi gì**):
 ```json
@@ -63,9 +65,28 @@ Mặc định `skipConflicts=false` (hành vi cũ khi không có xung đột). K
   "details": { "conflicts": [ { "slotId": "…", "taskId": "…", "taskTitle": "Viết báo cáo", "start": "…", "end": "…",
                                 "event": { "title": "Họp khách", "start": "…", "end": "…" } } ] } }
 ```
+**409 `SLOT_OVERLAP`** khi có slot đề xuất chồng giờ lên slot đang chiếm giờ (`Approved`, `Due`, `InProgress`, `Overrun`) của người dùng và `skipConflicts=false` (**không đổi gì**). Kiểm này chạy cả khi chưa kết nối Google:
+```json
+{ "message": "1 slot đề xuất chồng giờ lên slot đang có. ...", "code": "SLOT_OVERLAP",
+  "details": { "overlaps": [ { "slotId": "…", "taskId": "…", "taskTitle": "Viết báo cáo", "start": "…", "end": "…",
+                              "with": { "slotId": "…", "taskId": "…", "taskTitle": "Họp nhóm", "status": "Approved", "start": "…", "end": "…" } } ] } }
+```
+`GET .../conflicts` trả thêm mảng `overlaps` cùng cấu trúc để FE cảnh báo trước khi bấm Duyệt.
+
 **`skipConflicts=true`:** các slot trùng chuyển `Cancelled` (không ghi), các slot còn lại `Approved` như bình thường (hẹn nhắc việc, task lên `Scheduled`). Nếu **mọi** slot đều trùng thì `400` (không còn gì để duyệt).
 
 Lỗi khác: `400` đề xuất không còn `Pending`, hoặc không còn slot nào để duyệt; `404` không tìm thấy.
+
+## 2b. Tạo hoặc sửa slot tay: slot không được chồng giờ nhau
+`POST /api/tasks/{taskId}/schedule-slots` và `PUT /api/schedule-slots/{slotId}`: nếu slot (đang `Approved` hoặc trạng thái chiếm giờ khác) giao với slot chiếm giờ khác của cùng người dùng (kể cả task hoặc dự án khác) thì nhận **409**, không lưu gì:
+```json
+{ "message": "Khung giờ này chồng lên 1 slot đang có (\"Họp nhóm\"). ...", "code": "SLOT_OVERLAP",
+  "details": { "overlaps": [ { "slotId": "…", "taskId": "…", "taskTitle": "Họp nhóm", "status": "Approved", "start": "…", "end": "…" } ] } }
+```
+- Ví dụ: đã có slot 7h-8h, sửa slot khác thành 7h30-9h thì bị chặn; 8h-9h thì được (chạm đầu mút không tính).
+- Slot `Proposed`, `Done`, `Skipped`, `Missed`, `Cancelled`, `Postponed` không chiếm giờ: không chặn ai và không bị chặn (slot `Proposed` được kiểm khi duyệt hoặc khi đổi sang `Approved`).
+- FE nên bắt `409` có `code = "SLOT_OVERLAP"`, hiện danh sách `details.overlaps` và cho người dùng chọn giờ khác (không có cách "xác nhận để vẫn tạo").
+- Không đổi gì ở slot đã lỡ chồng giờ từ trước nếu chỉ sửa ghi chú.
 
 ## 3. "Trùng Google" nghĩa là gì
 - Giờ slot **giao nhau** với một sự kiện Google (chạm đầu mút không tính: sự kiện kết thúc đúng lúc slot bắt đầu thì không trùng).
@@ -87,4 +108,7 @@ Lỗi khác: `400` đề xuất không còn `Pending`, hoặc không còn slot n
 | Tạo sự kiện Google trùng một slot rồi duyệt | `409`, danh sách có đúng slot đó, slot vẫn `Proposed` |
 | Duyệt lại với `?skipConflicts=true` | `200`, slot trùng `Cancelled`, `skippedConflicts` có slot đó |
 | Duyệt khi chưa kết nối Google | `200`, `googleCheck = "NotConnected"` |
+| Tạo hoặc sửa slot `Approved` chồng giờ lên slot đang có (ví dụ 7h30-9h khi đã có 7h-8h) | `409`, `code = "SLOT_OVERLAP"`, slot không lưu |
+| Sửa slot sang 8h-9h khi đã có 7h-8h | `200` (chạm đầu mút) |
+| Duyệt đề xuất có slot chồng giờ lên slot đang có | `409` `SLOT_OVERLAP`; với `?skipConflicts=true` thì `200`, slot đó `Cancelled`, `skippedOverlaps` có slot đó |
 | Xếp lịch lại rồi sửa slot của đề xuất cũ | `400` (đề xuất đã `Superseded`) |

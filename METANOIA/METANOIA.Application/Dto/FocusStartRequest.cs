@@ -10,7 +10,6 @@ namespace METANOIA.Application.Dto
     public sealed record FocusStartRequest(
         [Required] Guid TaskId,
         Guid? SubTaskId,
-        Guid? ScheduleSlotId,
-        Guid? FocusTrackId
+        Guid? ScheduleSlotId
     );
 }

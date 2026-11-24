@@ -12,7 +12,7 @@ using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Test
 {
-    // /api/admin/users, /api/admin/ai-usage, /api/admin/focus-tracks, /api/admin/audit-logs và việc tự ghi AdminActionLog
+    // /api/admin/users, /api/admin/ai-usage, /api/admin/audit-logs và việc tự ghi AdminActionLog
     public class AdminTests
     {
         private static async Task<(HttpClient Admin, HttpClient User, Guid AdminId, Guid UserId)> SetupAsync(ApiFactory factory)
@@ -39,7 +39,6 @@ namespace METANOIA.Test
         [Theory]
         [InlineData("/api/admin/users")]
         [InlineData("/api/admin/ai-usage")]
-        [InlineData("/api/admin/focus-tracks")]
         [InlineData("/api/admin/audit-logs")]
         public async Task AdminEndpoints_AreForbiddenForNormalUsers_AndUnauthorizedWithoutLogin(string url)
         {
@@ -104,7 +103,7 @@ namespace METANOIA.Test
             var detail = await admin.GetFromJsonAsync<AdminUserDetailDto>($"/api/admin/users/{userId}");
 
             Assert.Equal("Pro", detail!.CurrentPlanName);
-            Assert.Equal(1, detail.ProjectCount);
+            Assert.Equal(0, detail.ProjectCount);
             Assert.Equal(0, detail.TaskCount);
             Assert.Equal(1, detail.PaymentCount);
             Assert.Equal(99000, detail.TotalPaid);
@@ -231,76 +230,6 @@ namespace METANOIA.Test
             Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
         }
 
-        // ------------------------------------------------------------ Focus tracks
-
-        private static FocusTrackRequestDto Track(string title = "Rain") => new()
-        {
-            Title = title,
-            Artist = "Nature",
-            FileUrl = "https://cdn.example.com/rain.mp3",
-            DurationSeconds = 600,
-            IsActive = true
-        };
-
-        [Fact]
-        public async Task FocusTracks_CreateUpdateAndFilter()
-        {
-            using var factory = new ApiFactory();
-            var (admin, _, _, _) = await SetupAsync(factory);
-
-            var created = await (await admin.PostAsJsonAsync("/api/admin/focus-tracks", Track()))
-                .Content.ReadFromJsonAsync<FocusTrackDto>();
-            var other = await (await admin.PostAsJsonAsync("/api/admin/focus-tracks", Track("Cafe")))
-                .Content.ReadFromJsonAsync<FocusTrackDto>();
-            var disable = Track("Rain");
-            disable.IsActive = false;
-            var updated = await (await admin.PutAsJsonAsync($"/api/admin/focus-tracks/{created!.Id}", disable))
-                .Content.ReadFromJsonAsync<FocusTrackDto>();
-
-            var activeOnly = await admin.GetFromJsonAsync<List<FocusTrackDto>>("/api/admin/focus-tracks?isActive=true");
-            var everything = await admin.GetFromJsonAsync<List<FocusTrackDto>>("/api/admin/focus-tracks");
-            var one = await admin.GetFromJsonAsync<FocusTrackDto>($"/api/admin/focus-tracks/{created.Id}");
-
-            Assert.False(updated!.IsActive);
-            Assert.Equal(other!.Id, Assert.Single(activeOnly!).Id);
-            Assert.Equal(2, everything!.Count);
-            Assert.Equal("Rain", one!.Title);
-        }
-
-        [Fact]
-        public async Task FocusTracks_RejectInvalidInput_AndUnknownId()
-        {
-            using var factory = new ApiFactory();
-            var (admin, _, _, _) = await SetupAsync(factory);
-
-            var noTitle = Track(" ");
-            var badUrl = Track(); badUrl.FileUrl = "ftp://x/y.mp3";
-            var notUrl = Track(); notUrl.FileUrl = "not a url";
-            var zeroLength = Track(); zeroLength.DurationSeconds = 0;
-            var tooLongTitle = Track(new string('x', 151));
-
-            foreach (var request in new[] { noTitle, badUrl, notUrl, zeroLength, tooLongTitle })
-            {
-                var response = await admin.PostAsJsonAsync("/api/admin/focus-tracks", request);
-                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            }
-
-            Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/admin/focus-tracks/{Guid.NewGuid()}")).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync($"/api/admin/focus-tracks/{Guid.NewGuid()}", Track())).StatusCode);
-        }
-
-        [Fact]
-        public async Task FocusTracks_NormalUserCannotWrite()
-        {
-            using var factory = new ApiFactory();
-            var (_, user, _, _) = await SetupAsync(factory);
-
-            var response = await user.PostAsJsonAsync("/api/admin/focus-tracks", Track());
-
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-            Assert.Equal(0, await QueryAsync(factory, db => db.FocusTracks.CountAsync()));
-        }
-
         // ------------------------------------------------------------ AdminActionLog được ghi tự động
 
         [Fact]
@@ -351,17 +280,15 @@ namespace METANOIA.Test
         {
             using var factory = new ApiFactory();
             var (admin, _, _, _) = await SetupAsync(factory);
-            var created = await (await admin.PostAsJsonAsync("/api/admin/focus-tracks", Track()))
-                .Content.ReadFromJsonAsync<FocusTrackDto>();
-            var changed = Track();
-            changed.DurationSeconds = 900;
+            var created = await (await admin.PostAsJsonAsync("/api/domains", new DomainRequestDto { Name = "Writing", IsActive = true }))
+                .Content.ReadFromJsonAsync<DomainDto>();
 
-            await admin.PutAsJsonAsync($"/api/admin/focus-tracks/{created!.Id}", changed);
-            var log = (await AuditLogsAsync(admin, "?action=FocusTrack.Update")).Items.Single();
+            await admin.PutAsJsonAsync($"/api/domains/{created!.Id}", new DomainRequestDto { Name = "Copywriting", IsActive = true });
+            var log = (await AuditLogsAsync(admin, "?action=Domain.Update")).Items.Single();
 
-            Assert.Equal(new[] { "DurationSeconds" }, log.OldValue!.Value.EnumerateObject().Select(p => p.Name).ToArray());
-            Assert.Equal(600, log.OldValue.Value.GetProperty("DurationSeconds").GetInt32());
-            Assert.Equal(900, log.NewValue!.Value.GetProperty("DurationSeconds").GetInt32());
+            Assert.Equal(new[] { "Name" }, log.OldValue!.Value.EnumerateObject().Select(p => p.Name).ToArray());
+            Assert.Equal("Writing", log.OldValue.Value.GetProperty("Name").GetString());
+            Assert.Equal("Copywriting", log.NewValue!.Value.GetProperty("Name").GetString());
         }
 
         [Fact]
@@ -369,34 +296,32 @@ namespace METANOIA.Test
         {
             using var factory = new ApiFactory();
             var (admin, _, _, _) = await SetupAsync(factory);
-            var created = await (await admin.PostAsJsonAsync("/api/admin/focus-tracks", Track()))
-                .Content.ReadFromJsonAsync<FocusTrackDto>();
+            var created = await (await admin.PostAsJsonAsync("/api/domains", new DomainRequestDto { Name = "Writing", IsActive = true }))
+                .Content.ReadFromJsonAsync<DomainDto>();
 
-            await admin.PutAsJsonAsync($"/api/admin/focus-tracks/{created!.Id}", Track());
+            await admin.PutAsJsonAsync($"/api/domains/{created!.Id}", new DomainRequestDto { Name = "Writing", IsActive = true });
 
-            Assert.Empty((await AuditLogsAsync(admin, "?action=FocusTrack.Update")).Items);
+            Assert.Empty((await AuditLogsAsync(admin, "?action=Domain.Update")).Items);
         }
 
         [Fact]
-        public async Task OtherAdminEndpoints_AreLogged_IncludingSideEffectsOfRefundApproval()
+        public async Task OtherAdminEndpoints_AreLogged()
         {
             using var factory = new ApiFactory();
-            var (admin, user, _, _) = await SetupAsync(factory);
+            var (admin, _, _, _) = await SetupAsync(factory);
             var plan = await (await admin.PostAsJsonAsync("/api/subscription-plans", new SubscriptionPlanRequestDto
             {
                 Name = "Pro", Price = 99000, DurationDays = 30, AiCallLimit = 500, StorageLimitMb = 2048
             })).Content.ReadFromJsonAsync<SubscriptionPlanDto>();
-            var checkout = await PaymentFlowTests.CheckoutAsync(user, plan!.Id);
-            await PaymentFlowTests.PayAsync(factory, checkout);
-            var refund = await (await user.PostAsJsonAsync($"/api/payments/{checkout.PaymentId}/refunds", new RefundRequestDto { Reason = "Mua nhầm" }))
-                .Content.ReadFromJsonAsync<RefundDto>();
 
-            await admin.PostAsJsonAsync($"/api/refunds/{refund!.Id}/approve", new RefundProcessDto { Note = "OK" });
+            await admin.PutAsJsonAsync($"/api/subscription-plans/{plan!.Id}", new SubscriptionPlanRequestDto
+            {
+                Name = "Pro", Price = 129000, DurationDays = 30, AiCallLimit = 500, StorageLimitMb = 2048
+            });
             var actions = (await AuditLogsAsync(admin, "?pageSize=100")).Items.Select(l => l.Action).ToList();
 
             Assert.Contains("SubscriptionPlan.Create", actions);
-            Assert.Contains("PaymentRefund.Update", actions);
-            Assert.Contains("UserSubscription.Update", actions); // gói bị thu hồi khi duyệt hoàn tiền
+            Assert.Contains("SubscriptionPlan.Update", actions);
         }
 
         [Fact]
@@ -426,11 +351,11 @@ namespace METANOIA.Test
             var (admin, _, adminId, _) = await SetupAsync(factory);
             for (var i = 0; i < 5; i++)
             {
-                await admin.PostAsJsonAsync("/api/admin/focus-tracks", Track($"Track {i}"));
+                await admin.PostAsJsonAsync("/api/domains", new DomainRequestDto { Name = $"Domain {i}", IsActive = true });
             }
 
-            var firstPage = await AuditLogsAsync(admin, "?action=FocusTrack.Create&page=1&pageSize=2");
-            var lastPage = await AuditLogsAsync(admin, "?action=FocusTrack.Create&page=3&pageSize=2");
+            var firstPage = await AuditLogsAsync(admin, "?action=Domain.Create&page=1&pageSize=2");
+            var lastPage = await AuditLogsAsync(admin, "?action=Domain.Create&page=3&pageSize=2");
             var byAdmin = await AuditLogsAsync(admin, $"?adminId={adminId}&pageSize=100");
             var byStranger = await AuditLogsAsync(admin, $"?adminId={Guid.NewGuid()}");
 

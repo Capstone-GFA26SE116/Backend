@@ -14,7 +14,6 @@ Mọi thao tác **ghi** của Admin đều được ghi vào nhật ký (giá tr
 | Tạo, sửa, xóa gói đăng ký của người dùng | `POST`, `PUT`, `DELETE /api/user-subscriptions` |
 | Tạo, sửa, xóa giao dịch | `POST`, `PUT`, `DELETE /api/payment-transactions` |
 | Tạo, sửa, xóa hóa đơn | `POST`, `PUT`, `DELETE /api/invoices` |
-| Duyệt, từ chối, hoàn tất hoàn tiền | `POST /api/refunds/{id}/approve`, `reject`, `complete` |
 | Xóa người dùng | `DELETE /api/admin/users/{id}` |
 | Đổi role người dùng | `PUT /api/admin/users/{id}` khi body có `role` |
 | Chạy thật đồng bộ lại trạng thái dữ liệu cũ | `POST /api/admin/status-resync?dryRun=false` |
@@ -87,21 +86,21 @@ Trường: `name` (duy nhất không phân biệt hoa thường, tối đa 50), 
 | `groupBy` | `day` (mặc định), `month` hoặc `plan` |
 | `from`, `to` | ISO 8601, gồm `from` không gồm `to`. Mặc định 30 ngày gần nhất, tối đa 366 ngày. `to` phải sau `from` |
 
-Quy ước: doanh thu tính theo **ngày thanh toán** (`PaidAt`) của giao dịch `Succeeded`. Hoàn tiền đã hoàn tất (`Completed`) tính vào kỳ **xử lý xong**. Ngày và tháng theo **giờ UTC**. Tiền là số nguyên đồng.
+Quy ước: doanh thu tính theo **ngày thanh toán** (`PaidAt`) của giao dịch `Succeeded`. Ngày và tháng theo **giờ UTC**. Tiền là số nguyên đồng.
 
 ```json
 {
   "from": "2026-03-10T00:00:00+00:00", "to": "2026-03-13T00:00:00+00:00", "groupBy": "day",
-  "total": { "grossRevenue": 250000, "refundedAmount": 30000, "netRevenue": 220000,
+  "total": { "grossRevenue": 250000,
              "succeededTransactions": 3, "averageOrderValue": 83333, "invoicesIssued": 1, "newPayingUsers": 1 },
-  "rows": [ { "key": "2026-03-10", "revenue": 150000, "transactions": 2, "refunded": 0, "net": 150000, "sharePercent": 60.0 },
-            { "key": "2026-03-11", "revenue": 0, "transactions": 0, "refunded": 0, "net": 0, "sharePercent": 0 } ],
+  "rows": [ { "key": "2026-03-10", "revenue": 150000, "transactions": 2, "sharePercent": 60.0 },
+            { "key": "2026-03-11", "revenue": 0, "transactions": 0, "sharePercent": 0 } ],
   "transactionsByStatus": { "Succeeded": 3, "Pending": 1, "Failed": 1, "Cancelled": 0, "Expired": 0 }
 }
 ```
 - Theo ngày hoặc tháng, `rows` có **đủ mọi mốc** (kể cả mốc bằng 0) nên vẽ biểu đồ không bị hụt. Theo gói, gói doanh thu cao nhất lên đầu, `key` là tên gói.
 - `transactionsByStatus` là số giao dịch **được tạo** trong khoảng, theo từng trạng thái (đủ 5 loại).
-- Tính năng hoàn tiền hiện đang tắt (`Payments:RefundsEnabled`), nên `refundedAmount` thường là 0.
+- Hệ thống không còn chức năng hoàn tiền: báo cáo **không có** các trường `refundedAmount`, `netRevenue` (tổng) và `refunded`, `net` (từng dòng) như phiên bản trước. FE đang đọc các trường đó cần bỏ đi; doanh thu thực chính là `grossRevenue` và `revenue`.
 
 ### Danh sách giao dịch và hóa đơn (để xem chi tiết dưới báo cáo)
 - `GET /api/payment-transactions?status=&userId=&planId=&from=&to=&page=&pageSize=`: lọc theo trạng thái, người dùng, gói, ngày tạo.

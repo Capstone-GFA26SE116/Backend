@@ -7,7 +7,6 @@ namespace METANOIA.Infrastructure.Repositories
     public class RevenueRepository : IRevenueRepository
     {
         private const string Succeeded = "Succeeded";
-        private const string Completed = "Completed";
 
         private readonly AppDbContext _context;
 
@@ -24,22 +23,6 @@ namespace METANOIA.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
 
             return rows.Select(r => new RevenuePaidRow(r.PaidAt!.Value, r.Amount, r.PlanId, r.PlanName)).ToList();
-        }
-
-        public async Task<IReadOnlyList<RevenueRefundRow>> GetCompletedRefundsAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
-        {
-            var rows = await _context.PaymentRefunds
-                .Where(r => r.Status == Completed && (r.ProcessedAt ?? r.CreatedAt) >= from && (r.ProcessedAt ?? r.CreatedAt) < to)
-                .Select(r => new
-                {
-                    At = r.ProcessedAt ?? r.CreatedAt,
-                    r.Amount,
-                    r.PaymentTransaction.PlanId,
-                    PlanName = r.PaymentTransaction.Plan.Name
-                })
-                .ToListAsync(cancellationToken);
-
-            return rows.Select(r => new RevenueRefundRow(r.At, r.Amount, r.PlanId, r.PlanName)).ToList();
         }
 
         public async Task<Dictionary<string, int>> CountTransactionsByStatusAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)

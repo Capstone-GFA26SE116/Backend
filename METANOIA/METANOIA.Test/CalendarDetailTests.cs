@@ -173,7 +173,7 @@ namespace METANOIA.Test
 
             var calendar = await GetAsync(client);
 
-            Assert.Equal("Asia/Ho_Chi_Minh", calendar.TimeZone);
+            Assert.Equal("UTC", calendar.TimeZone);   // múi giờ tạm của tài khoản mới, đến khi người dùng chọn ở onboarding
             Assert.Equal(new TimeOnly(8, 0), calendar.WorkDayStart);
             Assert.Equal(new TimeOnly(18, 0), calendar.WorkDayEnd);
             Assert.False(calendar.WorksOnWeekend);

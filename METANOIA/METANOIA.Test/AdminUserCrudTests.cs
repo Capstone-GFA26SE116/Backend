@@ -59,8 +59,8 @@ namespace METANOIA.Test
             Assert.Equal("Freelancer", created.Role);
             Assert.False(created.OnboardingCompleted);
             Assert.Equal("Miễn phí", created.CurrentPlanName);
-            Assert.Equal(1, created.ProjectCount);
-            Assert.Equal("Asia/Ho_Chi_Minh", created.TimeZone);
+            Assert.Equal(0, created.ProjectCount);   // không còn dự án mặc định
+            Assert.Equal("UTC", created.TimeZone);    // múi giờ tạm khi Admin không nhập
             Assert.Equal(24, await QueryAsync(factory, db => db.UserCircadianProfiles.CountAsync(c => c.UserId == created.Id)));
             Assert.StartsWith("pending:", (await QueryAsync(factory, db => db.Users.SingleAsync(u => u.Id == created.Id))).GoogleSubjectId);
         }
@@ -154,11 +154,13 @@ namespace METANOIA.Test
 
             Assert.Equal(created.Id, auth.UserId);
             Assert.Equal(created.Id, again.UserId);
+            Assert.True(auth.IsNewUser);     // nhận tài khoản Admin tạo sẵn cũng là người mới
+            Assert.False(again.IsNewUser);
             var stored = await QueryAsync(factory, db => db.Users.SingleAsync(u => u.Id == created.Id));
             Assert.Equal("preuser", stored.GoogleSubjectId);
             Assert.Equal("Tên do Admin đặt", stored.FullName);
             Assert.Equal(1, await QueryAsync(factory, db => db.Users.CountAsync(u => u.Email == "preuser@test.com")));
-            Assert.Equal(1, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == created.Id)));
+            Assert.Equal(0, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == created.Id)));
         }
 
         [Fact]
@@ -343,7 +345,7 @@ namespace METANOIA.Test
             Assert.Null(restored!.DeletedAt);
             Assert.Equal("Miễn phí", restored.CurrentPlanName);
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-            Assert.Equal(1, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == userAuth.UserId && p.IsDefault)));
+            Assert.Equal(0, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == userAuth.UserId)));
         }
 
         [Fact]

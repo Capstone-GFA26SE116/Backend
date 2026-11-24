@@ -85,16 +85,6 @@ namespace METANOIA.Test
                     Id = Guid.NewGuid(), PaymentTransactionId = a.Id, InvoiceNumber = "INV-1", PlanName = "Pro", Amount = 100_000,
                     BillingName = "A", BillingEmail = "a@x.com", PeriodStart = new DateOnly(2026, 3, 10), PeriodEnd = new DateOnly(2026, 4, 9), IssuedAt = day1
                 });
-                db.PaymentRefunds.Add(new PaymentRefund
-                {
-                    Id = Guid.NewGuid(), PaymentTransactionId = d.Id, Amount = 30_000, Reason = "Khách yêu cầu", Source = "User",
-                    Status = "Completed", CreatedAt = day3.AddHours(1), ProcessedAt = day3.AddHours(2)
-                });
-                db.PaymentRefunds.Add(new PaymentRefund
-                {
-                    Id = Guid.NewGuid(), PaymentTransactionId = a.Id, Amount = 99_000, Reason = "Chưa xử lý", Source = "User",
-                    Status = "Requested", CreatedAt = day3
-                });
             });
             return (day1, day3);
         }
@@ -113,8 +103,6 @@ namespace METANOIA.Test
 
             Assert.Equal("day", report.GroupBy);
             Assert.Equal(250_000, report.Total.GrossRevenue);           // 100.000 + 50.000 + 100.000, Pending và Failed không tính
-            Assert.Equal(30_000, report.Total.RefundedAmount);          // chỉ hoàn tiền Completed
-            Assert.Equal(220_000, report.Total.NetRevenue);
             Assert.Equal(3, report.Total.SucceededTransactions);
             Assert.Equal(83_333, report.Total.AverageOrderValue);
             Assert.Equal(1, report.Total.InvoicesIssued);
@@ -123,8 +111,6 @@ namespace METANOIA.Test
             Assert.Equal(new[] { "2026-03-10", "2026-03-11", "2026-03-12" }, report.Rows.Select(r => r.Key).ToArray());
             Assert.Equal(new long[] { 150_000, 0, 100_000 }, report.Rows.Select(r => r.Revenue).ToArray());
             Assert.Equal(new[] { 2, 0, 1 }, report.Rows.Select(r => r.Transactions).ToArray());
-            Assert.Equal(new long[] { 0, 0, 30_000 }, report.Rows.Select(r => r.Refunded).ToArray());
-            Assert.Equal(70_000, report.Rows[2].Net);
             Assert.Equal(60m, report.Rows[0].SharePercent);
 
             Assert.Equal(3, report.TransactionsByStatus["Succeeded"]);
@@ -143,7 +129,6 @@ namespace METANOIA.Test
             var byPlan = (await c.Admin.GetFromJsonAsync<RevenueReportDto>($"/api/admin/revenue{RangeQuery(day1, "plan")}", Json))!;
             Assert.Equal(new[] { "Pro", "Miễn phí" }, byPlan.Rows.Select(r => r.Key).ToArray());   // doanh thu cao nhất lên đầu
             Assert.Equal(new long[] { 200_000, 50_000 }, byPlan.Rows.Select(r => r.Revenue).ToArray());
-            Assert.Equal(30_000, byPlan.Rows[0].Refunded);
 
             var byMonth = (await c.Admin.GetFromJsonAsync<RevenueReportDto>($"/api/admin/revenue{RangeQuery(day1, "month")}", Json))!;
             Assert.Equal("2026-03", Assert.Single(byMonth.Rows).Key);

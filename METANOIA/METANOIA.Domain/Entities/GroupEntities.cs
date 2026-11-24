@@ -35,6 +35,9 @@ public partial class WorkGroup
     public virtual ICollection<GroupTask> Tasks { get; set; } = new List<GroupTask>();
 
     public virtual ICollection<GroupActivityLog> ActivityLogs { get; set; } = new List<GroupActivityLog>();
+
+    // Chat của nhóm (ChatConversation.Scope = Group, docs/sql/008_chat_group.sql); chưa có API
+    public virtual ICollection<ChatConversation> ChatConversations { get; set; } = new List<ChatConversation>();
 }
 
 public partial class GroupMember

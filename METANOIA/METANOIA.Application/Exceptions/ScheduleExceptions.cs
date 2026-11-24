@@ -5,4 +5,10 @@ namespace METANOIA.Application.Exceptions
     {
         public object Details { get; } = details;
     }
+
+    // Tạo, sửa hoặc duyệt slot làm chồng giờ lên slot đang hoạt động khác của chính người dùng: trả 409 SLOT_OVERLAP kèm danh sách slot đang chiếm giờ
+    public sealed class SlotOverlapException(string message, object details) : Exception(message)
+    {
+        public object Details { get; } = details;
+    }
 }

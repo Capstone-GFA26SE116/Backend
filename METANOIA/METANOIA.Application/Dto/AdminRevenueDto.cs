@@ -25,11 +25,6 @@ namespace METANOIA.Application.Dto
         // Tổng tiền các giao dịch Succeeded có PaidAt trong khoảng
         public long GrossRevenue { get; set; }
 
-        // Tổng tiền hoàn đã hoàn tất (PaymentRefund Completed) có ProcessedAt trong khoảng
-        public long RefundedAmount { get; set; }
-
-        public long NetRevenue { get; set; }
-
         public int SucceededTransactions { get; set; }
 
         // Giá trị trung bình mỗi giao dịch thành công (làm tròn xuống); 0 nếu chưa có
@@ -50,10 +45,6 @@ namespace METANOIA.Application.Dto
         public long Revenue { get; set; }
 
         public int Transactions { get; set; }
-
-        public long Refunded { get; set; }
-
-        public long Net { get; set; }
 
         // Tỷ trọng doanh thu gộp của dòng này trong tổng (0 đến 100, một chữ số thập phân); 0 nếu tổng bằng 0
         public decimal SharePercent { get; set; }

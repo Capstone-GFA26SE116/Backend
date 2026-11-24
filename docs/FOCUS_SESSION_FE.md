@@ -79,7 +79,6 @@ Start được khi slot ở: `Approved`, `Due`, `InProgress`, `Overrun`, `Missed
 |---|---|---|
 | `taskId` | **Có** | Task đang làm |
 | `scheduleSlotId` | Không | Gắn vào một slot trên lịch (làm theo lịch) |
-| `focusTrackId` | Không | Bài nhạc tập trung |
 
 Hai cách dùng:
 
@@ -236,7 +235,7 @@ Bảng cho FE: tùy tình huống, body Start là gì.
 
 Mẫu TypeScript:
 ```ts
-type FocusStartBody = { taskId: string; scheduleSlotId?: string; subTaskId?: string; focusTrackId?: string };
+type FocusStartBody = { taskId: string; scheduleSlotId?: string; subTaskId?: string };
 
 function buildStartBody(task: { id: string }, opts?: { subTaskId?: string | null; slot?: { id: string; subTaskId?: string | null } }): FocusStartBody {
   const body: FocusStartBody = { taskId: task.id };

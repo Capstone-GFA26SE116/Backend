@@ -51,7 +51,6 @@ Trang mẫu chạy được để xem hành vi thật: `/focus-test.html` (chế
 | Slot của subtask | `{ "taskId": "…", "subTaskId": "…", "scheduleSlotId": "…" }` |
 
 - Task **không có subtask** thì luôn chỉ gửi `taskId` (kèm `scheduleSlotId` nếu theo lịch). Không cần `subTaskId`.
-- `focusTrackId` (bài nhạc) là tùy chọn.
 - Backend **không tự lấy** `subTaskId` từ slot: slot gắn subtask thì FE phải gửi `subTaskId` đó.
 
 **201:**
@@ -188,7 +187,7 @@ Server là nơi quyết định; bảng này chỉ để FE ẩn nút sai. Trạ
 type StopReason = "Completed" | "Interrupted" | "Blocked" | "Other";
 const NOTE_REQUIRED: StopReason[] = ["Blocked", "Other"];
 
-type FocusStartBody = { taskId: string; subTaskId?: string; scheduleSlotId?: string; focusTrackId?: string };
+type FocusStartBody = { taskId: string; subTaskId?: string; scheduleSlotId?: string };
 
 function buildStartBody(task: { id: string }, opt?: { subTaskId?: string; slot?: { id: string; subTaskId?: string | null } }): FocusStartBody {
   const body: FocusStartBody = { taskId: task.id };

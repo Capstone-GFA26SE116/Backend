@@ -1,6 +1,6 @@
 # Nhánh Group (làm việc nhóm): thiết kế đợt 1
 
-Trạng thái: **đợt 1 và đợt 2 (trừ AI gợi ý người nhận việc) đã có code và test** (toàn bộ 468 test đạt). Trang thử trên trình duyệt: `wwwroot/group-test.html`, hướng dẫn từng bước và danh sách ca thử: [GROUP_TEST_GUIDE.md](GROUP_TEST_GUIDE.md). Kèm file SQL: [sql/005_group_tables.sql](sql/005_group_tables.sql) (đợt 1) và [sql/006_group_phase2.sql](sql/006_group_phase2.sql) (đợt 2), **bạn tự chạy**, chạy trước khi dùng bản backend mới. Hướng dẫn cho FE: [GROUP_FE.md](GROUP_FE.md). Business rule: BR-130 đến BR-143 trong [REPO_GUIDE.md](REPO_GUIDE.md).
+Trạng thái: **đợt 1 và đợt 2 (trừ AI gợi ý người nhận việc) đã có code và test** (toàn bộ 447 test đạt, gồm 9 test cho phần admin nhóm). Trang thử trên trình duyệt: `wwwroot/group-test.html`, hướng dẫn từng bước và danh sách ca thử: [GROUP_TEST_GUIDE.md](GROUP_TEST_GUIDE.md). Kèm file SQL: [sql/005_group_tables.sql](sql/005_group_tables.sql) (đợt 1) và [sql/006_group_phase2.sql](sql/006_group_phase2.sql) (đợt 2), **bạn tự chạy**, chạy trước khi dùng bản backend mới. Hướng dẫn cho FE: [GROUP_FE.md](GROUP_FE.md). Business rule: BR-130 đến BR-157 trong [REPO_GUIDE.md](REPO_GUIDE.md).
 
 ## 1. Mục tiêu và nguyên tắc
 - Nhiều người cùng làm một dự án, luật lấy theo Jira: vai trò, giao việc, trạng thái việc, bình luận, nhật ký hoạt động.
@@ -133,3 +133,13 @@ SQL: [sql/006_group_phase2.sql](sql/006_group_phase2.sql). Hướng dẫn FE: [G
 5. Mỗi nhóm là một dự án chung; nhiều dự án trong một nhóm để sau.
 6. Hạ một thành viên xuống Viewer cũng bỏ giao việc của họ (Viewer không nhận việc).
 7. Bình luận: Leader và Member viết; tác giả sửa; tác giả hoặc Leader xóa. `@email` của thành viên trong nội dung gửi thông báo nhắc tên.
+
+## 13. Admin quản trị nhóm (đã làm: xem, thống kê, lưu trữ, khôi phục)
+
+API (chỉ role Admin) dưới `/api/admin/groups`: `GET` (danh sách có lọc và phân trang), `GET stats`, `GET {id}`, `GET {id}/activity`, `POST {id}/archive`, `POST {id}/restore`. Hai thao tác ghi bắt buộc header `X-Admin-Reason`.
+
+- Không đổi database. Bảng `WorkGroup` được thêm vào danh sách bảng mà `AdminAuditSaveChangesInterceptor` ghi, nên mỗi lần Admin đổi trạng thái có một dòng `AdminActionLog` (`WorkGroup.Update`) kèm lý do và giá trị cũ/mới.
+- Nhật ký của nhóm có thêm dòng `AdminArchived` hoặc `AdminRestored` (người thực hiện là Admin, giá trị mới ghi trạng thái và lý do). Mọi Leader nhận thông báo `GroupStatusChanged` có liên kết tới nhóm.
+- Quyền riêng tư: Admin chỉ thấy thông tin cấp nhóm (chủ nhóm, thành viên, báo cáo tiến độ, nhật ký). Không có nội dung bình luận, tiêu đề việc hay lịch cá nhân.
+- **Chưa làm:** đổi Leader bằng quyền Admin, xóa hẳn nhóm.
+- Mã: `AdminGroupsController` (trong `AdminController.cs`), `AdminGroupService`, `AdminGroupRepository`, `AdminGroupDto.cs`. Test: `AdminGroupTests.cs` (9 test).

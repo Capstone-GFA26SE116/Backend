@@ -34,5 +34,8 @@ namespace METANOIA.Application.Dto
 
         // Các slot bị bỏ (không ghi) vì trùng Google khi duyệt với skipConflicts = true
         public List<SlotConflictDto>? SkippedConflicts { get; set; }
+
+        // Các slot bị bỏ (chuyển Cancelled) vì chồng giờ lên slot đang hoạt động khác khi duyệt với skipConflicts = true
+        public List<ProposalSlotOverlapDto>? SkippedOverlaps { get; set; }
     }
 }

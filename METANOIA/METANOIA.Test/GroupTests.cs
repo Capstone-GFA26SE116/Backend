@@ -736,8 +736,10 @@ namespace METANOIA.Test
             var group = await CreateGroupAsync(user);
 
             var client = await user.Client.PostAsJsonAsync("/api/clients", new ClientRequestDto { Name = "Acme" });
+            var created = await user.Client.PostAsJsonAsync("/api/projects", new ProjectRequestDto { Name = "Dự án riêng" });
             var projects = await user.Client.GetFromJsonAsync<List<ProjectWithClientDto>>("/api/projects");
 
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             Assert.Equal(HttpStatusCode.Created, client.StatusCode);
             Assert.NotEmpty(projects!);
             Assert.NotEqual(Guid.Empty, group.Id);

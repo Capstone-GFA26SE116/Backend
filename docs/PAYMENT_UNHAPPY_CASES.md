@@ -3,31 +3,22 @@
 Tài liệu này mô tả những gì đã code cho luồng thanh toán PayOS (ngoài CRUD `PaymentTransaction`),
 cách test từng bước, và cách lấy các key cần điền vào `appsettings.json`.
 
-- [1. Chạy SQL tạo bảng hoàn tiền](#1-chạy-sql-tạo-bảng-hoàn-tiền-bắt-buộc)
+- [1. Gán quyền Admin](#1-gán-quyền-admin)
 - [2. Lấy key PayOS và điền appsettings](#2-lấy-key-payos-và-điền-appsettings)
 - [3. Tiền nằm ở đâu khi có sự cố](#3-tiền-nằm-ở-đâu-khi-có-sự-cố)
 - [4. Danh sách tình huống đã xử lý](#4-danh-sách-tình-huống-đã-xử-lý)
-- [5. Hoàn tiền](#5-hoàn-tiền)
+- [5. Tiền về không hợp lệ: xử lý thủ công](#5-tiền-về-không-hợp-lệ-xử-lý-thủ-công)
 - [6. Trình tự test](#6-trình-tự-test)
 - [7. Những điều chưa được xác minh](#7-những-điều-chưa-được-xác-minh-với-payos-thật)
 
 ---
 
-> **Cập nhật: hoàn tiền đang TẮT mặc định** (`Payments:RefundsEnabled = false`). Khi tắt, luồng thanh toán (checkout, webhook, sync,
-> đối soát, tạo gói và hóa đơn) **không cần bảng `PaymentRefund`**, nên có thể bỏ qua mục 1 và mục 5 cho đến khi làm hoàn tiền.
-> Lúc đó, tiền về sai số tiền hoặc sau khi đã hủy sẽ **không** tự mở yêu cầu hoàn tiền: hệ thống ghi log lỗi và webhook trả
-> `ReviewRequired`. Admin tìm các giao dịch này bằng cách lọc `GET /api/payment-transactions` có `webhookReceivedAt` nhưng trạng thái
-> không phải `Succeeded`, rồi hoàn tiền thủ công ngoài hệ thống. Các API `/api/refunds` và `POST /api/payments/{id}/refunds` trả 400
-> "Chức năng hoàn tiền chưa được bật" cho đến khi bạn chạy SQL ở mục 1 và đặt `RefundsEnabled = true`.
+> **Lưu ý: hệ thống không có chức năng hoàn tiền.** Bảng `PaymentRefund` và các API `/api/refunds` đã được bỏ. Tiền về sai số tiền hoặc
+> sau khi đã hủy sẽ **không** tự mở yêu cầu hoàn tiền: hệ thống ghi log lỗi và webhook trả `ReviewRequired`. Admin tìm các giao dịch này
+> bằng cách lọc `GET /api/payment-transactions` có `webhookReceivedAt` nhưng trạng thái không phải `Succeeded`, rồi hoàn tiền thủ công
+> ngoài hệ thống (mục 5).
 
-## 1. Chạy SQL tạo bảng hoàn tiền (chỉ khi bật hoàn tiền)
-
-PayOS **không có API hoàn tiền cho merchant** (tài liệu API không nhắc tới), và `PaymentTransaction.Status`
-bị `CHECK` chỉ cho 5 giá trị nên không thêm được `Refunded`. Vì vậy hoàn tiền được lưu ở bảng mới `PaymentRefund`.
-
-1. Mở Supabase → **SQL Editor**.
-2. Dán nội dung [docs/sql/001_payment_refund.sql](sql/001_payment_refund.sql) → **Run**.
-3. Chưa chạy bước này thì các API hoàn tiền, xoá giao dịch và các luồng cần mở yêu cầu hoàn tiền sẽ lỗi 500.
+## 1. Gán quyền Admin
 
 Tài khoản **Admin** không tự có (người đăng nhập Google mới đều là `Freelancer`). Gán bằng SQL:
 
@@ -74,7 +65,6 @@ File `METANOIA/METANOIA/appsettings.json` (đã được git bỏ qua) đã có 
 "Payments": {
   "LinkExpiryMinutes": 15,
   "ExpiryGraceSeconds": 60,
-  "RefundWindowDays": 7,
   "ReconciliationEnabled": true,
   "ReconciliationIntervalSeconds": 60,
   "PendingStaleAfterSeconds": 120
@@ -87,7 +77,6 @@ File `METANOIA/METANOIA/appsettings.json` (đã được git bỏ qua) đã có 
 | `WebhookUrl` | URL **công khai** PayOS gọi khi có tiền về. `localhost` không dùng được (xem 2.3) |
 | `Description` | Nội dung chuyển khoản. PayOS giới hạn độ dài (tài liệu ghi tối đa 9 ký tự với tài khoản ngân hàng chưa liên kết qua payOS), nên giữ ngắn |
 | `LinkExpiryMinutes` | Link thanh toán sống bao lâu |
-| `RefundWindowDays` | Khách tự yêu cầu hoàn tiền được trong bao nhiêu ngày |
 | `ReconciliationEnabled` | Bật/tắt worker đối soát nền |
 | `PendingStaleAfterSeconds` | Đơn Pending cũ hơn mức này mới bị worker hỏi lại PayOS |
 
@@ -136,7 +125,7 @@ dashboard PayOS của bạn):
 | Khách chưa chuyển | Còn ở khách | Đơn `Pending`, hết hạn thì `Expired` |
 | Khách chuyển xong nhưng **mạng khách đứt**, không về trang return | **Đã vào tài khoản ngân hàng của bạn** | Webhook vẫn tới server và kích hoạt gói; nếu webhook cũng lỡ, worker đối soát hỏi PayOS và kích hoạt |
 | **Server bạn tắt / mạng yếu** lúc PayOS gọi webhook | Đã vào tài khoản ngân hàng của bạn | Đơn vẫn `Pending` đến khi server bật lại, worker hỏi PayOS thấy `PAID` và kích hoạt |
-| Tiền về nhưng đơn đã huỷ / sai số tiền | Đã vào tài khoản ngân hàng của bạn | Hệ thống tự mở yêu cầu hoàn tiền `Source = System` cho admin xử lý |
+| Tiền về nhưng đơn đã huỷ / sai số tiền | Đã vào tài khoản ngân hàng của bạn | Hệ thống chỉ ghi log lỗi và để đơn không `Succeeded` (`ReviewRequired`); admin hoàn tiền thủ công ngoài hệ thống |
 
 Tức là tiền không "mất" ở đâu: nó luôn ở tài khoản ngân hàng của bạn, vấn đề chỉ là **trạng thái trong database
 có khớp hay không**. Các cơ chế bên dưới đảm bảo chúng khớp lại.
@@ -145,8 +134,7 @@ có khớp hay không**. Các cơ chế bên dưới đảm bảo chúng khớp 
 
 ## 4. Danh sách tình huống đã xử lý
 
-Tất cả đều có test tự động trong [PaymentFlowTests.cs](../METANOIA/METANOIA.Test/PaymentFlowTests.cs) và
-[RefundTests.cs](../METANOIA/METANOIA.Test/RefundTests.cs) (dùng PayOS giả, không gọi mạng thật).
+Tất cả đều có test tự động trong [PaymentFlowTests.cs](../METANOIA/METANOIA.Test/PaymentFlowTests.cs) (dùng PayOS giả, không gọi mạng thật).
 
 ### Tạo link thanh toán (`POST /api/payments/checkout`)
 
@@ -166,8 +154,8 @@ Tất cả đều có test tự động trong [PaymentFlowTests.cs](../METANOIA/
 | 7 | **Webhook gửi lại nhiều lần** (PayOS retry) | Idempotent: lần sau trả `Duplicate`, **không kích hoạt gói hai lần** (ngoài ra còn unique index `PaymentTransactionId` ở DB để chặn webhook song song) |
 | 8 | **Webhook giả** (sai chữ ký) | Kiểm tra HMAC-SHA256 bằng `ChecksumKey`, sai thì 400 và không đổi gì |
 | 9 | Webhook cho `orderCode` lạ (kể cả webhook thử của PayOS khi đăng ký URL) | Trả 200 `Ignored` để PayOS ngừng gửi lại |
-| 10 | **Tiền về sai số tiền** | Đơn chuyển `Failed`, **không kích hoạt gói**, tự mở yêu cầu hoàn tiền đúng số tiền thực nhận |
-| 11 | **Tiền về sau khi khách đã huỷ đơn** | Không kích hoạt, tự mở yêu cầu hoàn tiền. Webhook lặp lại không mở thêm yêu cầu thứ hai |
+| 10 | **Tiền về sai số tiền** | Đơn chuyển `Failed`, **không kích hoạt gói**, ghi log lỗi với số tiền thực nhận (`ReviewRequired`) để admin xử lý thủ công |
+| 11 | **Tiền về sau khi khách đã huỷ đơn** | Không kích hoạt, ghi log lỗi (`ReviewRequired`). Webhook lặp lại cũng không kích hoạt |
 | 12 | **Tiền về muộn sau khi đơn `Expired`** (sát giờ hết hạn) | Chấp nhận vì tiền đã nhận đủ: đơn thành `Succeeded` và kích hoạt gói |
 | 13 | Mua gói khi đang có gói còn hạn | Gói mới xếp hàng `Scheduled`, bắt đầu đúng lúc gói cũ hết hạn |
 | 14 | Server lỗi 500 khi xử lý webhook | PayOS tự gửi lại; vì idempotent nên an toàn |
@@ -188,40 +176,22 @@ Tất cả đều có test tự động trong [PaymentFlowTests.cs](../METANOIA/
 |---|---|---|
 | 20 | Huỷ lúc **mạng yếu** (PayOS không phản hồi) | 503, **giữ nguyên `Pending`** vì link PayOS vẫn còn sống, không được tự đánh dấu `Cancelled` |
 | 21 | Huỷ đúng lúc **khách vừa trả tiền** | PayOS báo không huỷ được → hệ thống đối soát, trả `Succeeded` thay vì `Cancelled` |
-| 22 | Huỷ giao dịch đã `Succeeded` | 400, hướng dẫn dùng yêu cầu hoàn tiền |
+| 22 | Huỷ giao dịch đã `Succeeded` | 400, giao dịch đã thành công không huỷ được |
 | 23 | Huỷ lại đơn đã `Cancelled`/`Expired`/`Failed` | Idempotent, trả lại trạng thái hiện tại |
 | 24 | Huỷ / sync đơn của người khác | 404 |
 
 ---
 
-## 5. Hoàn tiền
+## 5. Tiền về không hợp lệ: xử lý thủ công
 
-**Quy trình** (admin chuyển khoản tay vì PayOS không có API hoàn tiền):
+Hệ thống **không** có chức năng hoàn tiền (không có bảng, API hay quy trình duyệt). Khi tiền đã về nhưng đơn không hợp lệ
+(tiền về sai số tiền, hoặc về sau khi khách đã huỷ đơn, case 10 và 11):
 
-```
-Requested ──approve──▶ Approved ──complete (nhập mã GD ngân hàng)──▶ Completed
-    └────reject (bắt buộc ghi lý do)──▶ Rejected  (khách được gửi yêu cầu mới)
-```
+1. Webhook trả `ReviewRequired`, đơn **không** kích hoạt gói và console có dòng log lỗi nêu số tiền thực nhận.
+2. Admin tìm đơn bằng `GET /api/payment-transactions`: có `webhookReceivedAt` nhưng `status` không phải `Succeeded`.
+3. Admin chuyển khoản trả lại khách ngoài hệ thống (ngân hàng hoặc dashboard PayOS) và ghi chú lại bên ngoài.
 
-| API | Ai | Việc làm |
-|---|---|---|
-| `POST /api/payments/{paymentId}/refunds` `{ "reason": "..." }` | Chủ giao dịch | Tạo yêu cầu `Requested` |
-| `GET /api/refunds?status=Requested` | User thấy của mình, Admin thấy tất cả | Danh sách |
-| `GET /api/refunds/{id}` | Như trên | Chi tiết |
-| `POST /api/refunds/{id}/approve` `{ "note": "..." }` | Admin | `Approved` và **thu hồi gói đăng ký** ngay |
-| `POST /api/refunds/{id}/reject` `{ "note": "lý do" }` | Admin | `Rejected` |
-| `POST /api/refunds/{id}/complete` `{ "bankReference": "FT...", "note": "" }` | Admin | `Completed` sau khi đã chuyển khoản |
-
-**Điều kiện khách tự yêu cầu** (không đạt thì 400): giao dịch `Succeeded`, thuộc về mình, trong
-`RefundWindowDays` ngày kể từ lúc thanh toán, chưa có yêu cầu hoàn tiền đang sống, và gói chưa dùng AI
-(`AiCallsUsed = 0`). Quá điều kiện thì khách liên hệ hỗ trợ.
-
-**Yêu cầu do hệ thống tự mở** (`Source = System`): tiền về sai số tiền hoặc sau khi đơn đã huỷ (case 10, 11).
-Admin xử lý cùng quy trình.
-
-**Cách biết giao dịch đã hoàn tiền:** có dòng `PaymentRefund` `Status = Completed` cho giao dịch đó.
-Trạng thái của `PaymentTransaction` vẫn là `Succeeded` do `CHECK` của bảng.
-Giao dịch đã có yêu cầu hoàn tiền không xoá được.
+Nếu khách đã được cấp gói rồi muốn bỏ gói, admin chỉnh trạng thái gói bằng `PUT /api/user-subscriptions/{id}` (cần lý do `X-Admin-Reason`).
 
 ---
 
@@ -237,7 +207,7 @@ Phải ra `Passed! - Failed: 0, Passed: 109` (hoặc hơn).
 
 ### 6.2 Test thủ công với PayOS thật
 
-**Chuẩn bị (làm một lần):** chạy SQL (mục 1), gán Admin, điền key (mục 2), mở tunnel và đăng ký webhook (2.3),
+**Chuẩn bị (làm một lần):** gán Admin (mục 1), điền key (mục 2), mở tunnel và đăng ký webhook (2.3),
 chạy backend (`https://localhost:7007/swagger`).
 
 **Lấy token:** mở `https://localhost:7007/login-test.html` (trang test đăng nhập Google có sẵn trong repo), đăng nhập,
@@ -258,11 +228,10 @@ Mức tối thiểu PayOS cho phép chưa được xác minh; nếu bị từ ch
 | **G. Mạng yếu** | Bỏ `ClientId` thành sai hoặc rút mạng rồi gọi `checkout` | 503 `PAYMENT_GATEWAY_UNAVAILABLE`; đơn `Failed`; bật lại thì `checkout` chạy bình thường |
 | **H. Webhook giả** | `curl -X POST https://localhost:7007/api/payos/webhook -H "Content-Type: application/json" -d '{"code":"00","desc":"success","success":true,"data":{"orderCode":123,"amount":2000},"signature":"abc"}' -k` | 400 "Chữ ký webhook không hợp lệ" |
 | **I. Mua khi đang có gói** | Sau A, mua tiếp cùng gói | Gói thứ hai có `status: Scheduled`, `startAt` = `endAt` của gói đầu |
-| **J. Hoàn tiền** | User: `POST /api/payments/{id}/refunds` → Admin: `approve` (gói chuyển `Cancelled`) → chuyển khoản tay cho khách → `complete` với `bankReference` | `Completed` |
-| **K. Trả sai số tiền** | `checkout`, trả số tiền khác (PayOS cho phép thiếu/dư tuỳ cấu hình kênh) | Đơn `Failed`, xuất hiện yêu cầu hoàn tiền `Source = System` ở `GET /api/refunds` |
+| **J. Trả sai số tiền** | `checkout`, trả số tiền khác (PayOS cho phép thiếu/dư tuỳ cấu hình kênh) | Đơn `Failed`, không có gói, log lỗi `Giao dịch ... nhận ... VND nhưng không hợp lệ` |
 
-**Cách đọc log:** các dòng quan trọng nằm ở console khi chạy backend: `Webhook PayOS xử lý xong: Processed|Duplicate|RefundOpened`,
-`Mở yêu cầu hoàn tiền...`, `Đối soát giao dịch ... dừng vì PayOS không phản hồi`.
+**Cách đọc log:** các dòng quan trọng nằm ở console khi chạy backend: `Webhook PayOS xử lý xong: Processed|Duplicate|ReviewRequired`,
+`Đối soát giao dịch ... dừng vì PayOS không phản hồi`.
 
 **Lần đầu chạy với PayOS thật, kiểm tra ngay:** nếu webhook thật luôn bị log "Webhook PayOS có chữ ký không khớp"
 thì thuật toán chữ ký trong [PayOSClient.cs](../METANOIA/METANOIA.Infrastructure/Services/PayOSClient.cs)
@@ -291,6 +260,6 @@ tài liệu `payos.vn/docs/api` và quy ước SDK chính thức, cần bạn x�
 - **Mã trạng thái** `PENDING, PROCESSING, PAID, EXPIRED, UNDERPAID, CANCELLED`: theo tài liệu.
 - **Giới hạn mô tả, số tiền tối thiểu, có môi trường sandbox hay không**: tài liệu tôi đọc không nêu.
 - **PayOS không có API hoàn tiền**: chỉ là "tài liệu API không nhắc tới", chưa hỏi bên PayOS. Nếu họ có tính năng
-  hoàn tiền trên dashboard, admin vẫn dùng quy trình ở mục 5 và nhập mã giao dịch.
+  hoàn tiền trên dashboard, admin dùng nó theo hướng dẫn ở mục 5.
 - Chưa chạy SQL trên Supabase thật, mới chạy trên EF InMemory. Index "mỗi giao dịch một gói" và "mỗi user một gói
   Active" là rào chắn cuối ở database cho các tình huống song song.
