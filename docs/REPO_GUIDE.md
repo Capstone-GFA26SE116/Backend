@@ -43,8 +43,8 @@ Repo này chỉ chứa **backend REST API** (ASP.NET Core 8). Frontend và dịc
 | Quản lý công việc | Khách hàng, dự án, giai đoạn (milestone), task, subtask, tài liệu dự án |
 | Lịch | Khung giờ làm việc (slot), lịch sử đổi giờ, đồng bộ Google Calendar, lịch gộp |
 | AI | Đề xuất xếp lịch, duyệt đề xuất, ghi nhận task hoàn thành để AI học |
-| Thanh toán | Gói đăng ký, thanh toán PayOS, hóa đơn, (hoàn tiền: đang tắt) |
-| Quản trị | Quản lý user, báo cáo chi phí AI, thư viện nhạc, nhật ký thao tác của Admin |
+| Thanh toán | Gói đăng ký, thanh toán PayOS, hóa đơn |
+| Quản trị | Quản lý user, báo cáo chi phí AI, báo cáo doanh thu, nhật ký thao tác của Admin |
 
 Công nghệ: .NET 8, EF Core 8 + Npgsql (PostgreSQL trên **Supabase**), JWT Bearer, Google API (đăng nhập + Calendar),
 PayOS (thanh toán QR), xUnit + `WebApplicationFactory` cho test.
@@ -82,7 +82,7 @@ Backend/
 ├─ docs/
 │  ├─ REPO_GUIDE.md               (file này)
 │  ├─ PAYMENT_UNHAPPY_CASES.md    (thanh toán: các tình huống lỗi, cách test, cách lấy key PayOS)
-│  └─ sql/                        (SQL chạy tay trên Supabase: 001_payment_refund.sql, 002_refresh_token.sql)
+│  └─ sql/                        (SQL chạy tay trên Supabase: 002_refresh_token.sql và các file sau)
 └─ METANOIA/
    ├─ METANOIA.slnx               (solution)
    ├─ METANOIA.Domain/            (1) Entities
@@ -293,7 +293,7 @@ Client.cs (Entity) → AppDbContext (ánh xạ) → ClientRequestDto/ClientDto �
 ### 6.1 Database-first
 Database Supabase là **nguồn sự thật**. Entity và `AppDbContext` được scaffold từ database; **không có EF Migrations**. Khi cần
 thêm bảng/cột, quy trình là: viết file SQL trong [docs/sql/](./sql/), **chạy tay** trên Supabase (SQL Editor), rồi thêm entity +
-cấu hình tương ứng vào code. Hiện có hai file: `001_payment_refund.sql` (bảng hoàn tiền, đang tắt) và `002_refresh_token.sql`
+cấu hình tương ứng vào code. Ví dụ `002_refresh_token.sql`
 (bảng refresh token; **bắt buộc**, thiếu thì đăng nhập lỗi 500).
 
 Các ràng buộc `CHECK` (giá trị trạng thái hợp lệ, `Amount > 0`, `ExpiresAt > CreatedAt`...) **nằm trong database**, không có trong C#.
@@ -308,9 +308,9 @@ Service phải tự kiểm tra các điều kiện đó trước để trả l�
 | **Hồ sơ học của user** | `UserCircadianProfile` (24 dòng/user: điểm hiệu quả từng giờ), `UserDomainProfile` (hệ số KBias từng loại việc), `CircadianUpdateLog`, `KbiasUpdateLog` | Phục vụ AI |
 | **Công việc** | `Client`, `Project`, `Milestone`, `Task`, `SubTask`, `Domain`, `ProjectDocument` | `Domain` = *loại công việc* (Writing, Design...), không liên quan DDD |
 | **Lịch** | `ScheduleSlot`, `ScheduleChangeLog`, `ScheduleProposal`, `GoogleCalendarEvent`, `Notification` | `GoogleCalendarEvent` là bản sao sự kiện Google (chỉ đọc) |
-| **Làm việc thực tế** | `FocusSession`, `FocusTrack`, `TaskExecutionMemory` | `FocusTrack` = thư viện nhạc tập trung |
-| **AI / chat** | `AiusageLog`, `ChatConversation`, `ChatMessage`, `BlindTestSession` | Chat và blind test chưa có API |
-| **Gói & thanh toán** | `SubscriptionPlan`, `UserSubscription`, `PaymentTransaction`, `Invoice`, `PaymentRefund` | Xem 7.4 |
+| **Làm việc thực tế** | `FocusSession`, `TaskExecutionMemory` | |
+| **AI / chat** | `AiusageLog`, `ChatConversation`, `ChatMessage` | Chat chưa có API |
+| **Gói & thanh toán** | `SubscriptionPlan`, `UserSubscription`, `PaymentTransaction`, `Invoice` | Xem 7.4 |
 | **Quản trị** | `AdminActionLog` | Nhật ký thao tác Admin |
 
 ### 6.3 Quan hệ chính
@@ -319,11 +319,10 @@ Service phải tự kiểm tra các điều kiện đó trước để trả l�
 User ─┬─< Client ─< Project(ClientId, có thể null) ─┬─< Milestone
       │                │                            ├─< ProjectDocument
       │                │                            └─< Task(MilestoneId, DomainId) ─┬─< SubTask
-      │                └─ (mỗi user có 1 project IsDefault = "Cá nhân")             └─< ScheduleSlot ─┬─< ScheduleChangeLog
+      │                └─ (user mới KHÔNG có dự án nào; tự tạo)                     └─< ScheduleSlot ─┬─< ScheduleChangeLog
       ├─< UserSubscription >─ SubscriptionPlan                                                        ├─< FocusSession
       ├─< PaymentTransaction ─┬─ Invoice (1-1)                                                        └─< Notification
-      │                       ├─ UserSubscription (1-1, qua PaymentTransactionId)
-      │                       └─< PaymentRefund
+      │                       └─ UserSubscription (1-1, qua PaymentTransactionId)
       ├─< ScheduleProposal ─< ScheduleSlot (ScheduleProposalId)
       ├─< UserCircadianProfile, UserDomainProfile
       ├─< RefreshToken
@@ -333,7 +332,7 @@ User ─┬─< Client ─< Project(ClientId, có thể null) ─┬─< Milesto
 ### 6.4 Ràng buộc đáng nhớ (vì chúng quyết định logic code)
 - **Mỗi user chỉ một `UserSubscription` có `Status = 'Active'`** (index unique có điều kiện). Do đó khi đổi gói luôn phải đổi gói cũ sang
   `Expired/Cancelled` và **lưu trước**, rồi mới thêm gói mới (xem `StageSubscriptionAsync`).
-- **Mỗi user chỉ một project `IsDefault = true`** ("Cá nhân").
+- Cột `Project.IsDefault` chỉ còn ở dữ liệu cũ (user tạo trước đây có sẵn dự án "Cá nhân"); user mới không có dự án mặc định, dự án mới tạo luôn `IsDefault = false`.
 - `PaymentTransaction.OrderCode` duy nhất; `Invoice.PaymentTransactionId` duy nhất; `UserSubscription.PaymentTransactionId` duy nhất
   → bảo vệ khỏi tạo trùng khi webhook bị gửi lặp.
 - `GoogleCalendarEvent (GoogleConnectionId, GoogleEventId)` duy nhất; `UserCircadianProfile (UserId, HourOfDay)` duy nhất;
@@ -358,9 +357,10 @@ AuthService.LoginWithGoogleAsync
  │    └─ không:
  │         ├─ email đã có và là tài khoản Admin tạo sẵn (GoogleSubjectId bắt đầu "pending:") → NHẬN tài khoản đó
  │         ├─ email đã có (tài khoản Google thật khác) → 400
- │         └─ tạo User mới (role Freelancer) + InitializeNewUserAsync (7.2) trong CÙNG một lần lưu
+ │         └─ tạo User mới (role Freelancer, múi giờ tạm UTC) + InitializeNewUserAsync (7.2) trong CÙNG một lần lưu
  ├─ JwtTokenGenerator: access token JWT, sống Jwt:ExpiryMinutes (60 phút), chứa sub/email/name/role
- └─ tạo refresh token (32 byte ngẫu nhiên, sống Jwt:RefreshTokenDays = 30 ngày); DB chỉ lưu bản băm SHA-256
+ ├─ tạo refresh token (32 byte ngẫu nhiên, sống Jwt:RefreshTokenDays = 30 ngày); DB chỉ lưu bản băm SHA-256
+ └─ kết quả có thêm isNewUser = true khi tài khoản VỪA được tạo hoặc VỪA được nhận (tài khoản Admin tạo sẵn); đăng nhập thường và refresh luôn false
 ```
 - `POST /api/auth/refresh { refreshToken }`: đổi refresh token lấy access token mới **và refresh token mới** (xoay vòng: token cũ bị
   thu hồi, `ReplacedById` trỏ sang token mới). Token cũ bị đem dùng lại **sau 10 giây** được coi là bị đánh cắp → thu hồi mọi phiên của user
@@ -370,17 +370,24 @@ AuthService.LoginWithGoogleAsync
 
 ### 7.2 Khởi tạo user và onboarding
 [UserInitializationService](../METANOIA/METANOIA.Infrastructure/Services/UserInitializationService.cs) bảo đảm mỗi user có đủ:
-1. Project **"Cá nhân"** (`IsDefault = true`),
-2. một `UserSubscription` **gói Miễn phí** `Active`, `EndAt = null` (id gói lấy từ `Subscription:FreePlanId`),
-3. đủ **24 dòng `UserCircadianProfile`** (mỗi giờ 0-23, điểm mặc định 0.500).
+1. một `UserSubscription` **gói Miễn phí** `Active`, `EndAt = null` (vô thời hạn; id gói lấy từ `Subscription:FreePlanId`),
+2. đủ **24 dòng `UserCircadianProfile`** (mỗi giờ 0-23, điểm mặc định 0.500).
 
-Hàm **idempotent** (thứ nào có rồi thì bỏ qua) và lưu bằng **một** `SaveChanges`, nên đăng nhập lần đầu thất bại ở bước nào thì không để lại User nào.
+**Không còn tự tạo dự án "Cá nhân"**: người dùng mới chưa có dự án nào, FE cho họ tạo dự án đầu tiên (`POST /api/projects`) trước khi tạo việc. Hàm khởi tạo **idempotent** (thứ nào có rồi thì bỏ qua) và lưu bằng **một** `SaveChanges`, nên đăng nhập lần đầu thất bại ở bước nào thì không để lại User nào.
 User cũ (tạo trước tính năng này) được bù bằng lệnh một lần: `dotnet run --project METANOIA/METANOIA -- --backfill-user-data`
-(chạy từ thư mục `Backend`, xem [UserBackfillRunner.cs](../METANOIA/METANOIA.Infrastructure/Services/UserBackfillRunner.cs)).
+(chạy từ thư mục `Backend`, xem [UserBackfillRunner.cs](../METANOIA/METANOIA.Infrastructure/Services/UserBackfillRunner.cs)); lệnh này chỉ bù gói và circadian, không tạo dự án.
 
-`POST /api/me/onboarding`: lưu giờ làm, chấm điểm 24 giờ circadian (giờ hiệu quả 0.8, giờ làm việc 0.5, ngoài giờ 0.2) và tạo
-`UserDomainProfile` với KBias theo mức hay làm lố (Rarely 1.1 / Sometimes 1.25 / Often 1.5 / Always 1.8).
-`PUT /api/me/profile` sửa họ tên; `PUT /api/me/settings` sửa giờ làm, múi giờ, thời gian đệm/nhắc.
+Tài khoản mới có múi giờ **tạm `UTC`** (không gắn với nước nào) cho đến khi người dùng chọn thật ở onboarding.
+
+`POST /api/me/onboarding` (người dùng **tự chọn**, FE hiện màn hình hỏi sau lần đăng nhập đầu, khi `isNewUser = true` hoặc `GET /api/me` có `onboardingCompleted = false`):
+- **Bắt buộc:** `timeZone`, `workDayStart`, `workDayEnd`, `worksOnWeekend`, `defaultBufferMinutes`, `reminderLeadMinutes`.
+- **Tùy chọn:** `productiveHours` (giờ làm hiệu quả, để trống được), `domainIds`, `overrunLevel` (bỏ trống thì dùng `Sometimes`).
+- Lưu cài đặt, chấm điểm 24 giờ circadian (giờ hiệu quả 0.8, giờ làm việc 0.5, ngoài giờ 0.2) và tạo
+  `UserDomainProfile` với KBias theo mức hay làm lố (Rarely 1.1 / Sometimes 1.25 / Often 1.5 / Always 1.8). `overrunLevel` **không có cột riêng**:
+  nó chỉ được lưu thành `Kbias` cho từng loại công việc trong `domainIds`, nên không chọn loại công việc nào thì không lưu gì.
+- Đặt `OnboardingCompleted = true`. Backend **không chặn** API khi cờ là `false`: việc chặn vào trang home là của FE.
+
+`PUT /api/me/profile` sửa họ tên; `PUT /api/me/settings` sửa giờ làm, múi giờ, thời gian đệm/nhắc. Đổi **giờ làm việc** (`workDayStart` hoặc `workDayEnd`) thì 24 điểm circadian được **tính lại** theo khung mới: chỉ các dòng do onboarding hoặc mặc định tạo (`Source = Onboarding`), giờ hiệu quả đã khai báo (0.8) giữ nguyên, dòng do AI học (`Source` khác) không đụng tới.
 
 ### 7.3 Gói đăng ký và vòng đời
 ```
@@ -414,7 +421,7 @@ Có 3 đường để hệ thống biết "đã trả tiền" (đều đi vào c
        └─ EnsureFulfillmentAsync (MỘT lần SaveChanges):
             ├─ UserSubscription  (Active hoặc Scheduled)
             └─ Invoice  (số MTN-<năm>-<6 chữ số>; thông tin người mua từ User; kỳ = thời hạn gói)
-  sai số tiền / tiền về sau khi đã hủy → KHÔNG cấp gói; ghi log, trả ReviewRequired (hoặc mở yêu cầu hoàn tiền nếu RefundsEnabled)
+  sai số tiền / tiền về sau khi đã hủy → KHÔNG cấp gói; ghi log, trả ReviewRequired (admin xử lý thủ công ngoài hệ thống)
 ```
 Trạng thái `PaymentTransaction.Status`:
 ```
@@ -427,8 +434,7 @@ Nguyên tắc thiết kế: **webhook chỉ là "tín hiệu"**; trạng thái t
 và trả 503, không bao giờ đoán. Webhook trả 200 cho mọi tin hợp lệ (kể cả trùng) để PayOS ngừng gửi lại.
 Không chạy được ở `localhost` cho webhook (PayOS cần URL công khai), nhưng `sync` và worker vẫn hoạt động.
 
-Hoàn tiền (`PaymentRefund`, `/api/refunds`): PayOS không có API hoàn tiền cho merchant nên chỉ ghi nhận + admin chuyển khoản tay.
-Đang **tắt** (`Payments:RefundsEnabled = false`): khi tắt, luồng thanh toán không đụng tới bảng `PaymentRefund`, các API hoàn tiền trả 400.
+Hệ thống **không có chức năng hoàn tiền** (đã bỏ bảng `PaymentRefund` và API `/api/refunds`): tiền về không hợp lệ thì ghi log và admin hoàn tiền thủ công ngoài hệ thống.
 
 ### 7.5 Google Calendar
 ```
@@ -485,14 +491,13 @@ Lỗi từ AI service được đổi thành thông báo tiếng Việt (429: h�
 
 ### 7.7 Quản trị và nhật ký thao tác (AdminActionLog)
 - API quản trị gắn `[Authorize(Roles = "Admin")]`. Hiện có: danh sách/chi tiết/tạo/sửa/xóa mềm/khôi phục user (`/api/admin/users`),
-  báo cáo chi phí AI theo `feature|model|day` (`/api/admin/ai-usage`), thư viện nhạc (`/api/admin/focus-tracks`), đọc nhật ký (`/api/admin/audit-logs`),
+  báo cáo chi phí AI theo `feature|model|day` (`/api/admin/ai-usage`), đọc nhật ký (`/api/admin/audit-logs`),
   báo cáo doanh thu (`/api/admin/revenue`), đồng bộ lại trạng thái dữ liệu cũ (`/api/admin/status-resync`),
   cùng các CRUD quản trị khác (gói, domain, hóa đơn, giao dịch, gói của user). Hướng dẫn cho FE: [ADMIN_FE.md](ADMIN_FE.md).
 - **Nhật ký tự động:** [AdminAuditFilter](../METANOIA/METANOIA/Auditing/HttpAdminAuditContext.cs) đánh dấu request là "thao tác ghi của Admin"
   (endpoint có role Admin và không phải GET). [AdminAuditSaveChangesInterceptor](../METANOIA/METANOIA.Infrastructure/Data/AdminAuditSaveChangesInterceptor.cs)
   chặn `SaveChanges` và, **trong cùng transaction**, thêm dòng `AdminActionLog` (`Action = "<Bảng>.<Create|Update|Delete>"`, giá trị cũ/mới dạng JSON,
-  lý do lấy từ header `X-Admin-Reason`) cho các bảng: `Domain`, `SubscriptionPlan`, `UserSubscription`, `Invoice`, `PaymentTransaction`,
-  `PaymentRefund`, `FocusTrack`, `User`. Nhờ vậy thêm endpoint Admin mới không cần tự viết code ghi log. Thay đổi do hệ thống (webhook, worker)
+  lý do lấy từ header `X-Admin-Reason`) cho các bảng: `Domain`, `SubscriptionPlan`, `UserSubscription`, `Invoice`, `PaymentTransaction`, `User`. Nhờ vậy thêm endpoint Admin mới không cần tự viết code ghi log. Thay đổi do hệ thống (webhook, worker)
   hay do user thường tự làm thì không được ghi. Ngoại lệ có ghi riêng: `POST /api/admin/status-resync?dryRun=false` ghi MỘT dòng tóm tắt
   (`StatusResync.Run`) vì nó sửa Task, Milestone, ScheduleSlot (không thuộc các bảng trên).
 - **Lý do bắt buộc:** thao tác nhạy cảm gắn `[RequireAdminReason]` ([RequireAdminReasonAttribute](../METANOIA/METANOIA/Auditing/RequireAdminReasonAttribute.cs)):
@@ -532,15 +537,6 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 | Method | Đường dẫn | Quyền |
 |---|---|---|
 | GET | `/api/admin/audit-logs` | Admin |
-
-#### Admin: thư viện nhạc (`AdminFocusTracksController`)
-
-| Method | Đường dẫn | Quyền |
-|---|---|---|
-| GET | `/api/admin/focus-tracks` | Admin |
-| POST | `/api/admin/focus-tracks` | Admin |
-| GET | `/api/admin/focus-tracks/{trackId}` | Admin |
-| PUT | `/api/admin/focus-tracks/{trackId}` | Admin |
 
 #### Admin: quản lý user (`AdminUsersController`)
 
@@ -658,7 +654,6 @@ Phần lớn API dữ liệu của user tự lọc theo chủ sở hữu từ to
 |---|---|---|
 | POST | `/api/payments/checkout` | Đăng nhập |
 | POST | `/api/payments/{paymentId}/cancel` | Đăng nhập |
-| POST | `/api/payments/{paymentId}/refunds` | Đăng nhập |
 | POST | `/api/payments/{paymentId}/sync` | Đăng nhập |
 
 #### Tài liệu dự án (`ProjectDocumentsController`)
@@ -691,16 +686,6 @@ Các API danh sách đều nhận bộ lọc tùy chọn: `search` (tên chứa 
 | POST | `/api/projects/{projectId}/archive` | Đăng nhập |
 | GET | `/api/projects/{projectId}/progress` | Đăng nhập |
 | POST | `/api/projects/{projectId}/restore` | Đăng nhập |
-
-#### Hoàn tiền (đang tắt) (`RefundsController`)
-
-| Method | Đường dẫn | Quyền |
-|---|---|---|
-| GET | `/api/refunds` | Đăng nhập |
-| GET | `/api/refunds/{refundId}` | Đăng nhập |
-| POST | `/api/refunds/{refundId}/approve` | Admin |
-| POST | `/api/refunds/{refundId}/complete` | Admin |
-| POST | `/api/refunds/{refundId}/reject` | Admin |
 
 #### Đề xuất lịch AI (`ScheduleProposalsController`)
 
@@ -787,7 +772,7 @@ Sao chép file mẫu thành `appsettings.json` rồi điền giá trị thật. 
 | `Frontend:CalendarConnectedRedirectUri` | Trang frontend được chuyển về sau khi kết nối Google | Không |
 | `PayOS:ClientId`, `ApiKey`, `ChecksumKey` | Khóa kênh thanh toán PayOS | **Có** |
 | `PayOS:ReturnUrl`, `CancelUrl`, `WebhookUrl`, `Description` | Trang quay về, URL webhook công khai, nội dung chuyển khoản | Không |
-| `Payments:*` | `LinkExpiryMinutes` (15), `ExpiryGraceSeconds`, `RefundWindowDays`, `RefundsEnabled` (false), `ReconciliationEnabled`, `ReconciliationIntervalSeconds` (60), `PendingStaleAfterSeconds` (120) | Không |
+| `Payments:*` | `LinkExpiryMinutes` (15), `ExpiryGraceSeconds`, `ReconciliationEnabled`, `ReconciliationIntervalSeconds` (60), `PendingStaleAfterSeconds` (120) | Không |
 | `Subscription:FreePlanId` | Id dòng gói Miễn phí trong `SubscriptionPlan` (phải tồn tại, `Price = 0`, `IsActive`) | Không |
 | `AiService:BaseUrl`, `TimeoutSeconds` | Địa chỉ dịch vụ AI (mặc định `http://127.0.0.1:8000`, 30 giây) | Không |
 | `Storage:RootPath` | Thư mục lưu file tài liệu dự án (tối đa 20 MB/file) | Không |
@@ -815,7 +800,7 @@ Các khoá còn lại được đọc trực tiếp từ `IConfiguration`.
 | `FakeGoogleHttpHandler` | Máy chủ token Google | Giả `invalid_grant`, 5xx, mất mạng |
 | `RecordingGoogleSyncService` | Đồng bộ Google | Ghi lại/chặn lời gọi sync (test webhook) |
 | `CapturingLoggerProvider` | Logger | Kiểm tra "đã LogError" |
-| `ForbiddenPaymentRefundRepository`, `FailingUserSetupRepository` | Repository | Chứng minh một luồng **không** đụng bảng nào đó / giả lỗi giữa chừng |
+| `FailingUserSetupRepository` | Repository | Giả lỗi giữa chừng khi tạo user |
 
 **InMemory khác Postgres thật** (nhớ khi test pass nhưng chạy thật vẫn lỗi):
 không thực thi `CHECK`, một số index unique có điều kiện, giá trị mặc định SQL (`now()`), và không hỗ trợ transaction
@@ -910,15 +895,14 @@ So với bản kế hoạch API ban đầu (`api-plan.md`), tại thời điểm
 | Chưa có | Ghi chú |
 |---|---|
 | Chat AI (`ChatConversation`, `ChatMessage`) | Có bảng, chưa có API |
-| Focus timer (`FocusSession`), nhạc tập trung cho user | Admin quản lý `FocusTrack` được; user chưa có API bấm giờ |
+| Nhạc tập trung khi bấm giờ | Đã bỏ (không còn bảng `FocusTrack`) |
 | Thông báo (`Notification`) và nhắc việc | Chưa có API, chưa có job |
 | Dashboard thống kê, Hôm nay (`/today`) | Chưa có |
-| Blind test (nghiên cứu) | Chưa có |
 | `/admin/settings` | Cần quyết định chỗ lưu cài đặt trong database |
 | Job gia hạn kênh Watch của Google; ghi slot lên Google Calendar | `ScheduleSlot.GoogleEventId` đã có cột nhưng chưa có code ghi |
 | Task `Fixed` tự sinh slot | Hiện phải tạo slot tay |
 | Áp quota/giới hạn theo gói (AI, dung lượng, số project) | Chưa kiểm tra `StorageLimitMb`, `ProjectLimit` ở các API tương ứng |
-| Thanh toán VNPay, hoàn tiền | VNPay chưa có; hoàn tiền đã code nhưng đang tắt |
+| Thanh toán VNPay, hoàn tiền | VNPay chưa có; hoàn tiền đã bỏ khỏi hệ thống |
 | Cập nhật `RevisionCount` tự động; sắp xếp lại hàng loạt milestone | Hiện sửa từng milestone qua `PUT` |
 
 ---
@@ -1165,11 +1149,6 @@ classDiagram
         +DateTime EndedAt
         +string CaptureMethod
     }
-    class FocusTrack {
-        +string Title
-        +string FileUrl
-        +bool IsActive
-    }
     class Notification {
         +string Type
         +DateTime ScheduledAt
@@ -1202,7 +1181,6 @@ classDiagram
     ScheduleSlot "1" --> "0..*" ScheduleChangeLog : lịch sử đổi giờ
     ScheduleSlot "1" --> "0..*" FocusSession : giờ làm thực tế
     ScheduleSlot "1" --> "0..*" Notification : nhắc việc
-    FocusTrack "0..1" --> "0..*" FocusSession : nhạc đã dùng
     User "1" --> "0..1" GoogleConnection : kết nối Google
     GoogleConnection "1" --> "0..*" GoogleCalendarEvent : bản sao sự kiện Google, chỉ đọc
 ```
@@ -1251,12 +1229,6 @@ classDiagram
         +date PeriodStart
         +date PeriodEnd
     }
-    class PaymentRefund {
-        +long Amount
-        +string Source
-        +string Status
-        +string BankReference
-    }
     class AiusageLog {
         +string Feature
         +string Model
@@ -1284,7 +1256,6 @@ classDiagram
     SubscriptionPlan "1" --> "0..*" PaymentTransaction
     PaymentTransaction "1" --> "0..1" UserSubscription : gói do giao dịch này cấp
     PaymentTransaction "1" --> "0..1" Invoice
-    PaymentTransaction "1" --> "0..*" PaymentRefund : đang tắt
     UserSubscription "1" --> "0..*" AiusageLog
     User "1" --> "0..*" RefreshToken : mỗi phiên đăng nhập một token
     User "1" --> "0..*" AdminActionLog : Admin thực hiện
@@ -1336,7 +1307,6 @@ classDiagram
         +StageFreeSubscriptionAsync(userId)
     }
     class UserInitializationService {
-        -StageProjectAsync()
         -StageCircadianProfilesAsync()
     }
     class MeService {
@@ -1367,7 +1337,6 @@ classDiagram
         +Checkout(planId)
         +Sync(paymentId)
         +Cancel(paymentId)
-        +RequestRefund(paymentId)
     }
     class PayOSWebhookController {
         +Webhook()
@@ -1405,7 +1374,6 @@ classDiagram
     }
     class PaymentOptions {
         +int LinkExpiryMinutes
-        +bool RefundsEnabled
         +int ReconciliationIntervalSeconds
     }
     class PayOSOptions {
@@ -1430,13 +1398,6 @@ classDiagram
         #ExecuteAsync()
         -RunOnceAsync()
     }
-    class RefundService {
-        <<tắt mặc định>>
-        +RequestRefundAsync()
-        +ApproveAsync()
-        +CompleteAsync()
-    }
-
     PaymentsController ..> IPaymentService
     PayOSWebhookController ..> IPaymentService
     PaymentService ..|> IPaymentService
@@ -1449,7 +1410,6 @@ classDiagram
     PaymentService ..> PaymentOptions
     PayOSClient ..> PayOSOptions
     PaymentReconciliationWorker ..> IPaymentService : mỗi 60 giây, scope riêng
-    PaymentsController ..> RefundService : qua IRefundService
 ```
 
 #### 17.1.7 Google Calendar
@@ -1682,9 +1642,9 @@ sequenceDiagram
     J-->>A: access token JWT, 60 phút
     A->>A: tạo refresh token ngẫu nhiên, chỉ băm SHA-256 được lưu
     A->>I: InitializeNewUserAsync(userId)
-    I->>I: thêm project Cá nhân, gói Miễn phí Active, 24 dòng circadian
+    I->>I: thêm gói Miễn phí Active, 24 dòng circadian
     I->>U: SaveChangesAsync
-    U->>DB: MỘT transaction: User, RefreshToken, Project, UserSubscription, UserCircadianProfile
+    U->>DB: MỘT transaction: User, RefreshToken, UserSubscription, UserCircadianProfile
     alt bất kỳ bước nào lỗi
         DB-->>U: lỗi
         U-->>FE: 500, không có User nào được tạo
@@ -1835,7 +1795,7 @@ sequenceDiagram
         P-->>PO: 200 Duplicate, không cấp lần hai
     else sai số tiền hoặc đơn đã Cancelled hoặc Failed
         P->>R: ghi log lỗi, Status Failed khi sai số tiền
-        P-->>PO: 200 ReviewRequired, hoặc RefundOpened nếu RefundsEnabled
+        P-->>PO: 200 ReviewRequired
     else hợp lệ, đơn Pending hoặc Expired
         P->>R: Status = Succeeded, PaidAt, WebhookReceivedAt
         P->>R: StageSubscription, GetActiveByUser, gói cũ Expired hoặc gói mới Scheduled
@@ -2100,8 +2060,8 @@ Quy ước chung cho mọi nhóm:
 |---|---|---|
 | BR-01 | Chỉ đăng nhập bằng Google. Email Google phải được **xác minh** | `400` Email Google chưa được xác minh |
 | BR-02 | Người mới tự đăng ký có role **Freelancer**. Role `Admin` chỉ được cấp bởi Admin | không áp dụng |
-| BR-03 | Tạo người mới là **một transaction**: `User` + `RefreshToken` đầu tiên + project "Cá nhân" (`IsDefault = true`) + gói **Miễn phí** `Active` + **24 dòng** `UserCircadianProfile` (điểm mặc định 0.5). Lỗi ở bước nào thì không có `User` nào được tạo | `500`, không còn dữ liệu nửa vời |
-| BR-04 | Mặc định người mới: múi giờ `Asia/Ho_Chi_Minh`, làm việc 08:00 đến 18:00, không làm cuối tuần, đệm 15 phút, nhắc trước 15 phút, `OnboardingCompleted = false` | không áp dụng |
+| BR-03 | Tạo người mới là **một transaction**: `User` + `RefreshToken` đầu tiên + gói **Miễn phí** `Active` (vô thời hạn) + **24 dòng** `UserCircadianProfile` (điểm mặc định 0.5). **Không tạo dự án nào.** Lỗi ở bước nào thì không có `User` nào được tạo | `500`, không còn dữ liệu nửa vời |
+| BR-04 | Mặc định người mới (đến khi onboarding): múi giờ **tạm `UTC`**, làm việc 08:00 đến 18:00, không làm cuối tuần, đệm 15 phút, nhắc trước 15 phút, `OnboardingCompleted = false`. Kết quả đăng nhập có `isNewUser = true` ở lần đầu (hoặc khi nhận tài khoản Admin tạo sẵn) | không áp dụng |
 | BR-05 | Admin tạo sẵn tài khoản thì `GoogleSubjectId = "pending:<guid>"`. Người có **đúng email đó** đăng nhập Google lần đầu sẽ nhận tài khoản. Email trùng mà không phải loại `pending:` hoặc đã bị xóa thì không được nhận | `400` Email này đã được đăng ký bằng phương thức khác |
 | BR-06 | Tài khoản đã soft delete (`DeletedAt != null`) không đăng nhập được. Admin phải khôi phục trước | `400` Tài khoản này đã bị xóa |
 | BR-07 | Access token (JWT) mặc định sống **60 phút** (`Jwt:ExpiryMinutes`). Mỗi request còn kiểm tra user chưa bị xóa. Token của user đã xóa bị từ chối ngay dù chưa hết hạn | `401` |
@@ -2130,6 +2090,9 @@ Quy ước chung cho mọi nhóm:
 | BR-19 | Mức "hay làm lố" quy ra hệ số học (`KBias`) khởi tạo cho từng loại công việc: `Rarely` 1.10, `Sometimes` 1.25, `Often` 1.50, `Always` 1.80 | `400` nếu giá trị lạ |
 | BR-20 | Giờ làm hiệu quả nằm trong 0 đến 23. Điểm mỗi giờ: giờ hiệu quả **0.8**, giờ trong khung làm việc **0.5**, ngoài khung **0.2** | `400` |
 | BR-21 | Loại công việc (Domain) được chọn phải tồn tại và đang bật (`IsActive`) | `400` |
+| BR-22a | Onboarding **bắt buộc** gửi `timeZone` (tên IANA có thật), `defaultBufferMinutes` và `reminderLeadMinutes` (0 đến 120), cùng giờ làm và `worksOnWeekend`; thiếu hoặc sai thì không lưu gì và onboarding vẫn chưa hoàn tất. `productiveHours`, `domainIds`, `overrunLevel` là tùy chọn; `overrunLevel` bỏ trống thì dùng `Sometimes` (1.25), giá trị lạ vẫn `400` | `400` |
+| BR-22b | `overrunLevel` chỉ được lưu thành `Kbias` của từng loại công việc trong `domainIds`; không chọn loại công việc nào thì không lưu gì | không áp dụng |
+| BR-22c | Đổi giờ làm việc ở `PUT /api/me/settings` thì tính lại điểm circadian của các giờ có `Source = Onboarding` theo khung mới (giờ 0.8 đã khai báo giữ nguyên); dòng do AI học không đổi; không đổi giờ làm việc thì không tính lại | không áp dụng |
 | BR-22 | Nếu hồ sơ domain đã có dữ liệu học thật (`SampleCount > 0)` thì **giữ nguyên** `KBias` đã học, onboarding không ghi đè | không áp dụng |
 
 ### 18.2 Gói dịch vụ và hết hạn
@@ -2155,8 +2118,8 @@ stateDiagram-v2
     [*] --> Scheduled : mua khi gói hiện tại còn hạn
     Scheduled --> Active : gói trước hết hạn
     Active --> Expired : quá EndAt
-    Active --> Cancelled : hoàn tiền được duyệt
-    Scheduled --> Cancelled : hoàn tiền được duyệt
+    Active --> Cancelled : Admin hủy gói
+    Scheduled --> Cancelled : Admin hủy gói
     Expired --> [*]
     Cancelled --> [*]
 ```
@@ -2181,7 +2144,7 @@ stateDiagram-v2
 | BR-47 | Lỗi mạng khi hủy hoặc đồng bộ: **giữ nguyên `Pending`** và báo lỗi. Không đoán trạng thái vì link PayOS có thể vẫn còn sống | `503` |
 | BR-48 | Đối soát: đơn `Pending` cũ hơn **2 phút** được hỏi lại PayOS. Quá `ExpiresAt` + 60 giây mà vẫn chưa trả thì đóng link và đặt `Expired`. Nếu PayOS không cho đóng (có thể vừa trả) thì chờ lượt sau | không áp dụng |
 | BR-49 | Người dùng chỉ thấy, đồng bộ và hủy được giao dịch của **chính mình**. Admin thấy tất cả | `404` |
-| BR-50 | Giao dịch đã có hóa đơn, hoặc đã gắn gói đăng ký, hoặc đã có yêu cầu hoàn tiền thì **không xóa** | `400` |
+| BR-50 | Giao dịch đã có hóa đơn hoặc đã gắn gói đăng ký thì **không xóa** | `400` |
 | BR-51 | Dữ liệu giao dịch do Admin nhập tay: cổng là `PayOS` hoặc `VNPay`, số tiền lớn hơn 0, `OrderCode` dương và duy nhất, `ExpiresAt` lớn hơn `CreatedAt` | `400` |
 
 ```mermaid
@@ -2198,31 +2161,9 @@ stateDiagram-v2
     Cancelled --> [*]
 ```
 
-### 18.4 Hoàn tiền (đang tắt)
+### 18.4 Hoàn tiền (đã bỏ)
 
-Toàn bộ nhóm này chỉ có hiệu lực khi `Payments:RefundsEnabled = true`. Khi tắt, mọi API hoàn tiền trả `400 Chức năng hoàn tiền chưa được bật` và luồng thanh toán không đụng tới bảng `PaymentRefund`.
-
-| Mã | Luật | Vi phạm thì |
-|---|---|---|
-| BR-52 | Chỉ hoàn tiền cho giao dịch `Succeeded` của **chính người dùng** | `400` / `404` |
-| BR-53 | Mỗi giao dịch chỉ có **một** yêu cầu hoàn tiền đang xử lý | `400` |
-| BR-54 | Khách tự yêu cầu trong **7 ngày** kể từ lúc thanh toán (`RefundWindowDays`). Quá hạn phải liên hệ hỗ trợ | `400` |
-| BR-55 | Gói đã dùng (`AiCallsUsed > 0`) thì không tự yêu cầu được | `400` |
-| BR-56 | Phải có lý do, tối đa 500 ký tự. Số tiền hoàn bằng đúng số tiền đã trả | `400` |
-| BR-57 | Luồng: `Requested` → (`Approved` hoặc `Rejected`). `Approved` → `Completed`. Sai thứ tự thì lỗi. Từ chối phải ghi lý do, hoàn tất phải ghi **mã giao dịch ngân hàng** | `400` |
-| BR-58 | **Duyệt** hoàn tiền là thu hồi quyền dùng ngay: gói của giao dịch đó thành `Cancelled`. Nếu là gói đang chạy thì bật gói xếp hàng (giữ nguyên độ dài đã mua), không có thì về gói Miễn phí. Tất cả trong một transaction | không áp dụng |
-| BR-59 | Có yêu cầu hoàn tiền đang mở thì không cấp thêm gói mới cho giao dịch đó, nhưng **hóa đơn của khoản đã thu vẫn phải có** | không áp dụng |
-
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Requested : người dùng yêu cầu, hoặc tiền về sai
-    Requested --> Approved : Admin duyệt, gói bị thu hồi
-    Requested --> Rejected : Admin từ chối, phải có lý do
-    Approved --> Completed : Admin đã chuyển khoản, phải có mã ngân hàng
-    Rejected --> [*]
-    Completed --> [*]
-```
+Hệ thống không còn chức năng hoàn tiền (không có bảng `PaymentRefund`, API `/api/refunds` hay cấu hình `RefundsEnabled`). Các mã BR-52 đến BR-59 không còn hiệu lực. Tiền về sai số tiền hoặc sau khi đơn đã hủy: không cấp gói, ghi log lỗi, webhook trả `ReviewRequired`, admin hoàn tiền thủ công ngoài hệ thống (xem [PAYMENT_UNHAPPY_CASES.md](PAYMENT_UNHAPPY_CASES.md)).
 
 ### 18.5 Khách hàng, dự án, giai đoạn, công việc
 
@@ -2231,7 +2172,7 @@ stateDiagram-v2
 | BR-60 | Khách hàng: tên bắt buộc tối đa 100 ký tự, email liên hệ hợp lệ (nếu nhập) tối đa 255, số điện thoại tối đa 20 ký tự | `400` |
 | BR-61 | Dự án: tên bắt buộc tối đa 150 ký tự. `Deadline` **không được trước** `StartDate` | `400` |
 | BR-62 | Khách hàng của dự án là **tùy chọn**. Nếu có phải là khách hàng **của chính người dùng**. Danh sách dự án luôn trả cả dự án không có khách hàng (`client = null`) | `400` Khách hàng không tồn tại |
-| BR-63 | Dự án mặc định "Cá nhân" (`IsDefault = true`) do hệ thống tạo. Dự án người dùng tạo luôn có `IsDefault = false` | không áp dụng |
+| BR-63 | Hệ thống không còn tự tạo dự án mặc định "Cá nhân". Dự án nào được tạo cũng có `IsDefault = false` (cột `IsDefault = true` chỉ còn ở dữ liệu cũ) | không áp dụng |
 | BR-64 | Dự án **không xóa**, chỉ `archive` hoặc `restore` (đổi `Status` giữa `Archived` và `Active`) | không có API xóa |
 | BR-65 | Tiến độ dự án: một task tính là xong nếu `Status = Done` hoặc có `CompletedAt`. `ProgressPercent = số task xong / tổng task`. Thời gian ước lượng của task lấy từ `EstimatedMinutes`, thiếu thì cộng từ subtask. Thời gian thực tế là tổng các phiên tập trung đã kết thúc | không áp dụng |
 | BR-66 | Giai đoạn (Milestone): tên bắt buộc tối đa 150, `OrderIndex` từ 1 và **duy nhất trong dự án**, `RevisionCount` không âm. Trạng thái: `Planned`, `InProgress`, `Delivered`, `InRevision`, `Approved` | `400` |
@@ -2258,6 +2199,8 @@ stateDiagram-v2
 | BR-82 | Hủy slot là đổi sang `Cancelled` và ghi log `Deleted`, **không xóa dòng**. Hủy lại slot đã hủy là lỗi | `400` |
 | BR-83 | `GET /api/calendar`: khoảng `to` phải lớn hơn `from` và **tối đa 100 ngày**. Mặc định **không** trả slot `Cancelled` | `400` |
 | BR-84 | Lịch gộp slot của METANOIA và sự kiện Google đã đồng bộ. Sự kiện Google **bỏ qua** loại đã hủy (`IsCancelled`) và loại do METANOIA tạo (`IsCreatedByMetanoia`) để không hiện trùng. Chỉ đọc DB, không gọi Google | không áp dụng |
+| BR-84b | **Slot không được chồng giờ nhau:** tạo (`POST /api/tasks/{taskId}/schedule-slots`) hoặc sửa (`PUT /api/schedule-slots/{id}`) một slot đang chiếm giờ mà giao với slot chiếm giờ khác của **chính người dùng** (kể cả task hoặc dự án khác) thì bị chặn. Slot chiếm giờ là `Approved`, `Due`, `InProgress`, `Overrun`; `Proposed`, `Done`, `Skipped`, `Missed`, `Cancelled`, `Postponed` không chặn và không bị chặn. Giao nhau mới tính: 7h-8h và 8h-9h vẫn được. Chỉ kiểm khi slot vừa đổi giờ hoặc vừa chuyển sang trạng thái chiếm giờ (ví dụ `Proposed` sang `Approved`); sửa ghi chú của slot cũ đã lỡ chồng giờ thì không chặn. Slot của người khác không liên quan | `409` `SLOT_OVERLAP` kèm `details.overlaps` (slot đang chiếm giờ) |
+| BR-84c | Duyệt đề xuất AI (`POST /api/schedule/proposals/{id}/approve`) cũng áp luật BR-84b: slot đề xuất chồng giờ lên slot đang chiếm giờ thì `409` `SLOT_OVERLAP` (không đổi gì). Gọi lại với `skipConflicts=true` thì các slot chồng giờ chuyển `Cancelled`, phần còn lại `Approved`, kết quả có `skippedOverlaps`. Mọi slot đều chồng giờ thì `400`. `GET .../proposals/{id}/conflicts` trả thêm `overlaps` (kể cả khi chưa kết nối Google). Luật này **không** kiểm trùng slot với sự kiện Google khi tạo hoặc sửa slot tay, chỉ khi duyệt đề xuất (BR-91d) | `409` / `400` |
 
 ### 18.7 AI xếp lịch
 
@@ -2305,14 +2248,14 @@ stateDiagram-v2
 
 | Mã | Luật | Vi phạm thì |
 |---|---|---|
-| BR-101 | Chỉ role `Admin` được sửa dữ liệu danh mục: gói dịch vụ, domain, giao dịch, hóa đơn, gói của người dùng, nhạc tập trung, người dùng | `403` |
+| BR-101 | Chỉ role `Admin` được sửa dữ liệu danh mục: gói dịch vụ, domain, giao dịch, hóa đơn, gói của người dùng, người dùng | `403` |
 | BR-102 | Mọi thao tác **ghi** (không phải GET) của Admin vào các bảng được theo dõi đều tự sinh `AdminActionLog` **trong cùng lần lưu**: không thể có thay đổi mà thiếu nhật ký | không áp dụng |
 | BR-103 | Lý do lấy từ header `X-Admin-Reason`, tối đa 1000 ký tự. Không gửi thì ghi "Không ghi lý do" | không áp dụng |
 | BR-104 | Thay đổi do webhook, worker hoặc người dùng thường **không** ghi `AdminActionLog` | không áp dụng |
 | BR-105 | Báo cáo dùng AI: nhóm theo `feature`, `model` hoặc `day`. Khoảng thời gian `to` lớn hơn `from`, mặc định 30 ngày, tối đa **366 ngày** | `400` |
-| BR-106 | Nhạc tập trung: tên bài tối đa 150, nghệ sĩ tối đa 100, `FileUrl` là `http(s)` hợp lệ tối đa 500, thời lượng lớn hơn 0 giây | `400` |
-| BR-107b | **Lý do bắt buộc** (header `X-Admin-Reason`, thiếu thì `400` và không đổi gì) cho: sửa hoặc xóa gói; tạo, sửa, xóa gói đăng ký của người dùng, giao dịch, hóa đơn; duyệt, từ chối, hoàn tất hoàn tiền; xóa người dùng; đổi role người dùng; chạy thật `status-resync`. Các thao tác Admin khác (đổi tên người dùng, tạo gói, thư viện nhạc...) vẫn tùy chọn, thiếu thì ghi "Không ghi lý do" | `400` |
-| BR-108b | Báo cáo doanh thu `GET /api/admin/revenue`: doanh thu = tổng `Amount` giao dịch `Succeeded` theo **ngày thanh toán** (`PaidAt`); hoàn tiền (`PaymentRefund` `Completed`) tính vào kỳ **xử lý xong** (`ProcessedAt`); doanh thu ròng = gộp trừ hoàn. `groupBy` là `day` (mặc định), `month` hoặc `plan`; ngày và tháng theo giờ UTC và có đủ mọi mốc kể cả mốc bằng 0. Khoảng `[from, to)` mặc định 30 ngày gần nhất, tối đa 366 ngày | `400` |
+| BR-106 | (đã bỏ cùng thư viện nhạc tập trung) | không áp dụng |
+| BR-107b | **Lý do bắt buộc** (header `X-Admin-Reason`, thiếu thì `400` và không đổi gì) cho: sửa hoặc xóa gói; tạo, sửa, xóa gói đăng ký của người dùng, giao dịch, hóa đơn; xóa người dùng; đổi role người dùng; chạy thật `status-resync`. Các thao tác Admin khác (đổi tên người dùng, tạo gói...) vẫn tùy chọn, thiếu thì ghi "Không ghi lý do" | `400` |
+| BR-108b | Báo cáo doanh thu `GET /api/admin/revenue`: doanh thu = tổng `Amount` giao dịch `Succeeded` theo **ngày thanh toán** (`PaidAt`). `groupBy` là `day` (mặc định), `month` hoặc `plan`; ngày và tháng theo giờ UTC và có đủ mọi mốc kể cả mốc bằng 0. Khoảng `[from, to)` mặc định 30 ngày gần nhất, tối đa 366 ngày. Không có trường hoàn tiền | `400` |
 | BR-109b | `GET /api/payment-transactions` và `GET /api/invoices` nhận bộ lọc tùy chọn (giao dịch: `status`, `userId`, `planId`, `from`, `to` theo ngày tạo; hóa đơn: `userId`, `from`, `to` theo ngày phát hành, `search`) và phân trang (`page`, `pageSize` 1 đến 100, tổng số dòng ở header `X-Total-Count`). Không truyền gì thì trả đầy đủ như cũ. Người dùng thường luôn chỉ thấy dữ liệu của mình, `userId` bị bỏ qua | `400` |
 | BR-110b | `GET /api/subscription-plans`: người dùng thường chỉ thấy gói đang bán (`IsActive = true`), Admin thấy tất cả. **Gói Miễn phí** (`Subscription:FreePlanId`) luôn phải bật và giá 0, không xóa được; vẫn sửa được tên và hạn mức | `400` |
 | BR-111b | Hệ thống luôn còn ít nhất một Admin: chặn xóa Admin cuối cùng cả qua `DELETE /api/admin/users/{id}` lẫn khi chính Admin đó gọi `DELETE /api/me` | `400` |
@@ -2331,12 +2274,11 @@ stateDiagram-v2
 | ScheduleChangeLog | `ChangeType`: `Created`, `Moved`, `Resized`, `Deleted`. `Source`: `Manual`, `AI`, `GoogleSync` |
 | UserSubscription | `Active`, `Scheduled`, `Expired`, `Cancelled` |
 | PaymentTransaction | `Pending`, `Succeeded`, `Failed`, `Cancelled`, `Expired`. Cổng: `PayOS`, `VNPay` |
-| PaymentRefund | `Requested`, `Approved`, `Rejected`, `Completed`. Nguồn: `User` |
 | ProjectDocument | Loại: `File`, `Link`. Tag: `Brief`, `Contract`, `Design`, `Other` |
 | Mức hay làm lố | `Rarely`, `Sometimes`, `Often`, `Always` |
 | FocusSession | `StopReason`: `Completed`, `Interrupted`, `Blocked`, `Other`. `CaptureMethod`: `Timer`, `SelfReported`, `AutoTimeout` |
 
-Các hằng số chỉnh được bằng cấu hình (mục 9): `Payments:LinkExpiryMinutes` (15), `Payments:ExpiryGraceSeconds` (60), `Payments:RefundWindowDays` (7), `Payments:RefundsEnabled` (false),
+Các hằng số chỉnh được bằng cấu hình (mục 9): `Payments:LinkExpiryMinutes` (15), `Payments:ExpiryGraceSeconds` (60),
 `Payments:ReconciliationIntervalSeconds` (60), `Payments:PendingStaleAfterSeconds` (120). Thời hạn token chỉnh bằng `Jwt:ExpiryMinutes` (60) và `Jwt:RefreshTokenDays` (30). Các hằng số còn lại (10 giây ân hạn refresh token,
 50 lượt AI/ngày do dịch vụ AI quyết định, 100 ngày của lịch, 20 MB của file) nằm trong code nên đổi phải sửa code.
 
@@ -2357,7 +2299,7 @@ Sơ đồ, bảng chuyển đầy đủ và hướng dẫn thử từng trạng 
 | BR-115 | `CaptureMethod`: `Timer` và `SelfReported` đã xác nhận, được tính. `AutoTimeout` (slot `Done` ngay, `StopReason = Other`) **chưa xác nhận thì không tính** vào thời gian thực tế, việc học, hay trạng thái `InProgress` của Task | không áp dụng |
 | BR-116 | Loại bỏ phiên `AutoTimeout` mà slot không còn phiên đáng tin nào thì slot từ `Done` về `Missed` (ngoại lệ hệ thống duy nhất của trạng thái chốt) | không áp dụng |
 | BR-117 | Admin đồng bộ lại trạng thái dữ liệu cũ bằng `POST /api/admin/status-resync` (mặc định `dryRun = true`, không lưu). Chỉ xét task chưa đóng; task `Done`, `Skipped` giữ nguyên. Dùng đúng `TaskProgressService`. SQL bảo vệ `ScheduleSlot.Status`: `docs/sql/004_scheduleslot_status_check.sql` | `403` nếu không phải Admin |
-| BR-118 | **Hạn mức theo gói đang `Active`** chặn TẠO MỚI khi vượt. Dự án: tối đa `ProjectLimit` dự án đang hoạt động; **không tính** dự án lưu trữ (`Archived`) và dự án "Cá nhân" mặc định. `ProjectLimit` trống là không giới hạn | `400` kèm lời nhắc lưu trữ bớt hoặc nâng cấp gói |
+| BR-118 | **Hạn mức theo gói đang `Active`** chặn TẠO MỚI khi vượt. Dự án: tối đa `ProjectLimit` dự án đang hoạt động; **không tính** dự án lưu trữ (`Archived`) và dự án mặc định cũ (`IsDefault = true`, chỉ có ở dữ liệu cũ). `ProjectLimit` trống là không giới hạn | `400` kèm lời nhắc lưu trữ bớt hoặc nâng cấp gói |
 | BR-119 | **Khôi phục** dự án đã lưu trữ cũng chịu hạn mức dự án (vì làm tăng số dự án đang hoạt động). Khôi phục dự án đã `Active` thì không bị chặn | `400` |
 | BR-120 | Dung lượng: tổng `SizeBytes` các tài liệu loại `File` của **mọi dự án của người dùng** (link không tính). Tải thêm file làm `đã dùng + file mới` lớn hơn `StorageLimitMb` × 1 MB (1 MB = 1024 × 1024 byte) thì bị chặn; bằng đúng hạn mức thì cho. Kiểm tra **trước** khi ghi file xuống kho nên bị chặn không để lại file rác. Xóa tài liệu thì giải phóng dung lượng | `400` |
 | BR-121 | Vượt hạn mức **không xóa hay khóa gì** của người dùng: ví dụ hết kỳ về gói Free khi đang có 8 dự án mà Free cho 3 thì người dùng vẫn thấy đủ 8, chỉ không tạo thêm được cho tới khi xuống dưới hạn mức. Người dùng không có gói `Active` nào thì không áp hạn mức. Hai yêu cầu tạo cùng lúc có thể vượt hạn mức 1 đơn vị (không dùng khóa) | không áp dụng |
@@ -2412,3 +2354,6 @@ Mã nguồn: `GroupAccessService` (một chỗ kiểm quyền), `GroupService`, 
 | BR-152 | **Đề xuất đổi giờ:** chỉ người được giao việc (hoặc một việc con của việc) đề xuất; có ít nhất giờ cố định mới (cả hai đầu) hoặc deadline mới và khác giá trị hiện tại; lý do 1 đến 1000 ký tự; việc đã Done hoặc Skipped không đề xuất được; mỗi người một đề xuất Pending trên một việc | `400` / `403` |
 | BR-153 | Chỉ Leader duyệt hoặc từ chối. Duyệt áp dụng giá trị mới vào việc (có kiểm tra lịch của BR-150); từ chối bắt buộc có lý do. Đề xuất đã xử lý hoặc đã rút thì không xử lý lại; chỉ người đề xuất được rút khi còn Pending. Member chỉ xem đề xuất của mình, Viewer không xem | `400` / `403` |
 | BR-154 | Thông báo `GroupChangeRequested` (cho mọi Leader trừ người đề xuất) và `GroupChangeDecided` (cho người đề xuất, kèm ghi chú), dùng chung bảng `Notification` kèm `groupId` và `groupTaskId`. Cần chạy bước 4 của `006_group_phase2.sql`; nhật ký hoạt động có thêm `FocusSession` và `ChangeRequest` | không áp dụng |
+| BR-155 | Admin xem mọi nhóm: `GET /api/admin/groups` (lọc tên nhóm hoặc email/họ tên chủ nhóm, `status`, `ownerId`, phân trang), `GET /api/admin/groups/{id}` (chủ nhóm, thành viên, báo cáo tiến độ), `GET /api/admin/groups/{id}/activity` (nhật ký hoạt động), `GET /api/admin/groups/stats` (số liệu tổng). Admin không cần là thành viên. Admin **không** thấy nội dung bình luận, tiêu đề việc hay lịch cá nhân của thành viên | người không phải Admin nhận 403, chưa đăng nhập 401, nhóm không tồn tại 404 |
+| BR-156 | Admin lưu trữ hoặc khôi phục nhóm: `POST /api/admin/groups/{id}/archive` và `/restore`. Bắt buộc header `X-Admin-Reason`. Mỗi lần đổi ghi `AdminActionLog` (`WorkGroup.Update`, giá trị cũ/mới, lý do), ghi vào nhật ký của nhóm (`AdminArchived` hoặc `AdminRestored`, người thực hiện là Admin, kèm lý do) và gửi thông báo `GroupStatusChanged` cho mọi Leader. Không cần đổi database | thiếu lý do 400 và không đổi gì; nhóm đã lưu trữ mà lưu trữ lần nữa, hoặc đang hoạt động mà khôi phục, 400 |
+| BR-157 | Đổi Leader bằng quyền Admin và xóa hẳn nhóm **chưa làm** (để sau). Luật nhóm không đổi: Leader vẫn khôi phục được nhóm bằng API thường, và thao tác của Leader không ghi `AdminActionLog` | không áp dụng |

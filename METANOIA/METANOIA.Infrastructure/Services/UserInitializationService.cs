@@ -7,10 +7,10 @@ using Task = System.Threading.Tasks.Task;
 
 namespace METANOIA.Infrastructure.Services
 {
-    // Dữ liệu khởi tạo mà thiết kế yêu cầu mỗi user phải có: project "Cá nhân", gói Miễn phí, 24 dòng circadian.
+    // Dữ liệu khởi tạo mà thiết kế yêu cầu mỗi user phải có: gói Miễn phí (vô thời hạn), 24 dòng circadian.
+    // Không còn tạo dự án mặc định: người dùng tự tạo dự án đầu tiên.
     public class UserInitializationService : IUserInitializationService
     {
-        public const string PersonalProjectName = "Cá nhân";
         public const string OnboardingSource = "Onboarding";
         public const decimal DefaultCircadianScore = 0.500m;
         public const int HoursPerDay = 24;
@@ -36,7 +36,6 @@ namespace METANOIA.Infrastructure.Services
 
         public async Task InitializeNewUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            await StageProjectAsync(userId, cancellationToken);
             await StageFreeSubscriptionAsync(userId, cancellationToken);
             await StageCircadianProfilesAsync(userId, cancellationToken);
 
@@ -74,25 +73,6 @@ namespace METANOIA.Infrastructure.Services
         public Task<IReadOnlyList<Guid>> GetUserIdsNeedingInitializationAsync(CancellationToken cancellationToken = default)
         {
             return _setup.GetUserIdsNeedingInitializationAsync(cancellationToken);
-        }
-
-        private async Task StageProjectAsync(Guid userId, CancellationToken cancellationToken)
-        {
-            if (await _setup.HasDefaultProjectAsync(userId, cancellationToken))
-            {
-                return;
-            }
-
-            await _setup.AddProjectAsync(new Project
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ClientId = null,
-                Name = PersonalProjectName,
-                Status = "Active",
-                IsDefault = true,
-                CreatedAt = DateTime.UtcNow
-            }, cancellationToken);
         }
 
         private async Task StageCircadianProfilesAsync(Guid userId, CancellationToken cancellationToken)

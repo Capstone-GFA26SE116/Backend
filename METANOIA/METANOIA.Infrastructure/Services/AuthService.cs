@@ -63,6 +63,7 @@ namespace METANOIA.Infrastructure.Services
             }
 
             AuthResponseDto response;
+            var isNewUser = false;
 
             if (user is null)
             {
@@ -78,6 +79,7 @@ namespace METANOIA.Infrastructure.Services
 
                     existingByEmail.GoogleSubjectId = googleUser.Subject;
                     user = existingByEmail;
+                    isNewUser = true;
                 }
             }
 
@@ -94,7 +96,7 @@ namespace METANOIA.Infrastructure.Services
                     GoogleSubjectId = googleUser.Subject,
                     RoleId = defaultRole.Id,
                     Role = defaultRole,
-                    TimeZone = "Asia/Ho_Chi_Minh",
+                    TimeZone = AccountConstants.PlaceholderTimeZone,
                     WorkDayStart = new TimeOnly(8, 0),
                     WorkDayEnd = new TimeOnly(18, 0),
                     WorksOnWeekend = false,
@@ -106,9 +108,10 @@ namespace METANOIA.Infrastructure.Services
                 await _userRepository.AddAsync(user, cancellationToken);
                 (response, _) = await IssueTokensAsync(user, cancellationToken);
 
-                // Tạo User cùng project "Cá nhân", gói Miễn phí, 24 dòng circadian và refresh token đầu tiên trong CÙNG một lần lưu:
+                // Tạo User cùng gói Miễn phí, 24 dòng circadian và refresh token đầu tiên trong CÙNG một lần lưu:
                 // lỗi ở bất kỳ bước nào thì không có User nào được tạo.
                 await _userInitializationService.InitializeNewUserAsync(user.Id, cancellationToken);
+                isNewUser = true;
             }
             else
             {
@@ -116,6 +119,7 @@ namespace METANOIA.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
 
+            response.IsNewUser = isNewUser;
             return response;
         }
 

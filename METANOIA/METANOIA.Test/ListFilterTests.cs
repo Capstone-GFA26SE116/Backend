@@ -111,7 +111,7 @@ namespace METANOIA.Test
         // ------------------------------------------------------------ Projects
 
         [Fact]
-        public async Task ProjectsFilter_NameIsPartial_CaseInsensitive_AndIncludesThePersonalProject()
+        public async Task ProjectsFilter_NameIsPartial_CaseInsensitive()
         {
             using var factory = new ApiFactory();
             var (user, _) = await TestHelpers.LoginAsync(factory, "user-1");
@@ -121,7 +121,7 @@ namespace METANOIA.Test
             await CreateProjectAsync(other, "Website của người khác");
 
             Assert.Equal(Sorted("Website bán hàng"), await ProjectNamesAsync(user, "/api/projects/filter?name=WEBSITE"));
-            Assert.Equal(Sorted("Cá nhân"), await ProjectNamesAsync(user, "/api/projects/filter?name=cá%20nh"));
+            Assert.Equal(Sorted("App di động"), await ProjectNamesAsync(user, "/api/projects/filter?name=di%20%C4%91%E1%BB%99ng"));
             Assert.Equal(Sorted("Website của người khác"), await ProjectNamesAsync(other, "/api/projects/filter?name=website"));
             Assert.Empty(await ProjectNamesAsync(user, "/api/projects/filter?name=khong-co"));
         }
@@ -135,9 +135,9 @@ namespace METANOIA.Test
             var old = await CreateProjectAsync(user, "Đã xong");
             await user.PostAsync($"/api/projects/{old.Id}/archive", null);
 
-            Assert.Equal(Sorted("Cá nhân", "Đang chạy", "Đã xong"), await ProjectNamesAsync(user, "/api/projects/filter"));
+            Assert.Equal(Sorted("Đang chạy", "Đã xong"), await ProjectNamesAsync(user, "/api/projects/filter"));
             Assert.Equal(Sorted("Đã xong"), await ProjectNamesAsync(user, "/api/projects/filter?status=Archived"));
-            Assert.Equal(Sorted("Cá nhân", "Đang chạy"), await ProjectNamesAsync(user, "/api/projects/filter?status=Active"));
+            Assert.Equal(Sorted("Đang chạy"), await ProjectNamesAsync(user, "/api/projects/filter?status=Active"));
             Assert.Equal(Sorted("Đã xong"), await ProjectNamesAsync(user, "/api/projects/filter?status=Archived&name=xong"));
             Assert.Empty(await ProjectNamesAsync(user, "/api/projects/filter?status=Archived&name=chạy"));
             Assert.Empty(await ProjectNamesAsync(user, "/api/projects/filter?status=NoSuchStatus"));
@@ -189,9 +189,9 @@ namespace METANOIA.Test
             var old = await CreateProjectAsync(user, "Đã xong");
             await user.PostAsync($"/api/projects/{old.Id}/archive", null);
 
-            Assert.Equal(Sorted("Cá nhân", "Đang chạy"), await ProjectNamesAsync(user, "/api/projects"));
-            Assert.Equal(Sorted("Cá nhân", "Đã xong", "Đang chạy"), await ProjectNamesAsync(user, "/api/projects?includeArchived=true"));
-            Assert.Equal(Sorted("Cá nhân", "Đang chạy"), await ProjectNamesAsync(user, "/api/projects?name=xong&status=Archived"));
+            Assert.Equal(Sorted("Đang chạy"), await ProjectNamesAsync(user, "/api/projects"));
+            Assert.Equal(Sorted("Đã xong", "Đang chạy"), await ProjectNamesAsync(user, "/api/projects?includeArchived=true"));
+            Assert.Equal(Sorted("Đang chạy"), await ProjectNamesAsync(user, "/api/projects?name=xong&status=Archived"));
         }
 
         [Fact]
@@ -234,7 +234,7 @@ namespace METANOIA.Test
             var b = items.Single(p => p.Id == withoutClient.Id);
             Assert.Null(b.ClientId);
             Assert.Null(b.Client);
-            // Dự án "Cá nhân" cũng không có khách hàng
+            // Dự án không gắn khách hàng thì Client là null
             Assert.All(items.Where(p => p.ClientId is null), p => Assert.Null(p.Client));
         }
 
@@ -250,7 +250,7 @@ namespace METANOIA.Test
             var all = (await user.GetFromJsonAsync<List<ProjectWithClientDto>>("/api/projects/filter"))!;
             var onlyAcme = (await user.GetFromJsonAsync<List<ProjectWithClientDto>>($"/api/projects/filter?clientId={acme.Id}"))!;
 
-            Assert.Equal(Sorted("Cá nhân", "Của Acme", "Lẻ không khách hàng"), all.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+            Assert.Equal(Sorted("Của Acme", "Lẻ không khách hàng"), all.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
             var only = Assert.Single(onlyAcme);
             Assert.Equal("Của Acme", only.Name);
             Assert.Equal("Acme", only.Client!.Name);
@@ -268,14 +268,14 @@ namespace METANOIA.Test
 
             var items = (await user.GetFromJsonAsync<List<ProjectWithClientDto>>("/api/projects"))!;
 
-            Assert.Equal(Sorted("Cá nhân", "Cần khách hàng", "Không cần khách hàng"), items.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
+            Assert.Equal(Sorted("Cần khách hàng", "Không cần khách hàng"), items.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray());
             var withClient = items.Single(p => p.Name == "Cần khách hàng");
             Assert.Equal(acme.Id, withClient.ClientId);
             Assert.Equal("Acme", withClient.Client!.Name);
             Assert.Equal("hello@acme.com", withClient.Client.ContactEmail);
             Assert.Equal(auth.UserId, withClient.UserId);
             Assert.All(items.Where(p => p.ClientId is null), p => Assert.Null(p.Client));
-            Assert.Equal(2, items.Count(p => p.ClientId is null));
+            Assert.Single(items, p => p.ClientId is null);   // chỉ còn "Không cần khách hàng" (không còn dự án "Cá nhân" tự tạo)
         }
 
         [Fact]

@@ -533,7 +533,7 @@ namespace METANOIA.Test
             var a = await NewSubTaskAsync(s, task.Id, 1);
             var b = await NewSubTaskAsync(s, task.Id, 2);
             var slotA = await NewSlotAsync(factory, s, task.Id, a.Id);
-            var slotB = await NewSlotAsync(factory, s, task.Id, b.Id);
+            var slotB = await NewSlotAsync(factory, s, task.Id, b.Id, startIn: 30);   // sau slot A: slot không được chồng giờ nhau
 
             var first = await StartOkAsync(s, task.Id, slotA.Id, a.Id);
             factory.Clock.Advance(TimeSpan.FromMinutes(10));

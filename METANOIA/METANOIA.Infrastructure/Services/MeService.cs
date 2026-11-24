@@ -16,6 +16,7 @@ namespace METANOIA.Infrastructure.Services
         private const decimal WorkingScore = 0.500m;
         private const decimal OffHoursScore = 0.200m;
         private const string NotConnected = "NotConnected";
+        private const string DefaultOverrunLevel = "Sometimes";
         private const int MaxFullNameLength = 100;
 
         // KBias khởi tạo theo mức hay làm lố
@@ -110,6 +111,13 @@ namespace METANOIA.Infrastructure.Services
             var timeZone = ValidateTimeZone(request.TimeZone);
 
             var leadChanged = user.ReminderLeadMinutes != request.ReminderLeadMinutes;
+            var workHoursChanged = user.WorkDayStart != request.WorkDayStart || user.WorkDayEnd != request.WorkDayEnd;
+
+            // Đổi khung giờ làm việc thì chấm lại điểm các giờ chưa được AI học (xem RecomputeCircadianForWorkHoursAsync)
+            if (workHoursChanged)
+            {
+                await RecomputeCircadianForWorkHoursAsync(userId, request.WorkDayStart, request.WorkDayEnd, cancellationToken);
+            }
 
             user.WorkDayStart = request.WorkDayStart;
             user.WorkDayEnd = request.WorkDayEnd;
@@ -120,17 +128,47 @@ namespace METANOIA.Infrastructure.Services
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            // Giờ nhắc trước đã được hẹn bằng số phút cũ: hẹn lại cho các slot đã duyệt và chưa tới giờ
             if (leadChanged)
             {
-                var upcoming = await _slots.GetUpcomingApprovedByUserAsync(userId, DateTime.UtcNow, cancellationToken);
-                foreach (var slot in upcoming)
-                {
-                    _jobs.ScheduleAllJobsForSlot(slot);
-                }
+                await RescheduleReminderJobsAsync(userId, cancellationToken);
             }
 
             return await ToDtoAsync(user, cancellationToken);
+        }
+
+        // Giờ nhắc trước đã được hẹn bằng số phút cũ: hẹn lại cho các slot đã duyệt và chưa tới giờ
+        private async Task RescheduleReminderJobsAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            var upcoming = await _slots.GetUpcomingApprovedByUserAsync(userId, DateTime.UtcNow, cancellationToken);
+            foreach (var slot in upcoming)
+            {
+                _jobs.ScheduleAllJobsForSlot(slot);
+            }
+        }
+
+        // Đổi khung giờ làm việc ở cài đặt: chấm lại điểm 24 giờ theo khung mới. Chỉ đụng các dòng do onboarding hoặc mặc định tạo (Source = Onboarding);
+        // dòng do AI học (Source khác) giữ nguyên. Giờ đang là điểm giờ hiệu quả (0.8, người dùng khai báo) cũng giữ nguyên
+        private async Task RecomputeCircadianForWorkHoursAsync(Guid userId, TimeOnly start, TimeOnly end, CancellationToken cancellationToken)
+        {
+            var startMinute = start.Hour * 60 + start.Minute;
+            var endMinute = end.Hour * 60 + end.Minute;
+            var now = DateTime.UtcNow;
+            var noProductive = new HashSet<int>();
+
+            foreach (var profile in await _setup.GetCircadianProfilesAsync(userId, cancellationToken))
+            {
+                if (profile.Source != UserInitializationService.OnboardingSource || profile.Score == ProductiveScore)
+                {
+                    continue;
+                }
+
+                var score = ScoreForHour(profile.HourOfDay, startMinute, endMinute, noProductive);
+                if (profile.Score != score)
+                {
+                    profile.Score = score;
+                    profile.UpdatedAt = now;
+                }
+            }
         }
 
         public async Task<MeDto> CompleteOnboardingAsync(Guid userId, OnboardingRequestDto request, CancellationToken cancellationToken = default)
@@ -139,7 +177,16 @@ namespace METANOIA.Infrastructure.Services
 
             ValidateWorkHours(request.WorkDayStart, request.WorkDayEnd);
 
-            if (request.OverrunLevel is null || !OverrunKBias.TryGetValue(request.OverrunLevel, out var kbias))
+            // Múi giờ, đệm và nhắc trước do người dùng tự chọn: bắt buộc (không có giá trị gán cứng)
+            var timeZone = ValidateTimeZone(request.TimeZone ?? throw new UserFriendlyException("Hãy chọn múi giờ."));
+            var bufferMinutes = request.DefaultBufferMinutes ?? throw new UserFriendlyException("Hãy nhập thời gian đệm mặc định.");
+            var reminderMinutes = request.ReminderLeadMinutes ?? throw new UserFriendlyException("Hãy nhập thời gian nhắc trước.");
+            ValidateMinutes(bufferMinutes, "Thời gian đệm mặc định");
+            ValidateMinutes(reminderMinutes, "Thời gian nhắc trước");
+
+            // Mức hay làm lố là tùy chọn: bỏ trống thì dùng Sometimes; giá trị lạ vẫn bị từ chối
+            var overrunLevel = string.IsNullOrWhiteSpace(request.OverrunLevel) ? DefaultOverrunLevel : request.OverrunLevel.Trim();
+            if (!OverrunKBias.TryGetValue(overrunLevel, out var kbias))
             {
                 throw new UserFriendlyException("Mức hay làm lố không hợp lệ. Chọn một trong: Rarely, Sometimes, Often, Always.");
             }
@@ -157,9 +204,13 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Có loại công việc không tồn tại hoặc đang bị tắt.");
             }
 
+            var reminderChanged = user.ReminderLeadMinutes != reminderMinutes;
             user.WorkDayStart = request.WorkDayStart;
             user.WorkDayEnd = request.WorkDayEnd;
             user.WorksOnWeekend = request.WorksOnWeekend;
+            user.TimeZone = timeZone;
+            user.DefaultBufferMinutes = bufferMinutes;
+            user.ReminderLeadMinutes = reminderMinutes;
 
             await ApplyCircadianScoresAsync(userId, request.WorkDayStart, request.WorkDayEnd, productiveHours.ToHashSet(), cancellationToken);
             await ApplyDomainProfilesAsync(userId, domainIds, kbias, cancellationToken);
@@ -168,6 +219,12 @@ namespace METANOIA.Infrastructure.Services
 
             // Mọi thay đổi ở trên nằm trong một lần SaveChanges = một transaction
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (reminderChanged)
+            {
+                await RescheduleReminderJobsAsync(userId, cancellationToken);
+            }
+
             return await ToDtoAsync(user, cancellationToken);
         }
 

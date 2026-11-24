@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace METANOIA.Infrastructure.Services
 {
-    // Bù dữ liệu khởi tạo cho user cũ (project "Cá nhân", gói Miễn phí, 24 dòng circadian).
+    // Bù dữ liệu khởi tạo cho user cũ (gói Miễn phí, 24 dòng circadian).
     // Chạy một lần bằng: dotnet run --project METANOIA/METANOIA -- --backfill-user-data
     // An toàn khi chạy nhiều lần vì InitializeNewUserAsync là idempotent.
     public static class UserBackfillRunner

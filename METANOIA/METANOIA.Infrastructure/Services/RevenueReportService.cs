@@ -6,8 +6,8 @@ using METANOIA.Application.Interfaces.Services;
 
 namespace METANOIA.Infrastructure.Services
 {
-    // Báo cáo doanh thu cho Admin. Doanh thu tính theo NGÀY THANH TOÁN (PaidAt) của giao dịch Succeeded; hoàn tiền tính vào kỳ
-    // mà nó được xử lý xong (ProcessedAt). Mọi mốc ngày và tháng theo giờ UTC, giống báo cáo chi phí AI.
+    // Báo cáo doanh thu cho Admin. Doanh thu tính theo NGÀY THANH TOÁN (PaidAt) của giao dịch Succeeded (không có hoàn tiền).
+    // Mọi mốc ngày và tháng theo giờ UTC, giống báo cáo chi phí AI.
     public class RevenueReportService : IRevenueReportService
     {
         private const int DefaultRangeDays = 30;
@@ -46,17 +46,13 @@ namespace METANOIA.Infrastructure.Services
             var toUtc = end.UtcDateTime;
 
             var paid = await _repository.GetPaidAsync(fromUtc, toUtc, cancellationToken);
-            var refunds = await _repository.GetCompletedRefundsAsync(fromUtc, toUtc, cancellationToken);
             var byStatus = await _repository.CountTransactionsByStatusAsync(fromUtc, toUtc, cancellationToken);
 
             var gross = paid.Sum(p => p.Amount);
-            var refunded = refunds.Sum(r => r.Amount);
 
             var total = new RevenueTotalsDto
             {
                 GrossRevenue = gross,
-                RefundedAmount = refunded,
-                NetRevenue = gross - refunded,
                 SucceededTransactions = paid.Count,
                 AverageOrderValue = paid.Count == 0 ? 0 : gross / paid.Count,
                 InvoicesIssued = await _repository.CountInvoicesAsync(fromUtc, toUtc, cancellationToken),
@@ -69,14 +65,14 @@ namespace METANOIA.Infrastructure.Services
                 To = end,
                 GroupBy = grouping,
                 Total = total,
-                Rows = BuildRows(grouping, fromUtc, toUtc, paid, refunds, gross),
+                Rows = BuildRows(grouping, fromUtc, toUtc, paid, gross),
                 TransactionsByStatus = Statuses.ToDictionary(s => s, s => byStatus.GetValueOrDefault(s))
             };
         }
 
         private static List<RevenueRowDto> BuildRows(
             string grouping, DateTime fromUtc, DateTime toUtc,
-            IReadOnlyList<RevenuePaidRow> paid, IReadOnlyList<RevenueRefundRow> refunds, long gross)
+            IReadOnlyList<RevenuePaidRow> paid, long gross)
         {
             var rows = new Dictionary<string, RevenueRowDto>(StringComparer.Ordinal);
 
@@ -113,14 +109,8 @@ namespace METANOIA.Infrastructure.Services
                 row.Transactions++;
             }
 
-            foreach (var refund in refunds)
-            {
-                Row(grouping == "plan" ? refund.PlanName : KeyOf(grouping, refund.ProcessedAt)).Refunded += refund.Amount;
-            }
-
             foreach (var row in rows.Values)
             {
-                row.Net = row.Revenue - row.Refunded;
                 row.SharePercent = gross == 0 ? 0 : Math.Round(row.Revenue * 100m / gross, 1);
             }
 

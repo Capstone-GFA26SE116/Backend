@@ -7,9 +7,12 @@ public partial class ChatConversation
 {
     public Guid Id { get; set; }
 
-    public Guid ProjectId { get; set; }
+    // Chat dự án hoặc chat việc: có ProjectId. Chat nhóm (Scope = Group): ProjectId rỗng, có GroupId (xem docs/sql/008_chat_group.sql)
+    public Guid? ProjectId { get; set; }
 
     public Guid? TaskId { get; set; }
+
+    public Guid? GroupId { get; set; }
 
     public string Scope { get; set; } = null!;
 
@@ -21,7 +24,9 @@ public partial class ChatConversation
 
     public virtual ChatMessage? ChatMessage { get; set; }
 
-    public virtual Project Project { get; set; } = null!;
+    public virtual Project? Project { get; set; }
+
+    public virtual WorkGroup? Group { get; set; }
 
     public virtual Task? Task { get; set; }
 }

@@ -24,9 +24,9 @@ namespace METANOIA.Infrastructure.Data
             typeof(UserSubscription),
             typeof(Invoice),
             typeof(PaymentTransaction),
-            typeof(PaymentRefund),
-            typeof(FocusTrack),
-            typeof(User)
+            typeof(User),
+            // Admin lưu trữ hoặc khôi phục nhóm (bảng nhóm chính; việc, bình luận... không được ghi vì Admin không sửa chúng)
+            typeof(WorkGroup)
         };
 
         private readonly IAdminAuditContext _auditContext;

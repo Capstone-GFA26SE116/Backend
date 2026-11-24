@@ -125,7 +125,7 @@ Gửi `multipart/form-data`:
   "subscriptionStartAt": "2026-10-20T08:00:00+00:00", "subscriptionEndAt": "2026-11-19T08:00:00+00:00", "remainingDays": 6 }
 ```
 `subscriptionStartAt` là ngày gói bắt đầu có hiệu lực, `subscriptionEndAt` là ngày hết hạn, `remainingDays` là số ngày còn lại (làm tiếp lên, không âm). Gói Miễn phí không hết hạn nên `subscriptionEndAt` và `remainingDays` là `null`. `GET /api/me` có cùng thông tin trong `currentSubscription` (`startAt`, `endAt`, `remainingDays`).
-`projectLimit` là `null` khi gói không giới hạn số dự án. `projectsUsed` không tính dự án lưu trữ và dự án "Cá nhân" mặc định. Cùng hạn mức này, `POST /api/projects` và `POST /api/projects/{id}/restore` trả `400` khi đã đủ số dự án của gói.
+`projectLimit` là `null` khi gói không giới hạn số dự án. `projectsUsed` không tính dự án lưu trữ và dự án "Cá nhân" mặc định cũ (chỉ có ở người dùng tạo trước đây; người dùng mới không có dự án mặc định). Cùng hạn mức này, `POST /api/projects` và `POST /api/projects/{id}/restore` trả `400` khi đã đủ số dự án của gói.
 | 404 | Dự án không phải của bạn |
 
 Nên **kiểm tra ngay ở FE**: `file.size > 20 * 1024 * 1024` thì báo lỗi, khỏi gửi lên.

@@ -34,6 +34,23 @@ namespace METANOIA.Infrastructure.Repositories
                 .FirstOrDefaultAsync(s => s.Id == slotId && s.Task.Project.UserId == userId, cancellationToken);
         }
 
+        private static readonly string[] LiveStatuses = { "Approved", "Due", "InProgress", "Overrun" };
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetLiveSlotsOverlappingAsync(
+            Guid userId, DateTime startUtc, DateTime endUtc, Guid? excludeSlotId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .AsNoTracking()
+                .Include(s => s.Task)
+                .Where(s => s.Task.Project.UserId == userId
+                    && LiveStatuses.Contains(s.Status)
+                    && s.StartTime < endUtc
+                    && s.EndTime > startUtc
+                    && (excludeSlotId == null || s.Id != excludeSlotId))
+                .OrderBy(s => s.StartTime)
+                .ToListAsync(cancellationToken);
+        }
+
         public Task<bool> SubTaskBelongsToTaskAsync(Guid subTaskId, Guid taskId, CancellationToken cancellationToken = default)
         {
             return _context.SubTasks.AnyAsync(s => s.Id == subTaskId && s.TaskId == taskId, cancellationToken);

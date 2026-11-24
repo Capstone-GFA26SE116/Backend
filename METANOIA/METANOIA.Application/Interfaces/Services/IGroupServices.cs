@@ -162,6 +162,9 @@ namespace METANOIA.Application.Interfaces.Services
     {
         Task<GroupProgressDto> GetProgressAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default);
 
+        // Cùng báo cáo nhưng cho Admin: không cần là thành viên của nhóm
+        Task<GroupProgressDto> GetProgressForAdminAsync(Guid groupId, CancellationToken cancellationToken = default);
+
         // Việc và việc con được giao cho người gọi, qua mọi nhóm đang hoạt động
         Task<MyGroupWorkDto> GetMyWorkAsync(Guid userId, CancellationToken cancellationToken = default);
     }

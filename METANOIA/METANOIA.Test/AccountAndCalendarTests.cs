@@ -108,7 +108,6 @@ namespace METANOIA.Test
             Assert.Equal(HttpStatusCode.BadRequest, login.StatusCode);
             var error = await login.Content.ReadFromJsonAsync<Dictionary<string, string>>();
             Assert.Contains("đã bị xóa", error!["message"]);
-            Assert.Equal(1, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == auth.UserId)));
             Assert.Equal(1, await QueryAsync(factory, db => db.Users.CountAsync()));
         }
 

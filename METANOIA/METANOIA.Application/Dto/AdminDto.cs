@@ -143,36 +143,6 @@ namespace METANOIA.Application.Dto
         public double AverageLatencyMs { get; set; }
     }
 
-    // ---------------------------------------------------------------- Focus tracks
-
-    public class FocusTrackDto
-    {
-        public Guid Id { get; set; }
-
-        public string Title { get; set; } = null!;
-
-        public string Artist { get; set; } = null!;
-
-        public string FileUrl { get; set; } = null!;
-
-        public int DurationSeconds { get; set; }
-
-        public bool IsActive { get; set; }
-    }
-
-    public class FocusTrackRequestDto
-    {
-        public string Title { get; set; } = null!;
-
-        public string Artist { get; set; } = null!;
-
-        public string FileUrl { get; set; } = null!;
-
-        public int DurationSeconds { get; set; }
-
-        public bool IsActive { get; set; } = true;
-    }
-
     // ---------------------------------------------------------------- Audit logs
 
     public class AdminAuditLogDto

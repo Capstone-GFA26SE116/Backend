@@ -13,7 +13,7 @@ namespace METANOIA.Infrastructure.Services
     // Luồng thanh toán PayOS và các tình huống lỗi. Nguyên tắc xuyên suốt:
     //  - Webhook chỉ là "tín hiệu"; trạng thái thật luôn có thể hỏi lại PayOS (SyncAsync / worker đối soát).
     //  - Không bao giờ đoán trạng thái khi gọi PayOS lỗi mạng: ném PaymentGatewayException và giữ nguyên.
-    //  - Tiền đã về mà đơn không hợp lệ thì mở yêu cầu hoàn tiền, không nuốt tiền.
+    //  - Tiền đã về mà đơn không hợp lệ thì không cấp gói, ghi log lỗi để admin xử lý thủ công (hệ thống không có chức năng hoàn tiền).
     public class PaymentService : IPaymentService
     {
         private const string Pending = "Pending";
@@ -27,7 +27,6 @@ namespace METANOIA.Infrastructure.Services
 
         private readonly IPaymentTransactionRepository _payments;
         private readonly IUserSubscriptionRepository _subscriptions;
-        private readonly IPaymentRefundRepository _refunds;
         private readonly IPayOSClient _gateway;
         private readonly IInvoiceRepository _invoices;
         private readonly IUserRepository _users;
@@ -40,7 +39,6 @@ namespace METANOIA.Infrastructure.Services
         public PaymentService(
             IPaymentTransactionRepository payments,
             IUserSubscriptionRepository subscriptions,
-            IPaymentRefundRepository refunds,
             IPayOSClient gateway,
             IInvoiceRepository invoices,
             IUserRepository users,
@@ -52,7 +50,6 @@ namespace METANOIA.Infrastructure.Services
         {
             _payments = payments;
             _subscriptions = subscriptions;
-            _refunds = refunds;
             _gateway = gateway;
             _invoices = invoices;
             _users = users;
@@ -195,7 +192,7 @@ namespace METANOIA.Infrastructure.Services
             switch (payment.Status)
             {
                 case Succeeded:
-                    throw new UserFriendlyException("Giao dịch đã thanh toán thành công nên không thể hủy. Nếu cần, hãy gửi yêu cầu hoàn tiền.");
+                    throw new UserFriendlyException("Giao dịch đã thanh toán thành công nên không thể hủy. Nếu cần hoàn tiền, hãy liên hệ hỗ trợ.");
                 case Pending:
                     break;
                 default:
@@ -267,7 +264,7 @@ namespace METANOIA.Infrastructure.Services
         {
             var staleBefore = DateTime.UtcNow.AddSeconds(-_options.PendingStaleAfterSeconds);
             var pending = await _payments.GetStalePendingIdsAsync(staleBefore, BatchSize, cancellationToken);
-            var orphans = await _payments.GetSucceededNeedingFulfillmentIdsAsync(BatchSize, _options.RefundsEnabled, cancellationToken);
+            var orphans = await _payments.GetSucceededNeedingFulfillmentIdsAsync(BatchSize, cancellationToken);
             return pending.Concat(orphans).Distinct().ToList();
         }
 
@@ -446,40 +443,14 @@ namespace METANOIA.Infrastructure.Services
             return WebhookOutcome.Processed;
         }
 
-        // Tiền đã về nhưng đơn không hợp lệ (sai số tiền, đã hủy...). Hoàn tiền bật: mở yêu cầu hoàn tiền cho admin.
-        // Hoàn tiền tắt: chỉ ghi log lỗi và lưu trạng thái, admin xử lý thủ công (giao dịch có WebhookReceivedAt nhưng không Succeeded)
+        // Tiền đã về nhưng đơn không hợp lệ (sai số tiền, đã hủy...). Hệ thống không có chức năng hoàn tiền: chỉ ghi log lỗi và
+        // lưu trạng thái, admin xử lý thủ công (giao dịch có WebhookReceivedAt nhưng không Succeeded)
         private async Task<WebhookOutcome> HandleUnexpectedMoneyAsync(PaymentTransaction payment, long amount, string reason, CancellationToken cancellationToken)
         {
-            if (_options.RefundsEnabled)
-            {
-                await OpenSystemRefundAsync(payment, amount, reason, cancellationToken);
-                return WebhookOutcome.RefundOpened;
-            }
-
-            _logger.LogError("Giao dịch {PaymentId} nhận {Amount} VND nhưng không hợp lệ ({Reason}). Hoàn tiền đang tắt nên cần xử lý thủ công.",
+            _logger.LogError("Giao dịch {PaymentId} nhận {Amount} VND nhưng không hợp lệ ({Reason}). Cần xử lý thủ công.",
                 payment.Id, amount, reason);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return WebhookOutcome.ReviewRequired;
-        }
-
-        private async Task OpenSystemRefundAsync(PaymentTransaction payment, long amount, string reason, CancellationToken cancellationToken)
-        {
-            if (await _refunds.GetActiveByPaymentAsync(payment.Id, cancellationToken) is null)
-            {
-                await _refunds.AddAsync(new PaymentRefund
-                {
-                    Id = Guid.NewGuid(),
-                    PaymentTransactionId = payment.Id,
-                    Amount = amount,
-                    Reason = reason,
-                    Source = "System",
-                    Status = "Requested",
-                    CreatedAt = DateTime.UtcNow
-                }, cancellationToken);
-                _logger.LogWarning("Mở yêu cầu hoàn tiền {Amount} cho giao dịch {PaymentId}: {Reason}", amount, payment.Id, reason);
-            }
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         // Giao dịch Succeeded phải có đủ hai thứ: gói đăng ký (UserSubscription) và hóa đơn (Invoice). Thiếu thứ nào thì tạo thứ đó,
@@ -500,9 +471,8 @@ namespace METANOIA.Infrastructure.Services
                 return;
             }
 
-            // Đã có yêu cầu hoàn tiền thì không cấp gói mới, nhưng hóa đơn của khoản đã thu vẫn phải có
             var subscription = await _subscriptions.GetByPaymentIdAsync(payment.Id, cancellationToken);
-            if (subscription is null && !await HasOpenRefundAsync(payment.Id, cancellationToken))
+            if (subscription is null)
             {
                 subscription = await StageSubscriptionAsync(payment, plan, cancellationToken);
             }
@@ -514,12 +484,6 @@ namespace METANOIA.Infrastructure.Services
             }
 
             await SaveFulfillmentAsync(payment, invoice, cancellationToken);
-        }
-
-        // Khi hoàn tiền tắt thì không bao giờ truy vấn bảng PaymentRefund
-        private async Task<bool> HasOpenRefundAsync(Guid paymentId, CancellationToken cancellationToken)
-        {
-            return _options.RefundsEnabled && await _refunds.GetActiveByPaymentAsync(paymentId, cancellationToken) is not null;
         }
 
         // Chuẩn bị UserSubscription (chưa lưu). Có thể lưu trước việc chuyển gói cũ sang Expired để không vướng index "mỗi user một gói Active"

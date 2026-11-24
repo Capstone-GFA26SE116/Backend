@@ -45,6 +45,16 @@ namespace METANOIA.MiddleWare
                 _logger.LogWarning(ex, "Resource not found");
                 await WriteResponseAsync(context, HttpStatusCode.NotFound, new { message = ex.Message });
             }
+            catch (SlotOverlapException ex)
+            {
+                _logger.LogWarning(ex, "Schedule slot overlaps another active slot");
+                await WriteResponseAsync(context, HttpStatusCode.Conflict, new
+                {
+                    message = ex.Message,
+                    code = "SLOT_OVERLAP",
+                    details = ex.Details
+                });
+            }
             catch (ScheduleConflictException ex)
             {
                 _logger.LogWarning(ex, "Schedule proposal conflicts with Google Calendar");

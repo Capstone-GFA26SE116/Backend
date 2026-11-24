@@ -219,39 +219,32 @@ namespace METANOIA.Test
         }
 
         [Fact]
-        public async Task Webhook_AmountMismatch_FailsPayment_AndOpensRefund_WithoutActivating()
+        public async Task Webhook_AmountMismatch_FailsPayment_WithoutActivating()
         {
             using var factory = new ApiFactory();
-            var (admin, user, _, planId) = await SetupAsync(factory);
+            var (_, user, _, planId) = await SetupAsync(factory);
             var checkout = await CheckoutAsync(user, planId);
 
             await PayAsync(factory, checkout, amount: 50000);
             var payment = await GetPaymentAsync(user, checkout.PaymentId);
-            var refunds = await admin.GetFromJsonAsync<List<RefundDto>>("/api/refunds");
 
             Assert.Equal("Failed", payment.Status);
             Assert.Empty(await GetSubscriptionsAsync(user));
-            var refund = Assert.Single(refunds!);
-            Assert.Equal("System", refund.Source);
-            Assert.Equal("Requested", refund.Status);
-            Assert.Equal(50000, refund.Amount);
         }
 
         [Fact]
-        public async Task Webhook_AfterUserCancelled_OpensRefund_InsteadOfActivating()
+        public async Task Webhook_AfterUserCancelled_DoesNotActivate_ButNeedsManualReview()
         {
             using var factory = new ApiFactory();
-            var (admin, user, _, planId) = await SetupAsync(factory);
+            var (_, user, _, planId) = await SetupAsync(factory);
             var checkout = await CheckoutAsync(user, planId);
             await user.PostAsync($"/api/payments/{checkout.PaymentId}/cancel", null);
 
             await PayAsync(factory, checkout);
-            await PayAsync(factory, checkout); // PayOS gửi lại: không mở thêm yêu cầu hoàn tiền thứ hai
-            var refunds = await admin.GetFromJsonAsync<List<RefundDto>>("/api/refunds");
+            await PayAsync(factory, checkout); // PayOS gửi lại: vẫn không kích hoạt gói
 
             Assert.Equal("Cancelled", (await GetPaymentAsync(user, checkout.PaymentId)).Status);
             Assert.Empty(await GetSubscriptionsAsync(user));
-            Assert.Equal(99000, Assert.Single(refunds!).Amount);
         }
 
         [Fact]

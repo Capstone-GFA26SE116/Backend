@@ -14,12 +14,10 @@ namespace METANOIA.Controllers
         private const string AdminRole = "Admin";
 
         private readonly IPaymentService _paymentService;
-        private readonly IRefundService _refundService;
 
-        public PaymentsController(IPaymentService paymentService, IRefundService refundService)
+        public PaymentsController(IPaymentService paymentService)
         {
             _paymentService = paymentService;
-            _refundService = refundService;
         }
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -45,16 +43,6 @@ namespace METANOIA.Controllers
         public async Task<ActionResult<PaymentTransactionDto>> Cancel(Guid paymentId, CancellationToken cancellationToken)
         {
             return Ok(await _paymentService.CancelAsync(CurrentUserId, IsAdmin, paymentId, cancellationToken));
-        }
-
-        [HttpPost("{paymentId:guid}/refunds")]
-        public async Task<ActionResult<RefundDto>> RequestRefund(
-            Guid paymentId,
-            [FromBody] RefundRequestDto request,
-            CancellationToken cancellationToken)
-        {
-            var refund = await _refundService.RequestRefundAsync(CurrentUserId, paymentId, request, cancellationToken);
-            return CreatedAtAction(nameof(RefundsController.GetRefund), "Refunds", new { refundId = refund.Id }, refund);
         }
     }
 }

@@ -28,6 +28,17 @@ public partial class AppDbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        // Chat nhóm: cột GroupId thêm vào bảng ChatConversation có sẵn (docs/sql/008_chat_group.sql). Xóa nhóm thì xóa chat của nhóm
+        modelBuilder.Entity<ChatConversation>(entity =>
+        {
+            entity.HasIndex(e => e.GroupId, "IX_ChatConversation_GroupId");
+
+            entity.HasOne(d => d.Group).WithMany(p => p.ChatConversations)
+                .HasForeignKey(d => d.GroupId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("ChatConversation_GroupId_fkey");
+        });
+
         modelBuilder.Entity<WorkGroup>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("WorkGroup_pkey");

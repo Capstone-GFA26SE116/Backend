@@ -8,9 +8,7 @@ namespace METANOIA.Application.Interfaces.Services
         Processed,
         // Webhook gửi lại cho giao dịch đã xử lý: bỏ qua, không kích hoạt lần hai
         Duplicate,
-        // Tiền về nhưng không hợp lệ (sai số tiền, đơn đã hủy...): đã mở yêu cầu hoàn tiền (chỉ khi Payments:RefundsEnabled = true)
-        RefundOpened,
-        // Tiền về nhưng không hợp lệ và chức năng hoàn tiền đang tắt: đã ghi log lỗi, cần xử lý thủ công
+        // Tiền về nhưng không hợp lệ (sai số tiền, đơn đã hủy...): đã ghi log lỗi, cần xử lý thủ công
         ReviewRequired,
         // Webhook không liên quan (orderCode lạ, success = false)
         Ignored,
