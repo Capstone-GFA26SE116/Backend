@@ -54,7 +54,7 @@ Ba bảng mới và vai trò:
 
 | API | Việc làm |
 |---|---|
-| `POST /api/focus/start` | Body `{ taskId, subTaskId?, scheduleSlotId?, focusTrackId? }`. Đang có phiên chạy thì **409** kèm phiên đó (`details`). Tạo phiên `Timer`. Gắn slot thì slot thành `InProgress`. Bắt đầu sớm hơn 2 giờ thì có `warning: "STARTED_VERY_EARLY"`. Trả 201 |
+| `POST /api/focus/start` | Body `{ taskId, subTaskId?, scheduleSlotId? }`. Đang có phiên chạy thì **409** kèm phiên đó (`details`). Tạo phiên `Timer`. Gắn slot thì slot thành `InProgress`. Bắt đầu sớm hơn 2 giờ thì có `warning: "STARTED_VERY_EARLY"`. Trả 201 |
 | `POST /api/focus/{sessionId}/stop` | Body `{ stopReason, note? }` (`Completed`, `Interrupted`, `Blocked`, `Other`). Trả `sessionMinutes`, `taskTotalMinutes`, `checkInRequired`. Dừng lần hai trả **409**. Người khác trả **403** |
 | `GET /api/focus/current` | Phiên đang chạy: `elapsedSeconds`, `serverTime`, `isOverrun`. Không có thì **204** |
 | `GET /api/focus/pending-confirmation` | Các phiên bị hệ thống tự ngắt (AutoTimeout) chưa xác nhận hoặc loại bỏ, để FE biết `sessionId` cần gọi `/confirm` |

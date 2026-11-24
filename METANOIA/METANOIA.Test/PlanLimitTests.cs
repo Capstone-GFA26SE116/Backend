@@ -77,7 +77,7 @@ namespace METANOIA.Test
         public async Task FreePlan_AllowsThreeProjects_AndBlocksTheFourth_WithAnUpgradeHint()
         {
             using var factory = new ApiFactory();
-            var (client, _) = await LoginAsync(factory);   // đã có dự án "Cá nhân" mặc định, không tính vào hạn mức
+            var (client, _) = await LoginAsync(factory);   // người dùng mới chưa có dự án nào: cả ba dự án đầu đều tính vào hạn mức
 
             for (var i = 1; i <= 3; i++) await NewProjectAsync(client, $"Dự án {i}");
             var fourth = await CreateProjectAsync(client, "Dự án 4");

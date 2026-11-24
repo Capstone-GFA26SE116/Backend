@@ -36,13 +36,6 @@ namespace METANOIA.Infrastructure.Services
         // Chờ thêm bao nhiêu giây sau ExpiresAt rồi mới hủy link / đánh dấu Expired
         public int ExpiryGraceSeconds { get; set; } = 60;
 
-        // Cho phép khách tự yêu cầu hoàn tiền trong bao nhiêu ngày kể từ lúc thanh toán
-        public int RefundWindowDays { get; set; } = 7;
-
-        // Chức năng hoàn tiền (bảng PaymentRefund, API /api/refunds). Mặc định TẮT: khi tắt, luồng thanh toán không đụng tới bảng
-        // PaymentRefund nên chưa cần tạo bảng đó. Bật (true) sau khi đã chạy docs/sql/001_payment_refund.sql
-        public bool RefundsEnabled { get; set; }
-
         public bool ReconciliationEnabled { get; set; } = true;
 
         public int ReconciliationIntervalSeconds { get; set; } = 60;

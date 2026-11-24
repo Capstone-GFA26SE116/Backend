@@ -218,27 +218,6 @@ namespace METANOIA.Test
         }
 
         [Fact]
-        public async Task SucceededPaymentWithRefund_StillGetsItsInvoice_ButNoNewSubscription()
-        {
-            using var factory = new ApiFactory();
-            var (_, user, _, planId) = await PaymentFlowTests.SetupAsync(factory);
-            var checkout = await PaymentFlowTests.CheckoutAsync(user, planId);
-            await PaymentFlowTests.PayAsync(factory, checkout);
-            await user.PostAsJsonAsync($"/api/payments/{checkout.PaymentId}/refunds", new RefundRequestDto { Reason = "Mua nhầm" });
-            await factory.SeedAsync(db =>
-            {
-                db.Invoices.RemoveRange(db.Invoices);
-                db.UserSubscriptions.RemoveRange(db.UserSubscriptions.Where(s => s.PaymentTransactionId == checkout.PaymentId));
-            });
-
-            using var scope = factory.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<IPaymentService>().ReconcilePaymentAsync(checkout.PaymentId);
-
-            Assert.Single(await GetInvoicesAsync(user));
-            Assert.Empty(await PaymentFlowTests.GetSubscriptionsAsync(user));
-        }
-
-        [Fact]
         public async Task PaymentWithInvoiceAndSubscription_IsLeftAlone()
         {
             using var factory = new ApiFactory();

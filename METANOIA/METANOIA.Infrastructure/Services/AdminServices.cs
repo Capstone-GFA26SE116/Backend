@@ -100,7 +100,7 @@ namespace METANOIA.Infrastructure.Services
                 GoogleSubjectId = AccountConstants.PendingSubjectPrefix + Guid.NewGuid().ToString("N"),
                 RoleId = role.Id,
                 Role = role,
-                TimeZone = request.TimeZone is null ? "Asia/Ho_Chi_Minh" : UserSettingsValidator.ValidateTimeZone(request.TimeZone),
+                TimeZone = request.TimeZone is null ? AccountConstants.PlaceholderTimeZone : UserSettingsValidator.ValidateTimeZone(request.TimeZone),
                 WorkDayStart = start,
                 WorkDayEnd = end,
                 WorksOnWeekend = request.WorksOnWeekend ?? false,
@@ -112,7 +112,7 @@ namespace METANOIA.Infrastructure.Services
 
             await _users.AddAsync(user, cancellationToken);
 
-            // Cùng một lần lưu với project "Cá nhân", gói Miễn phí và dữ liệu circadian
+            // Cùng một lần lưu với gói Miễn phí và dữ liệu circadian
             await _initialization.InitializeNewUserAsync(user.Id, cancellationToken);
 
             return await GetAsync(user.Id, cancellationToken);
@@ -319,105 +319,6 @@ namespace METANOIA.Infrastructure.Services
                 Rows = ordered.ToList()
             };
         }
-    }
-
-    public class FocusTrackService : IFocusTrackService
-    {
-        private const int MaxTitleLength = 150;
-        private const int MaxArtistLength = 100;
-        private const int MaxUrlLength = 500;
-
-        private readonly IFocusTrackRepository _repository;
-        private readonly IUnitOfWork _unitOfWork;
-
-        public FocusTrackService(IFocusTrackRepository repository, IUnitOfWork unitOfWork)
-        {
-            _repository = repository;
-            _unitOfWork = unitOfWork;
-        }
-
-        public async Task<IReadOnlyList<FocusTrackDto>> GetTracksAsync(bool? isActive, CancellationToken cancellationToken = default)
-        {
-            return (await _repository.GetAsync(isActive, cancellationToken)).Select(ToDto).ToList();
-        }
-
-        public async Task<FocusTrackDto> GetTrackAsync(Guid trackId, CancellationToken cancellationToken = default)
-        {
-            return ToDto(await GetExistingAsync(trackId, cancellationToken));
-        }
-
-        public async Task<FocusTrackDto> CreateTrackAsync(FocusTrackRequestDto request, CancellationToken cancellationToken = default)
-        {
-            Validate(request);
-
-            var track = new FocusTrack { Id = Guid.NewGuid() };
-            Apply(track, request);
-
-            await _repository.AddAsync(track, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ToDto(track);
-        }
-
-        public async Task<FocusTrackDto> UpdateTrackAsync(Guid trackId, FocusTrackRequestDto request, CancellationToken cancellationToken = default)
-        {
-            var track = await GetExistingAsync(trackId, cancellationToken);
-            Validate(request);
-
-            Apply(track, request);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return ToDto(track);
-        }
-
-        private async Task<FocusTrack> GetExistingAsync(Guid trackId, CancellationToken cancellationToken)
-        {
-            return await _repository.GetByIdAsync(trackId, cancellationToken)
-                ?? throw new NotFoundException("Không tìm thấy bài nhạc tập trung.");
-        }
-
-        private static void Validate(FocusTrackRequestDto request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > MaxTitleLength)
-            {
-                throw new UserFriendlyException($"Tên bài không được để trống và tối đa {MaxTitleLength} ký tự.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.Artist) || request.Artist.Trim().Length > MaxArtistLength)
-            {
-                throw new UserFriendlyException($"Tên nghệ sĩ không được để trống và tối đa {MaxArtistLength} ký tự.");
-            }
-
-            var url = request.FileUrl?.Trim();
-            if (string.IsNullOrEmpty(url) || url.Length > MaxUrlLength
-                || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            {
-                throw new UserFriendlyException($"FileUrl phải là đường dẫn http(s) hợp lệ, tối đa {MaxUrlLength} ký tự.");
-            }
-
-            if (request.DurationSeconds <= 0)
-            {
-                throw new UserFriendlyException("Thời lượng phải lớn hơn 0 giây.");
-            }
-        }
-
-        private static void Apply(FocusTrack track, FocusTrackRequestDto request)
-        {
-            track.Title = request.Title.Trim();
-            track.Artist = request.Artist.Trim();
-            track.FileUrl = request.FileUrl.Trim();
-            track.DurationSeconds = request.DurationSeconds;
-            track.IsActive = request.IsActive;
-        }
-
-        private static FocusTrackDto ToDto(FocusTrack track) => new()
-        {
-            Id = track.Id,
-            Title = track.Title,
-            Artist = track.Artist,
-            FileUrl = track.FileUrl,
-            DurationSeconds = track.DurationSeconds,
-            IsActive = track.IsActive
-        };
     }
 
     public class AdminAuditLogService : IAdminAuditLogService

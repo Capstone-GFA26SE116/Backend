@@ -18,5 +18,9 @@ namespace METANOIA.Application.Dto
         public string RefreshToken { get; set; } = null!;
 
         public DateTime RefreshTokenExpiresAtUtc { get; set; }
+
+        // true khi tài khoản vừa được tạo hoặc vừa được nhận (tài khoản Admin tạo sẵn) trong lần đăng nhập này: FE đưa người dùng
+        // sang màn hình thông tin ban đầu (onboarding). Đăng nhập thường và refresh token luôn là false
+        public bool IsNewUser { get; set; }
     }
 }

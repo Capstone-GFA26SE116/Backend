@@ -31,8 +31,6 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IAdminUserService, AdminUserService>();
             services.AddScoped<IAiUsageRepository, AiUsageRepository>();
             services.AddScoped<IAiUsageReportService, AiUsageReportService>();
-            services.AddScoped<IFocusTrackRepository, FocusTrackRepository>();
-            services.AddScoped<IFocusTrackService, FocusTrackService>();
             services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
             services.AddScoped<IAdminAuditLogService, AdminAuditLogService>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -76,9 +74,7 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
             services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
             services.AddScoped<IPaymentTransactionService, PaymentTransactionService>();
-            services.AddScoped<IPaymentRefundRepository, PaymentRefundRepository>();
             services.AddScoped<IPaymentService, PaymentService>();
-            services.AddScoped<IRefundService, RefundService>();
             services.Configure<PayOSOptions>(configuration.GetSection("PayOS"));
             services.Configure<PaymentOptions>(configuration.GetSection("Payments"));
             services.AddHttpClient<IPayOSClient, PayOSClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
@@ -113,6 +109,10 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IGroupTaskService, GroupTaskService>();
             services.AddScoped<IGroupCommentService, GroupCommentService>();
             services.AddScoped<IGroupProgressService, GroupProgressService>();
+
+            // Admin quản trị nhóm: xem, thống kê, lưu trữ, khôi phục
+            services.AddScoped<IAdminGroupRepository, AdminGroupRepository>();
+            services.AddScoped<IAdminGroupService, AdminGroupService>();
 
             // Nhánh Group đợt 2: bấm giờ, kiểm tra lịch người nhận việc, đề xuất đổi giờ
             services.AddScoped<GroupTaskProgress>();

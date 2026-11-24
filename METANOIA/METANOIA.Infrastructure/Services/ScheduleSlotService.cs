@@ -81,6 +81,9 @@ namespace METANOIA.Infrastructure.Services
                 throw new UserFriendlyException("Slot mới chỉ tạo được ở trạng thái Proposed hoặc Approved.");
             }
 
+            // Slot đã duyệt thì chiếm giờ: không được chồng lên slot đang hoạt động khác (Proposed chưa chiếm giờ, kiểm khi duyệt)
+            await EnsureNoOverlapAsync(userId, slot, cancellationToken);
+
             var result = new ProgressResult { TaskId = taskId };
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -113,7 +116,15 @@ namespace METANOIA.Infrastructure.Services
 
             var oldStart = slot.StartTime;
             var oldEnd = slot.EndTime;
+            var wasLive = StatusRules.IsLiveSlot(slot.Status);
             ApplyRequest(slot, request);
+
+            // Chỉ kiểm khi slot chiếm giờ VÀ vừa đổi giờ hoặc vừa trở thành slot chiếm giờ (ví dụ Proposed sang Approved).
+            // Sửa phần khác (ghi chú...) của slot cũ đã lỡ chồng giờ thì không bị chặn
+            if ((slot.StartTime != oldStart || slot.EndTime != oldEnd || !wasLive))
+            {
+                await EnsureNoOverlapAsync(userId, slot, cancellationToken);
+            }
 
             var startChanged = slot.StartTime != oldStart;
             var endChanged = slot.EndTime != oldEnd;
@@ -193,6 +204,22 @@ namespace METANOIA.Infrastructure.Services
                 default:
                     _jobService.CancelAllJobs(slot.Id);
                     break;
+            }
+        }
+
+        // Slot đang chiếm giờ (Approved, Due, InProgress, Overrun) không được chồng lên slot chiếm giờ khác của cùng người dùng
+        // (giao nhau mới tính, chạm đầu mút như 7h-8h và 8h-9h thì được). Slot không chiếm giờ thì không kiểm
+        private async Task EnsureNoOverlapAsync(Guid userId, ScheduleSlot slot, CancellationToken cancellationToken)
+        {
+            if (!StatusRules.IsLiveSlot(slot.Status))
+            {
+                return;
+            }
+
+            var overlaps = await _slotRepository.GetLiveSlotsOverlappingAsync(userId, slot.StartTime, slot.EndTime, slot.Id, cancellationToken);
+            if (overlaps.Count > 0)
+            {
+                throw SlotOverlap.Create(overlaps);
             }
         }
 

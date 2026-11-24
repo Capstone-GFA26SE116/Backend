@@ -33,6 +33,9 @@ namespace METANOIA.Test
             WorkDayStart = new TimeOnly(9, 0),
             WorkDayEnd = new TimeOnly(17, 0),
             WorksOnWeekend = true,
+            TimeZone = "Asia/Ho_Chi_Minh",
+            DefaultBufferMinutes = 20,
+            ReminderLeadMinutes = 10,
             DomainIds = domainIds.ToList(),
             ProductiveHours = hours.ToList(),
             OverrunLevel = level
@@ -41,7 +44,7 @@ namespace METANOIA.Test
         // ------------------------------------------------------------ Khởi tạo user mới
 
         [Fact]
-        public async Task FirstLogin_CreatesUser_PersonalProject_FreeSubscription_And24CircadianRows()
+        public async Task FirstLogin_CreatesUser_FreeSubscription_And24CircadianRows_ButNoProject()
         {
             using var factory = new ApiFactory();
             var (_, auth) = await TestHelpers.LoginAsync(factory, "user-1");
@@ -50,11 +53,11 @@ namespace METANOIA.Test
             var subscriptions = await QueryAsync(factory, db => db.UserSubscriptions.Where(s => s.UserId == auth.UserId).ToListAsync());
             var circadian = await QueryAsync(factory, db => db.UserCircadianProfiles.Where(c => c.UserId == auth.UserId).ToListAsync());
 
-            var project = Assert.Single(projects);
-            Assert.Equal("Cá nhân", project.Name);
-            Assert.True(project.IsDefault);
-            Assert.Equal("Active", project.Status);
-            Assert.Null(project.ClientId);
+            // Không còn dự án "Cá nhân" tự tạo: người dùng tự tạo dự án đầu tiên
+            Assert.Empty(projects);
+            var user = await QueryAsync(factory, db => db.Users.SingleAsync(u => u.Id == auth.UserId));
+            Assert.Equal("UTC", user.TimeZone);   // múi giờ tạm, người dùng chọn thật ở onboarding
+            Assert.False(user.OnboardingCompleted);
 
             var subscription = Assert.Single(subscriptions);
             Assert.Equal(ApiFactory.FreePlanId, subscription.PlanId);
@@ -76,24 +79,26 @@ namespace METANOIA.Test
         public async Task SecondLogin_DoesNotCreateAnythingExtra()
         {
             using var factory = new ApiFactory();
-            await TestHelpers.LoginAsync(factory, "user-1");
+            var (_, first) = await TestHelpers.LoginAsync(factory, "user-1");
+            Assert.True(first.IsNewUser);
             var before = await QueryAsync(factory, async db =>
                 (await db.Users.CountAsync(), await db.Projects.CountAsync(), await db.UserSubscriptions.CountAsync(), await db.UserCircadianProfiles.CountAsync()));
 
-            await TestHelpers.LoginAsync(factory, "user-1");
+            var (_, second) = await TestHelpers.LoginAsync(factory, "user-1");
+            Assert.False(second.IsNewUser);
             var after = await QueryAsync(factory, async db =>
                 (await db.Users.CountAsync(), await db.Projects.CountAsync(), await db.UserSubscriptions.CountAsync(), await db.UserCircadianProfiles.CountAsync()));
 
-            Assert.Equal((1, 1, 1, 24), before);
+            Assert.Equal((1, 0, 1, 24), before);
             Assert.Equal(before, after);
         }
 
         [Fact]
-        public async Task FailureWhileCreatingProject_LeavesNoUserBehind()
+        public async Task FailureWhileGrantingTheFreePlan_LeavesNoUserBehind()
         {
             using var factory = new ApiFactory();
             await factory.EnsureDefaultRoleAsync();
-            factory.FailOnProjectCreate = true;
+            factory.FailOnSubscriptionCreate = true;
 
             var response = await factory.CreateClient().PostAsJsonAsync("/api/auth/google", new GoogleLoginRequestDto
             {
@@ -106,9 +111,9 @@ namespace METANOIA.Test
             Assert.Equal((0, 0, 0, 0), leftovers);
 
             // Hết sự cố thì đăng nhập lại bình thường và đủ dữ liệu
-            factory.FailOnProjectCreate = false;
+            factory.FailOnSubscriptionCreate = false;
             var (_, auth) = await TestHelpers.LoginAsync(factory, "user-1");
-            Assert.Equal(1, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == auth.UserId)));
+            Assert.Equal(1, await QueryAsync(factory, db => db.UserSubscriptions.CountAsync(s => s.UserId == auth.UserId)));
         }
 
         [Fact]
@@ -154,7 +159,7 @@ namespace METANOIA.Test
             Assert.Equal(new UserBackfillRunner.Result(0, 0, 0), second);
             Assert.Equal(24, circadian.Count);
             Assert.Equal(0.900m, circadian.Single(c => c.HourOfDay == 9).Score);
-            Assert.Equal(1, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == userId && p.IsDefault)));
+            Assert.Equal(0, await QueryAsync(factory, db => db.Projects.CountAsync(p => p.UserId == userId)));   // không còn bù dự án mặc định
             Assert.Equal(1, await QueryAsync(factory, db => db.UserSubscriptions.CountAsync(s => s.UserId == userId && s.Status == "Active")));
         }
 
@@ -431,6 +436,169 @@ namespace METANOIA.Test
             var me = await client.GetFromJsonAsync<MeDto>("/api/me");
             Assert.False(me!.OnboardingCompleted);
             Assert.Equal(0, await QueryAsync(factory, db => db.UserDomainProfiles.CountAsync(p => p.UserId == auth.UserId)));
+        }
+
+        // ------------------------------------------------------------ Đăng nhập: isNewUser
+
+        [Fact]
+        public async Task RefreshToken_NeverReportsANewUser()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+            Assert.True(auth.IsNewUser);
+
+            var response = await client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequestDto { RefreshToken = auth.RefreshToken });
+            var refreshed = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.False(refreshed!.IsNewUser);
+        }
+
+        // ------------------------------------------------------------ Onboarding: người dùng tự chọn đủ cài đặt
+
+        [Fact]
+        public async Task Onboarding_SavesTimeZone_Buffer_AndReminder_ChosenByTheUser()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+            var request = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            request.TimeZone = "Asia/Bangkok";
+            request.DefaultBufferMinutes = 25;
+            request.ReminderLeadMinutes = 5;
+
+            var response = await client.PostAsJsonAsync("/api/me/onboarding", request);
+            var me = await response.Content.ReadFromJsonAsync<MeDto>();
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(me!.OnboardingCompleted);
+            Assert.Equal("Asia/Bangkok", me.TimeZone);
+            Assert.Equal(25, me.DefaultBufferMinutes);
+            Assert.Equal(5, me.ReminderLeadMinutes);
+        }
+
+        [Fact]
+        public async Task Onboarding_WithoutTimeZoneBufferOrReminder_Returns400_AndSavesNothing()
+        {
+            using var factory = new ApiFactory();
+            var (client, _) = await TestHelpers.LoginAsync(factory, "user-1");
+            var noZone = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            noZone.TimeZone = null;
+            var noBuffer = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            noBuffer.DefaultBufferMinutes = null;
+            var noReminder = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            noReminder.ReminderLeadMinutes = null;
+            var badZone = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            badZone.TimeZone = "Mars/Olympus";
+            var bigBuffer = Onboarding(Array.Empty<Guid>(), Array.Empty<int>());
+            bigBuffer.DefaultBufferMinutes = 121;
+
+            foreach (var request in new[] { noZone, noBuffer, noReminder, badZone, bigBuffer })
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/me/onboarding", request)).StatusCode);
+            }
+
+            var me = await client.GetFromJsonAsync<MeDto>("/api/me");
+            Assert.False(me!.OnboardingCompleted);
+            Assert.Equal("UTC", me.TimeZone);
+        }
+
+        [Fact]
+        public async Task Onboarding_WithoutProductiveHours_IsAllowed_AndScoresOnlyByWorkingHours()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+
+            var response = await client.PostAsJsonAsync("/api/me/onboarding", Onboarding(Array.Empty<Guid>(), Array.Empty<int>()));
+            var circadian = (await QueryAsync(factory, db => db.UserCircadianProfiles.Where(c => c.UserId == auth.UserId).ToListAsync()))
+                .ToDictionary(c => (int)c.HourOfDay, c => c.Score);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(0.500m, circadian[10]);   // trong khung 9-17, không có giờ hiệu quả nào
+            Assert.Equal(0.200m, circadian[20]);
+            Assert.DoesNotContain(0.800m, circadian.Values);
+        }
+
+        [Fact]
+        public async Task Onboarding_WithoutOverrunLevel_UsesSometimes_ForTheChosenDomains()
+        {
+            using var factory = new ApiFactory();
+            await factory.SeedUserWithRoleAsync("admin-1", "Admin");
+            var (admin, _) = await TestHelpers.LoginAsync(factory, "admin-1");
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+            var writing = await CreateDomainAsync(admin, "Writing");
+            var request = Onboarding(new[] { writing.Id }, Array.Empty<int>());
+            request.OverrunLevel = null;
+
+            var response = await client.PostAsJsonAsync("/api/me/onboarding", request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var profile = await QueryAsync(factory, db => db.UserDomainProfiles.SingleAsync(p => p.UserId == auth.UserId));
+            Assert.Equal(1.250m, profile.Kbias);
+        }
+
+        [Fact]
+        public async Task Onboarding_OverrunLevelIsNotStored_WhenNoDomainIsChosen()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+
+            var response = await client.PostAsJsonAsync("/api/me/onboarding", Onboarding(Array.Empty<Guid>(), Array.Empty<int>(), "Always"));
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(0, await QueryAsync(factory, db => db.UserDomainProfiles.CountAsync(p => p.UserId == auth.UserId)));
+        }
+
+        // ------------------------------------------------------------ Đổi giờ làm trong cài đặt: tính lại circadian
+
+        [Fact]
+        public async Task UpdateSettings_ChangingWorkHours_RecomputesCircadian_KeepsProductiveHours_AndLearnedRows()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+            await client.PostAsJsonAsync("/api/me/onboarding", Onboarding(Array.Empty<Guid>(), new[] { 9, 10 }));   // khung 9-17, hiệu quả 9 và 10
+            await factory.SeedAsync(db =>
+            {
+                var learned = db.UserCircadianProfiles.Single(c => c.UserId == auth.UserId && c.HourOfDay == 14);
+                learned.Source = "Learned";   // AI đã học giờ 14
+                learned.Score = 0.730m;
+            });
+            var settings = Settings();
+            settings.WorkDayStart = new TimeOnly(8, 0);
+            settings.WorkDayEnd = new TimeOnly(12, 0);
+
+            var response = await client.PutAsJsonAsync("/api/me/settings", settings);
+            var circadian = (await QueryAsync(factory, db => db.UserCircadianProfiles.Where(c => c.UserId == auth.UserId).ToListAsync()))
+                .ToDictionary(c => (int)c.HourOfDay, c => c.Score);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(0.500m, circadian[8]);    // trước ngoài khung (0.2), nay trong khung 8-12
+            Assert.Equal(0.800m, circadian[9]);    // giờ hiệu quả đã khai báo giữ nguyên
+            Assert.Equal(0.800m, circadian[10]);
+            Assert.Equal(0.500m, circadian[11]);
+            Assert.Equal(0.200m, circadian[12]);   // trước trong khung (0.5), nay ngoài khung
+            Assert.Equal(0.200m, circadian[16]);
+            Assert.Equal(0.730m, circadian[14]);   // dòng do AI học không bị đụng tới
+        }
+
+        [Fact]
+        public async Task UpdateSettings_NotChangingWorkHours_LeavesCircadianUntouched()
+        {
+            using var factory = new ApiFactory();
+            var (client, auth) = await TestHelpers.LoginAsync(factory, "user-1");
+            await client.PostAsJsonAsync("/api/me/onboarding", Onboarding(Array.Empty<Guid>(), new[] { 9 }));
+            await factory.SeedAsync(db => db.UserCircadianProfiles.Single(c => c.UserId == auth.UserId && c.HourOfDay == 3).Score = 0.900m);
+            var before = await QueryAsync(factory, db => db.UserCircadianProfiles.Where(c => c.UserId == auth.UserId).ToListAsync());
+            var settings = Settings();
+            settings.WorkDayStart = new TimeOnly(9, 0);
+            settings.WorkDayEnd = new TimeOnly(17, 0);   // cùng khung với lúc onboarding
+
+            var response = await client.PutAsJsonAsync("/api/me/settings", settings);
+            var after = await QueryAsync(factory, db => db.UserCircadianProfiles.Where(c => c.UserId == auth.UserId).ToListAsync());
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(
+                before.OrderBy(c => c.HourOfDay).Select(c => (c.HourOfDay, c.Score)),
+                after.OrderBy(c => c.HourOfDay).Select(c => (c.HourOfDay, c.Score)));
         }
     }
 }

@@ -17,6 +17,7 @@ This document describes the detailed design of every backend function of METANOI
 - Administrator operations that change data require the `X-Admin-Reason` header and are recorded in the admin audit log by `AdminAuditSaveChangesInterceptor`.
 - A few services use `AppDbContext` directly instead of a repository; they are drawn with an `AppDbContext` box.
 - Classes that appear in almost every function are described once in Appendix A (`UnitOfWork`, `AppDbContext`, `GlobalExceptionHandlerMiddleware`).
+- The group (teamwork) branch is listed in the sections whose names start with "Group:" and in "Administration: Groups". Its classes use the prefix `Group`; its shared helpers (`GroupAccessService`, `GroupRules`, `GroupNotifier`, `GroupTaskProgress`) are described in Appendix A. A user who is not a member of a group receives `404`; a member without the right role receives `403` (`GROUP_FORBIDDEN`); an assignee who is busy at the requested time gives a warning `409` (`GROUP_ASSIGNEE_BUSY`) that the Leader can confirm.
 
 
 ## Table of Contents
@@ -143,54 +144,111 @@ This document describes the detailed design of every backend function of METANOI
 | 3.101 | Cancel Payment |
 | 3.102 | Handle PayOS Payment Webhook |
 | 3.103 | Register PayOS Webhook URL |
-| | **Refund** |
-| 3.104 | Request Refund |
-| 3.105 | View Refund Requests |
-| 3.106 | View Refund Request Detail |
-| 3.107 | Approve Refund |
-| 3.108 | Reject Refund |
-| 3.109 | Complete Refund |
 | | **Payment Transactions, Invoices and User Subscriptions** |
-| 3.110 | View Payment Transactions |
-| 3.111 | View Payment Transaction Detail |
-| 3.112 | Create Payment Transaction (Admin) |
-| 3.113 | Update Payment Transaction (Admin) |
-| 3.114 | Delete Payment Transaction (Admin) |
-| 3.115 | View Invoices |
-| 3.116 | View Invoice Detail |
-| 3.117 | Create Invoice (Admin) |
-| 3.118 | Update Invoice (Admin) |
-| 3.119 | Delete Invoice (Admin) |
-| 3.120 | View User Subscriptions |
-| 3.121 | View User Subscription Detail |
-| 3.122 | Create User Subscription (Admin) |
-| 3.123 | Update User Subscription (Admin) |
-| 3.124 | Delete User Subscription (Admin) |
+| 3.104 | View Payment Transactions |
+| 3.105 | View Payment Transaction Detail |
+| 3.106 | Create Payment Transaction (Admin) |
+| 3.107 | Update Payment Transaction (Admin) |
+| 3.108 | Delete Payment Transaction (Admin) |
+| 3.109 | View Invoices |
+| 3.110 | View Invoice Detail |
+| 3.111 | Create Invoice (Admin) |
+| 3.112 | Update Invoice (Admin) |
+| 3.113 | Delete Invoice (Admin) |
+| 3.114 | View User Subscriptions |
+| 3.115 | View User Subscription Detail |
+| 3.116 | Create User Subscription (Admin) |
+| 3.117 | Update User Subscription (Admin) |
+| 3.118 | Delete User Subscription (Admin) |
 | | **Administration** |
-| 3.125 | Admin: Search Users |
-| 3.126 | Admin: View User Detail |
-| 3.127 | Admin: Create User |
-| 3.128 | Admin: Update User |
-| 3.129 | Admin: Delete User |
-| 3.130 | Admin: Restore User |
-| 3.131 | Admin: View Revenue Report |
-| 3.132 | Admin: View AI Usage Report |
-| 3.133 | Admin: View Focus Tracks |
-| 3.134 | Admin: View Focus Track Detail |
-| 3.135 | Admin: Create Focus Track |
-| 3.136 | Admin: Update Focus Track |
-| 3.137 | Admin: Search Audit Log |
-| 3.138 | Admin: Resync Task Statuses |
+| 3.119 | Admin: Search Users |
+| 3.120 | Admin: View User Detail |
+| 3.121 | Admin: Create User |
+| 3.122 | Admin: Update User |
+| 3.123 | Admin: Delete User |
+| 3.124 | Admin: Restore User |
+| 3.125 | Admin: View Revenue Report |
+| 3.126 | Admin: View AI Usage Report |
+| 3.127 | Admin: Search Audit Log |
+| 3.128 | Admin: Resync Task Statuses |
+| | **Group: Groups and Members** |
+| 3.129 | View My Groups |
+| 3.130 | Create Group |
+| 3.131 | View Group Detail |
+| 3.132 | Update Group |
+| 3.133 | Archive Group |
+| 3.134 | Restore Group |
+| 3.135 | View Group Members |
+| 3.136 | Change Member Role |
+| 3.137 | Remove Member |
+| 3.138 | Leave Group |
+| | **Group: Invitations** |
+| 3.139 | Invite Member by E-mail |
+| 3.140 | View Group Invitations |
+| 3.141 | Revoke Invitation |
+| 3.142 | View Invitations Sent to Me |
+| 3.143 | Accept Invitation |
+| 3.144 | Accept Invitation by Token |
+| 3.145 | Decline Invitation |
+| | **Group: Milestones** |
+| 3.146 | View Group Milestones |
+| 3.147 | Create Group Milestone |
+| 3.148 | View Group Milestone Detail |
+| 3.149 | Update Group Milestone |
+| 3.150 | Delete Group Milestone |
+| | **Group: Tasks and Sub-tasks** |
+| 3.151 | View Group Tasks |
+| 3.152 | Create Group Task |
+| 3.153 | View Group Task Detail |
+| 3.154 | Update Group Task |
+| 3.155 | Delete Group Task |
+| 3.156 | Change Group Task Status |
+| 3.157 | Assign Group Task |
+| 3.158 | View Group Sub-tasks |
+| 3.159 | Create Group Sub-task |
+| 3.160 | View Group Sub-task Detail |
+| 3.161 | Update Group Sub-task |
+| 3.162 | Delete Group Sub-task |
+| 3.163 | Change Group Sub-task Status |
+| 3.164 | Assign Group Sub-task |
+| 3.165 | View My Group Work |
+| | **Group: Comments, Activity and Progress** |
+| 3.166 | View Task Comments |
+| 3.167 | Add Task Comment |
+| 3.168 | Edit Task Comment |
+| 3.169 | Delete Task Comment |
+| 3.170 | View Group Activity Log |
+| 3.171 | View Group Progress |
+| | **Group: Focus Session** |
+| 3.172 | Start Group Focus Session |
+| 3.173 | Stop Group Focus Session |
+| 3.174 | View My Running Group Session |
+| 3.175 | View Task Time per Person |
+| | **Group: Assignee Availability and Change Requests** |
+| 3.176 | Check Assignee Availability |
+| 3.177 | Propose Time Change |
+| 3.178 | View Task Change Requests |
+| 3.179 | View Group Change Requests |
+| 3.180 | Approve Change Request |
+| 3.181 | Reject Change Request |
+| 3.182 | Withdraw Change Request |
+| | **Administration: Groups** |
+| 3.183 | Admin: Search Groups |
+| 3.184 | Admin: View Group Statistics |
+| 3.185 | Admin: View Group Detail |
+| 3.186 | Admin: View Group Activity |
+| 3.187 | Admin: Archive Group |
+| 3.188 | Admin: Restore Group |
 | | **Background Jobs** |
-| 3.139 | Remind Before Slot Starts |
-| 3.140 | Mark Slot Due and Prompt Start |
-| 3.141 | Nudge Not-started Slot |
-| 3.142 | Remind Slot Is Ending |
-| 3.143 | Handle Slot End |
-| 3.144 | Remind Overrun |
-| 3.145 | Retry Check-in (placeholder) |
-| 3.146 | Auto-stop Overrun Session |
-| 3.147 | Log Unconfirmed Sessions of a Slot |
+| 3.189 | Remind Before Slot Starts |
+| 3.190 | Mark Slot Due and Prompt Start |
+| 3.191 | Nudge Not-started Slot |
+| 3.192 | Remind Slot Is Ending |
+| 3.193 | Handle Slot End |
+| 3.194 | Remind Overrun |
+| 3.195 | Retry Check-in (placeholder) |
+| 3.196 | Auto-stop Overrun Session |
+| 3.197 | Log Unconfirmed Sessions of a Slot |
 
 ---
 
@@ -198,7 +256,7 @@ This document describes the detailed design of every backend function of METANOI
 
 ## 3.1 Sign In with Google
 
-Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the personal project, the Free subscription and the 24-row circadian profile in one transaction) and returns a JWT access token with a rotating refresh token.
+Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the Free subscription and the 24-row circadian profile in one transaction; no project is created) and returns a JWT access token with a rotating refresh token. The result carries isNewUser, true when the account was just created or just claimed (an account prepared by an administrator), so the client can show the onboarding screen.
 
 - **Endpoint:** `POST /api/auth/google`  
 - **Access:** Anonymous
@@ -261,15 +319,12 @@ classDiagram
   }
   class UserInitializationService {
     +InitializeNewUser(Guid userId) void
-    -StageProject(Guid userId) void
     +StageFreeSubscription(Guid userId) bool
     -GetFreePlan() SubscriptionPlan
     -StageCircadianProfiles(Guid userId) void
   }
   class IUserSetupRepository {
     <<interface>>
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -277,8 +332,6 @@ classDiagram
     +AddCircadianProfiles(UserCircadianProfile[] profiles) void
   }
   class UserSetupRepository {
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -323,19 +376,6 @@ classDiagram
     -DateTime ExpiresAt
     -DateTime RevokedAt
     -Guid ReplacedById
-  }
-  class Project {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ClientId
-    -string Name
-    -string Description
-    -DateOnly StartDate
-    -DateOnly Deadline
-    -string Status
-    -bool IsDefault
-    -DateTime CreatedAt
   }
   class UserSubscription {
     <<Entity>>
@@ -393,10 +433,8 @@ classDiagram
   AuthRepository ..> User
   AuthRepository ..> Role
   RefreshTokenRepository ..> RefreshToken
-  UserInitializationService ..> Project
   UserInitializationService ..> UserSubscription
   UserInitializationService ..> UserCircadianProfile
-  UserSetupRepository ..> Project
   UserSetupRepository ..> UserSubscription
   UserSetupRepository ..> SubscriptionPlan
   UserSetupRepository ..> UserCircadianProfile
@@ -404,7 +442,6 @@ classDiagram
   User "1" --> "0..*" UserCircadianProfile
   Role "1" --> "0..*" User
   SubscriptionPlan "1" --> "0..*" UserSubscription
-  User "1" --> "0..1" Project
   User "1" --> "0..1" UserSubscription
 ```
 
@@ -457,10 +494,6 @@ sequenceDiagram
         JwtTokenGenerator-->>AuthService: Tuple
         AuthService->>RefreshTokenRepository: Add(token)
       AuthService->>UserInitializationService: InitializeNewUser(userId)
-        UserInitializationService->>UserInitializationService: StageProject(userId)
-          UserInitializationService->>UserSetupRepository: HasDefaultProject(userId)
-          UserSetupRepository-->>UserInitializationService: bool
-          UserInitializationService->>UserSetupRepository: AddProject(project)
         UserInitializationService->>UserInitializationService: StageFreeSubscription(userId)
           UserInitializationService->>UserSetupRepository: HasActiveSubscription(userId)
           UserSetupRepository-->>UserInitializationService: bool
@@ -500,7 +533,7 @@ Table 3.1.3.a: AuthController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `LoginWithGoogle(GoogleLoginRequestDto request) : AuthResponseDto` | `POST /api/auth/google`. Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the personal project, the Free subscription and the 24-row circadian profile in one transaction) and returns a JWT access token with a rotating refresh token. Anonymous endpoint. |
+| 1 | `LoginWithGoogle(GoogleLoginRequestDto request) : AuthResponseDto` | `POST /api/auth/google`. Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the Free subscription and the 24-row circadian profile in one transaction; no project is created) and returns a JWT access token with a rotating refresh token. The result carries isNewUser, true when the account was just created or just claimed (an account prepared by an administrator), so the client can show the onboarding screen. Anonymous endpoint. |
 
 #### 3.1.3.b AuthService
 
@@ -508,7 +541,7 @@ Table 3.1.3.b: AuthService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `LoginWithGoogle(string idToken) : AuthResponseDto` | Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the personal project, the Free subscription and the 24-row circadian profile in one transaction) and returns a JWT access token with a rotating refresh token. |
+| 1 | `LoginWithGoogle(string idToken) : AuthResponseDto` | Validates the Google ID token sent by the client, finds or creates the account (first sign-in also creates the Free subscription and the 24-row circadian profile in one transaction; no project is created) and returns a JWT access token with a rotating refresh token. The result carries isNewUser, true when the account was just created or just claimed (an account prepared by an administrator), so the client can show the onboarding screen. |
 | 2 | `private IssueTokens(User user) : Tuple` | Creates a JWT access token (JwtTokenGenerator) and a random refresh token; only the SHA-256 hash of the refresh token is stored. The new RefreshToken row is added to the context and the caller saves it. |
 | 3 | `private GenerateRawToken() : string` | Generates 32 random bytes encoded as URL-safe base64 for the refresh token. |
 | 4 | `private Hash(string rawToken) : string` | Returns the lower-case SHA-256 hex hash of a refresh token. Only the hash is stored, so a leaked database cannot be used to sign in. |
@@ -554,11 +587,10 @@ Table 3.1.3.g: UserInitializationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the personal default project, the Free subscription and the 24 circadian rows, then saves them with one SaveChanges (one transaction together with the pending user). |
-| 2 | `private StageProject(Guid userId)` | Adds the default personal project of the user unless it already exists. |
-| 3 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
-| 4 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
-| 5 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
+| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the Free subscription and the 24 circadian rows (no default project), then saves them with one SaveChanges (one transaction together with the pending user). |
+| 2 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
+| 3 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
+| 4 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
 
 #### 3.1.3.h UserSetupRepository
 
@@ -566,13 +598,11 @@ Table 3.1.3.h: UserSetupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `HasDefaultProject(Guid userId) : bool` | True when the user already has the default personal Project. |
-| 2 | `AddProject(Project project)` | Adds a Project to the context. |
-| 3 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
-| 4 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
-| 5 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
-| 6 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
-| 7 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
+| 1 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
+| 2 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
+| 3 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
+| 4 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
+| 5 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
 
 #### 3.1.3.i UnitOfWork
 
@@ -597,17 +627,15 @@ Table 3.1.4: Methods used by this function
 | 7 | AuthService.IssueTokens | IJwtTokenGenerator.GenerateToken | JwtTokenGenerator |
 | 8 | AuthService.IssueTokens | IRefreshTokenRepository.Add | RefreshTokenRepository |
 | 9 | AuthService.LoginWithGoogle | IUserInitializationService.InitializeNewUser | UserInitializationService |
-| 10 | UserInitializationService.StageProject | IUserSetupRepository.HasDefaultProject | UserSetupRepository |
-| 11 | UserInitializationService.StageProject | IUserSetupRepository.AddProject | UserSetupRepository |
-| 12 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
-| 13 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
-| 14 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
-| 15 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
-| 16 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
-| 17 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
-| 18 | AuthService.LoginWithGoogle | IUnitOfWork.SaveChanges | UnitOfWork |
+| 10 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
+| 11 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
+| 12 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
+| 13 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
+| 14 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
+| 15 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | AuthService.LoginWithGoogle | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: User, Role, RefreshToken, Project, UserSubscription, SubscriptionPlan, UserCircadianProfile.
+Entities used: User, Role, RefreshToken, UserSubscription, SubscriptionPlan, UserCircadianProfile.
 
 ---
 
@@ -1553,7 +1581,7 @@ Entities used: User, Role, UserSubscription, GoogleConnection.
 
 ## 3.7 Update My Settings
 
-Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the reminder lead changed, the reminder jobs of the user's upcoming Approved slots are scheduled again.
+Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the work-day start or end changed, the 24 circadian scores are recomputed for the new window (only rows made by onboarding or by default; productive hours of 0.8 and rows learned by the AI stay). When the reminder lead changed, the reminder jobs of the user upcoming Approved slots are scheduled again.
 
 - **Endpoint:** `PUT /api/me/settings`  
 - **Access:** Signed-in user
@@ -1576,17 +1604,22 @@ classDiagram
     -ValidateWorkHours(TimeOnly start, TimeOnly end) void
     -ValidateMinutes(int value, string label) void
     -ValidateTimeZone(string timeZone) string
+    -RecomputeCircadianForWorkHours(Guid userId, TimeOnly start, TimeOnly end) void
+    -ScoreForHour(int hour, int startMinute, int endMinute, HashSet~int~ productiveHours) decimal
+    -RescheduleReminderJobs(Guid userId) void
     -ToDto(User user) MeDto
     -RefreshSubscription(Guid userId) void
   }
   class IUserSetupRepository {
     <<interface>>
     +GetUser(Guid userId) User
+    +GetCircadianProfiles(Guid userId) UserCircadianProfile[]
     +GetActiveSubscription(Guid userId) UserSubscription
     +GetGoogleConnectionStatus(Guid userId) string
   }
   class UserSetupRepository {
     +GetUser(Guid userId) User
+    +GetCircadianProfiles(Guid userId) UserCircadianProfile[]
     +GetActiveSubscription(Guid userId) UserSubscription
     +GetGoogleConnectionStatus(Guid userId) string
   }
@@ -1627,6 +1660,15 @@ classDiagram
     -bool OnboardingCompleted
     -DateTime CreatedAt
     -DateTime DeletedAt
+  }
+  class UserCircadianProfile {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -short HourOfDay
+    -decimal Score
+    -string Source
+    -DateTime UpdatedAt
   }
   class ScheduleSlot {
     <<Entity>>
@@ -1687,10 +1729,12 @@ classDiagram
   IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
   IScheduleJobService <|.. ScheduleJobService : implements
   UserSetupRepository ..> User
+  UserSetupRepository ..> UserCircadianProfile
   UserSetupRepository ..> UserSubscription
   UserSetupRepository ..> GoogleConnection
   ScheduleSlotRepository ..> ScheduleSlot
   MeService ..> Role
+  User "1" --> "0..*" UserCircadianProfile
   Role "1" --> "0..*" User
   User "1" --> "0..1" GoogleConnection
   User "1" --> "0..1" UserSubscription
@@ -1720,13 +1764,19 @@ sequenceDiagram
       opt user == null || user.DeletedAt != null
         MeService-->>MeController: throw NotFoundException (404)
       end
+    opt workHoursChanged
+      MeService->>MeService: RecomputeCircadianForWorkHours(userId, start, end)
+        MeService->>UserSetupRepository: GetCircadianProfiles(userId)
+        UserSetupRepository-->>MeService: UserCircadianProfile list
+    end
     MeService->>UnitOfWork: SaveChanges()
     opt leadChanged
-      MeService->>ScheduleSlotRepository: GetUpcomingApprovedByUser(userId, nowUtc)
-      ScheduleSlotRepository-->>MeService: ScheduleSlot list
-      loop each slot in upcoming
-        MeService->>ScheduleJobService: ScheduleAllJobsForSlot(slot)
-      end
+      MeService->>MeService: RescheduleReminderJobs(userId)
+        MeService->>ScheduleSlotRepository: GetUpcomingApprovedByUser(userId, nowUtc)
+        ScheduleSlotRepository-->>MeService: ScheduleSlot list
+        loop each slot in upcoming
+          MeService->>ScheduleJobService: ScheduleAllJobsForSlot(slot)
+        end
     end
     MeService->>MeService: ToDto(user)
       MeService->>UserSetupRepository: GetActiveSubscription(userId)
@@ -1748,7 +1798,7 @@ Table 3.7.3.a: MeController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSettings(UpdateSettingsRequestDto request) : MeDto` | `PUT /api/me/settings`. Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the reminder lead changed, the reminder jobs of the user's upcoming Approved slots are scheduled again. Requires a signed-in user. |
+| 1 | `UpdateSettings(UpdateSettingsRequestDto request) : MeDto` | `PUT /api/me/settings`. Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the work-day start or end changed, the 24 circadian scores are recomputed for the new window (only rows made by onboarding or by default; productive hours of 0.8 and rows learned by the AI stay). When the reminder lead changed, the reminder jobs of the user upcoming Approved slots are scheduled again. Requires a signed-in user. |
 
 #### 3.7.3.b MeService
 
@@ -1756,13 +1806,16 @@ Table 3.7.3.b: MeService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSettings(Guid userId, UpdateSettingsRequestDto request) : MeDto` | Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the reminder lead changed, the reminder jobs of the user's upcoming Approved slots are scheduled again. |
+| 1 | `UpdateSettings(Guid userId, UpdateSettingsRequestDto request) : MeDto` | Validates work-day start and end, default buffer minutes, reminder lead minutes and the time zone, then saves them. When the work-day start or end changed, the 24 circadian scores are recomputed for the new window (only rows made by onboarding or by default; productive hours of 0.8 and rows learned by the AI stay). When the reminder lead changed, the reminder jobs of the user upcoming Approved slots are scheduled again. |
 | 2 | `private GetUser(Guid userId) : User` | Loads the user or raises NotFoundException when the user does not exist or is soft-deleted. |
 | 3 | `private ValidateWorkHours(TimeOnly start, TimeOnly end)` | Checks that the work-day end is after the start. |
 | 4 | `private ValidateMinutes(int value, string label)` | Checks that a minutes setting is within the allowed range. |
 | 5 | `private ValidateTimeZone(string timeZone) : string` | Checks that the time zone id exists. |
-| 6 | `private ToDto(User user) : MeDto` | Refreshes the user's subscription first, then builds the profile DTO with role, settings, active subscription and Google connection status. |
-| 7 | `private RefreshSubscription(Guid userId)` | Runs IPaymentService.RefreshUserSubscription in its own scope (own DbContext): an overdue Active plan expires and the queued or Free plan becomes Active. |
+| 6 | `private RecomputeCircadianForWorkHours(Guid userId, TimeOnly start, TimeOnly end)` | Called when the work-day start or end changed: scores the 24 hours again against the new window (0.5 inside, 0.2 outside). Only rows made by onboarding or by default are touched; hours already at the productive score 0.8 and rows learned by the AI keep their value. |
+| 7 | `private ScoreForHour(int hour, int startMinute, int endMinute, <> productiveHours) : decimal` | Returns the circadian score of one hour: productive hours get the highest score, other working hours a medium score and off hours the lowest. |
+| 8 | `private RescheduleReminderJobs(Guid userId)` | Schedules again the reminder jobs of the user's upcoming Approved slots after the reminder lead minutes changed. |
+| 9 | `private ToDto(User user) : MeDto` | Refreshes the user's subscription first, then builds the profile DTO with role, settings, active subscription and Google connection status. |
+| 10 | `private RefreshSubscription(Guid userId)` | Runs IPaymentService.RefreshUserSubscription in its own scope (own DbContext): an overdue Active plan expires and the queued or Free plan becomes Active. |
 
 #### 3.7.3.c UserSetupRepository
 
@@ -1771,8 +1824,9 @@ Table 3.7.3.c: UserSetupRepository Description Table
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetUser(Guid userId) : User` | Loads the User together with its Role; null when none. |
-| 2 | `GetActiveSubscription(Guid userId) : UserSubscription` | Returns the Active UserSubscription of the user with its plan; null when none. |
-| 3 | `GetGoogleConnectionStatus(Guid userId) : string` | Returns the status text of the user's GoogleConnection; null when not connected. |
+| 2 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
+| 3 | `GetActiveSubscription(Guid userId) : UserSubscription` | Returns the Active UserSubscription of the user with its plan; null when none. |
+| 4 | `GetGoogleConnectionStatus(Guid userId) : string` | Returns the status text of the user's GoogleConnection; null when not connected. |
 
 #### 3.7.3.d UnitOfWork
 
@@ -1806,19 +1860,20 @@ Table 3.7.4: Methods used by this function
 |---|---|---|---|
 | 1 | MeController.UpdateSettings | IMeService.UpdateSettings | MeService |
 | 2 | MeService.GetUser | IUserSetupRepository.GetUser | UserSetupRepository |
-| 3 | MeService.UpdateSettings | IUnitOfWork.SaveChanges | UnitOfWork |
-| 4 | MeService.UpdateSettings | IScheduleSlotRepository.GetUpcomingApprovedByUser | ScheduleSlotRepository |
-| 5 | MeService.UpdateSettings | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
-| 6 | MeService.ToDto | IUserSetupRepository.GetActiveSubscription | UserSetupRepository |
-| 7 | MeService.ToDto | IUserSetupRepository.GetGoogleConnectionStatus | UserSetupRepository |
+| 3 | MeService.RecomputeCircadianForWorkHours | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
+| 4 | MeService.UpdateSettings | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | MeService.RescheduleReminderJobs | IScheduleSlotRepository.GetUpcomingApprovedByUser | ScheduleSlotRepository |
+| 6 | MeService.RescheduleReminderJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 7 | MeService.ToDto | IUserSetupRepository.GetActiveSubscription | UserSetupRepository |
+| 8 | MeService.ToDto | IUserSetupRepository.GetGoogleConnectionStatus | UserSetupRepository |
 
-Entities used: User, ScheduleSlot, Role, UserSubscription, GoogleConnection.
+Entities used: User, UserCircadianProfile, ScheduleSlot, Role, UserSubscription, GoogleConnection.
 
 ---
 
 ## 3.8 Complete Onboarding
 
-Validates the work hours, the overrun level (mapped to a K-bias), the productive hours (0 to 23) and that every chosen domain is active; then recomputes the 24-row circadian profile and stores the K-bias profile of each chosen domain. It can be called again and overwrites the previous answers.
+The user chooses the settings: time zone, work hours, weekend work, buffer minutes and reminder lead are required (400 when missing or invalid). Productive hours, domains and the overrun level are optional (an empty overrun level means Sometimes). It recomputes the 24-row circadian profile and stores the K-bias of the overrun level for each chosen domain only, sets OnboardingCompleted and can be called again to overwrite the previous answers.
 
 - **Endpoint:** `POST /api/me/onboarding`  
 - **Access:** Signed-in user
@@ -1839,9 +1894,12 @@ classDiagram
     +CompleteOnboarding(Guid userId, OnboardingRequestDto request) MeDto
     -GetUser(Guid userId) User
     -ValidateWorkHours(TimeOnly start, TimeOnly end) void
+    -ValidateTimeZone(string timeZone) string
+    -ValidateMinutes(int value, string label) void
     -ApplyCircadianScores(Guid userId, TimeOnly start, TimeOnly end, HashSet~int~ productiveHours) void
     -ScoreForHour(int hour, int startMinute, int endMinute, HashSet~int~ productiveHours) decimal
     -ApplyDomainProfiles(Guid userId, Guid[] domainIds, decimal kbias) void
+    -RescheduleReminderJobs(Guid userId) void
     -ToDto(User user) MeDto
     -RefreshSubscription(Guid userId) void
   }
@@ -1872,6 +1930,20 @@ classDiagram
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetUpcomingApprovedByUser(Guid userId, DateTime nowUtc) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetUpcomingApprovedByUser(Guid userId, DateTime nowUtc) ScheduleSlot[]
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
+  }
+  class ScheduleJobService {
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
   }
   class User {
     <<Entity>>
@@ -1914,6 +1986,23 @@ classDiagram
     -int SampleCount
     -DateTime UpdatedAt
   }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
   class Role {
     <<Entity>>
     -Guid Id
@@ -1948,9 +2037,13 @@ classDiagram
   MeController ..> IMeService : uses
   MeService ..> IUserSetupRepository : uses
   MeService ..> IUnitOfWork : uses
+  MeService ..> IScheduleSlotRepository : uses
+  MeService ..> IScheduleJobService : uses
   IMeService <|.. MeService : implements
   IUserSetupRepository <|.. UserSetupRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
   UserSetupRepository ..> User
   UserSetupRepository ..> Domain
   UserSetupRepository ..> UserCircadianProfile
@@ -1960,6 +2053,7 @@ classDiagram
   MeService ..> UserCircadianProfile
   MeService ..> UserDomainProfile
   MeService ..> Role
+  ScheduleSlotRepository ..> ScheduleSlot
   User "1" --> "0..*" UserCircadianProfile
   User "1" --> "0..*" UserDomainProfile
   Domain "1" --> "0..*" UserDomainProfile
@@ -1981,6 +2075,8 @@ sequenceDiagram
   participant MeService
   participant UserSetupRepository
   participant UnitOfWork
+  participant ScheduleSlotRepository
+  participant ScheduleJobService
   User->>UI: Complete Onboarding
   UI->>MeController: POST /api/me/onboarding
   MeController->>MeService: CompleteOnboarding(userId, request)
@@ -1990,7 +2086,16 @@ sequenceDiagram
       opt user == null || user.DeletedAt != null
         MeService-->>MeController: throw NotFoundException (404)
       end
-    opt request.OverrunLevel == null || !OverrunKBias.TryGetValue(request.OverrunLeve...
+    opt value is missing
+      MeService-->>MeController: throw UserFriendlyException (400)
+    end
+    opt value is missing
+      MeService-->>MeController: throw UserFriendlyException (400)
+    end
+    opt value is missing
+      MeService-->>MeController: throw UserFriendlyException (400)
+    end
+    opt !OverrunKBias.TryGetValue(overrunLevel, out var kbias)
       MeService-->>MeController: throw UserFriendlyException (400)
     end
     opt productiveHours.Any(h => h < 0 || h > 23)
@@ -2014,6 +2119,14 @@ sequenceDiagram
         MeService->>UserSetupRepository: AddDomainProfiles(profiles)
       end
     MeService->>UnitOfWork: SaveChanges()
+    opt reminderChanged
+      MeService->>MeService: RescheduleReminderJobs(userId)
+        MeService->>ScheduleSlotRepository: GetUpcomingApprovedByUser(userId, nowUtc)
+        ScheduleSlotRepository-->>MeService: ScheduleSlot list
+        loop each slot in upcoming
+          MeService->>ScheduleJobService: ScheduleAllJobsForSlot(slot)
+        end
+    end
     MeService->>MeService: ToDto(user)
       MeService->>UserSetupRepository: GetActiveSubscription(userId)
       UserSetupRepository-->>MeService: UserSubscription
@@ -2034,7 +2147,7 @@ Table 3.8.3.a: MeController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CompleteOnboarding(OnboardingRequestDto request) : MeDto` | `POST /api/me/onboarding`. Validates the work hours, the overrun level (mapped to a K-bias), the productive hours (0 to 23) and that every chosen domain is active; then recomputes the 24-row circadian profile and stores the K-bias profile of each chosen domain. It can be called again and overwrites the previous answers. Requires a signed-in user. |
+| 1 | `CompleteOnboarding(OnboardingRequestDto request) : MeDto` | `POST /api/me/onboarding`. The user chooses the settings: time zone, work hours, weekend work, buffer minutes and reminder lead are required (400 when missing or invalid). Productive hours, domains and the overrun level are optional (an empty overrun level means Sometimes). It recomputes the 24-row circadian profile and stores the K-bias of the overrun level for each chosen domain only, sets OnboardingCompleted and can be called again to overwrite the previous answers. Requires a signed-in user. |
 
 #### 3.8.3.b MeService
 
@@ -2042,14 +2155,17 @@ Table 3.8.3.b: MeService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CompleteOnboarding(Guid userId, OnboardingRequestDto request) : MeDto` | Validates the work hours, the overrun level (mapped to a K-bias), the productive hours (0 to 23) and that every chosen domain is active; then recomputes the 24-row circadian profile and stores the K-bias profile of each chosen domain. It can be called again and overwrites the previous answers. |
+| 1 | `CompleteOnboarding(Guid userId, OnboardingRequestDto request) : MeDto` | The user chooses the settings: time zone, work hours, weekend work, buffer minutes and reminder lead are required (400 when missing or invalid). Productive hours, domains and the overrun level are optional (an empty overrun level means Sometimes). It recomputes the 24-row circadian profile and stores the K-bias of the overrun level for each chosen domain only, sets OnboardingCompleted and can be called again to overwrite the previous answers. |
 | 2 | `private GetUser(Guid userId) : User` | Loads the user or raises NotFoundException when the user does not exist or is soft-deleted. |
 | 3 | `private ValidateWorkHours(TimeOnly start, TimeOnly end)` | Checks that the work-day end is after the start. |
-| 4 | `private ApplyCircadianScores(Guid userId, TimeOnly start, TimeOnly end, <> productiveHours)` | Recomputes the 24 circadian scores from the work hours and productive hours (score per hour) and updates or creates the rows with source Onboarding. |
-| 5 | `private ScoreForHour(int hour, int startMinute, int endMinute, <> productiveHours) : decimal` | Returns the circadian score of one hour: productive hours get the highest score, other working hours a medium score and off hours the lowest. |
-| 6 | `private ApplyDomainProfiles(Guid userId, Guid[] domainIds, decimal kbias)` | Creates the K-bias profile of each chosen domain, or updates an existing one that has no real samples yet. |
-| 7 | `private ToDto(User user) : MeDto` | Refreshes the user's subscription first, then builds the profile DTO with role, settings, active subscription and Google connection status. |
-| 8 | `private RefreshSubscription(Guid userId)` | Runs IPaymentService.RefreshUserSubscription in its own scope (own DbContext): an overdue Active plan expires and the queued or Free plan becomes Active. |
+| 4 | `private ValidateTimeZone(string timeZone) : string` | Checks that the time zone id exists. |
+| 5 | `private ValidateMinutes(int value, string label)` | Checks that a minutes setting is within the allowed range. |
+| 6 | `private ApplyCircadianScores(Guid userId, TimeOnly start, TimeOnly end, <> productiveHours)` | Recomputes the 24 circadian scores from the work hours and productive hours (score per hour) and updates or creates the rows with source Onboarding. |
+| 7 | `private ScoreForHour(int hour, int startMinute, int endMinute, <> productiveHours) : decimal` | Returns the circadian score of one hour: productive hours get the highest score, other working hours a medium score and off hours the lowest. |
+| 8 | `private ApplyDomainProfiles(Guid userId, Guid[] domainIds, decimal kbias)` | Creates the K-bias profile of each chosen domain, or updates an existing one that has no real samples yet. |
+| 9 | `private RescheduleReminderJobs(Guid userId)` | Schedules again the reminder jobs of the user's upcoming Approved slots after the reminder lead minutes changed. |
+| 10 | `private ToDto(User user) : MeDto` | Refreshes the user's subscription first, then builds the profile DTO with role, settings, active subscription and Google connection status. |
+| 11 | `private RefreshSubscription(Guid userId)` | Runs IPaymentService.RefreshUserSubscription in its own scope (own DbContext): an overdue Active plan expires and the queued or Free plan becomes Active. |
 
 #### 3.8.3.c UserSetupRepository
 
@@ -2074,6 +2190,22 @@ Table 3.8.3.d: UnitOfWork Description Table
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
+#### 3.8.3.e ScheduleSlotRepository
+
+Table 3.8.3.e: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetUpcomingApprovedByUser(Guid userId, DateTime nowUtc) : ScheduleSlot[]` | Returns the user's Approved slots that have not started yet (used to reschedule reminders when the lead time changes). |
+
+#### 3.8.3.f ScheduleJobService
+
+Table 3.8.3.f: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ScheduleAllJobsForSlot(ScheduleSlot slot)` | Removes the old Hangfire jobs of the slot and schedules all of its reminder and status jobs again from the current StartTime and EndTime. |
+
 ### 3.8.4 Methods Used
 
 Table 3.8.4: Methods used by this function
@@ -2088,10 +2220,12 @@ Table 3.8.4: Methods used by this function
 | 6 | MeService.ApplyDomainProfiles | IUserSetupRepository.GetDomainProfiles | UserSetupRepository |
 | 7 | MeService.ApplyDomainProfiles | IUserSetupRepository.AddDomainProfiles | UserSetupRepository |
 | 8 | MeService.CompleteOnboarding | IUnitOfWork.SaveChanges | UnitOfWork |
-| 9 | MeService.ToDto | IUserSetupRepository.GetActiveSubscription | UserSetupRepository |
-| 10 | MeService.ToDto | IUserSetupRepository.GetGoogleConnectionStatus | UserSetupRepository |
+| 9 | MeService.RescheduleReminderJobs | IScheduleSlotRepository.GetUpcomingApprovedByUser | ScheduleSlotRepository |
+| 10 | MeService.RescheduleReminderJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 11 | MeService.ToDto | IUserSetupRepository.GetActiveSubscription | UserSetupRepository |
+| 12 | MeService.ToDto | IUserSetupRepository.GetGoogleConnectionStatus | UserSetupRepository |
 
-Entities used: User, Domain, UserCircadianProfile, UserDomainProfile, Role, UserSubscription, GoogleConnection.
+Entities used: User, Domain, UserCircadianProfile, UserDomainProfile, ScheduleSlot, Role, UserSubscription, GoogleConnection.
 
 ---
 
@@ -6723,7 +6857,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -8275,7 +8408,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -8562,7 +8694,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -9601,7 +9732,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -11481,7 +11611,7 @@ Entities used: Task, ScheduleSlot.
 
 ## 3.66 Create Schedule Slot
 
-Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped; creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs.
+Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped. An Approved slot may not overlap another active slot of the same user (409 SLOT_OVERLAP; touching ends are allowed); creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs.
 
 - **Endpoint:** `POST /api/tasks/{taskId}/schedule-slots`  
 - **Access:** Signed-in user
@@ -11504,6 +11634,7 @@ classDiagram
     -ValidateRequest(ScheduleSlotRequestDto request) void
     -ValidateReferences(Guid userId, Guid taskId, ScheduleSlotRequestDto request) void
     -ApplyRequest(ScheduleSlot slot, ScheduleSlotRequestDto request) void
+    -EnsureNoOverlap(Guid userId, ScheduleSlot slot) void
     -AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd) void
     -SyncJobs(ScheduleSlot slot) void
     -ToDto(ScheduleSlot slot) ScheduleSlotDto
@@ -11514,6 +11645,7 @@ classDiagram
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
     +GetTaskStatus(Guid taskId) string
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
     +Add(ScheduleSlot slot) void
   }
   class ScheduleSlotRepository {
@@ -11521,6 +11653,7 @@ classDiagram
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
     +GetTaskStatus(Guid taskId) string
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
     +Add(ScheduleSlot slot) void
   }
   class IUnitOfWork {
@@ -11617,14 +11750,11 @@ classDiagram
     <<Entity>>
     -Guid Id
     -Guid UserId
-    -Guid BlindTestSessionId
     -short Level
     -string Status
     -bool IsFeasible
     -int MissingMinutes
     -string Explanation
-    -short DisplayPosition
-    -bool IsChosen
     -DateTime CreatedAt
   }
   class ScheduleChangeLog {
@@ -11727,6 +11857,11 @@ sequenceDiagram
     opt slot.Status is not (ProposedStatus or 'Approved')
       ScheduleSlotService-->>ScheduleSlotsController: throw UserFriendlyException (400)
     end
+    ScheduleSlotService->>ScheduleSlotService: EnsureNoOverlap(userId, slot)
+      ScheduleSlotService->>ScheduleSlotRepository: GetLiveSlotsOverlapping(userId, startUtc, endUtc, excludeSlotId)
+      ScheduleSlotRepository-->>ScheduleSlotService: ScheduleSlot list
+      opt overlaps.Count > 0
+      end
     ScheduleSlotService->>UnitOfWork: ExecuteInTransaction(action)
     ScheduleSlotService->>ScheduleSlotRepository: Add(slot)
     ScheduleSlotService->>ScheduleSlotService: AddLog(slotId, changeType, oldStart, oldEnd, newStart, newEnd)
@@ -11761,7 +11896,7 @@ Table 3.66.3.a: ScheduleSlotsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CreateSlot(Guid taskId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `POST /api/tasks/{taskId}/schedule-slots`. Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped; creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs. Requires a signed-in user. |
+| 1 | `CreateSlot(Guid taskId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `POST /api/tasks/{taskId}/schedule-slots`. Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped. An Approved slot may not overlap another active slot of the same user (409 SLOT_OVERLAP; touching ends are allowed); creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs. Requires a signed-in user. |
 
 #### 3.66.3.b ScheduleSlotService
 
@@ -11769,14 +11904,15 @@ Table 3.66.3.b: ScheduleSlotService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CreateSlot(Guid userId, Guid taskId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped; creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs. |
+| 1 | `CreateSlot(Guid userId, Guid taskId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates the time range, the status (a new slot must be Proposed or Approved), the sub-task and proposal references and that the task is not Done or Skipped. An Approved slot may not overlap another active slot of the same user (409 SLOT_OVERLAP; touching ends are allowed); creates the slot, writes a change log row, derives the task status and schedules (or cancels) the Hangfire jobs. |
 | 2 | `private EnsureTaskOwned(Guid userId, Guid taskId)` | Checks that the task belongs to the user, otherwise raises NotFoundException. |
 | 3 | `private ValidateRequest(ScheduleSlotRequestDto request)` | Checks that the end is after the start, the status is allowed, the explanation is not too long and K-bias is within range. |
 | 4 | `private ValidateReferences(Guid userId, Guid taskId, ScheduleSlotRequestDto request)` | Checks that the sub-task belongs to the task and that the referenced proposal exists. |
 | 5 | `private ApplyRequest(ScheduleSlot slot, ScheduleSlotRequestDto request)` | Copies the times (stored as UTC), planned minutes, sub-task, proposal, manual-override flag, K-bias, explanation and status onto the slot. |
-| 6 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (change type, old and new times, source Manual) for the slot. |
-| 7 | `private SyncJobs(ScheduleSlot slot)` | After a save, keeps the Hangfire jobs in line with the slot: Approved slots get all jobs scheduled, live slots keep their jobs, other slots have every job cancelled. |
-| 8 | `private ToDto(ScheduleSlot slot) : ScheduleSlotDto` | Maps the entity to the DTO returned by the API. |
+| 6 | `private EnsureNoOverlap(Guid userId, ScheduleSlot slot)` | Only for an active slot (Approved, Due, InProgress, Overrun): asks the repository for the user's other active slots that intersect its time (touching ends do not count) and raises SlotOverlapException (HTTP 409 SLOT_OVERLAP) listing them. |
+| 7 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (change type, old and new times, source Manual) for the slot. |
+| 8 | `private SyncJobs(ScheduleSlot slot)` | After a save, keeps the Hangfire jobs in line with the slot: Approved slots get all jobs scheduled, live slots keep their jobs, other slots have every job cancelled. |
+| 9 | `private ToDto(ScheduleSlot slot) : ScheduleSlotDto` | Maps the entity to the DTO returned by the API. |
 
 #### 3.66.3.c ScheduleSlotRepository
 
@@ -11788,7 +11924,8 @@ Table 3.66.3.c: ScheduleSlotRepository Description Table
 | 2 | `SubTaskBelongsToTask(Guid subTaskId, Guid taskId) : bool` | True when the SubTask belongs to the given Task. |
 | 3 | `ProposalOwnedByUser(Guid proposalId, Guid userId) : bool` | True when the ScheduleProposal belongs to the user. |
 | 4 | `GetTaskStatus(Guid taskId) : string` | Returns the status of the task (a Done or Skipped task cannot be scheduled). |
-| 5 | `Add(ScheduleSlot slot)` | Adds a ScheduleSlot to the context. |
+| 5 | `GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, startUtc, endUtc, excludeSlotId); returns nothing or an empty list when there is no match. |
+| 6 | `Add(ScheduleSlot slot)` | Adds a ScheduleSlot to the context. |
 
 #### 3.66.3.d UnitOfWork
 
@@ -11849,16 +11986,17 @@ Table 3.66.4: Methods used by this function
 | 3 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.SubTaskBelongsToTask | ScheduleSlotRepository |
 | 4 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.ProposalOwnedByUser | ScheduleSlotRepository |
 | 5 | ScheduleSlotService.CreateSlot | IScheduleSlotRepository.GetTaskStatus | ScheduleSlotRepository |
-| 6 | ScheduleSlotService.CreateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 7 | ScheduleSlotService.CreateSlot | IScheduleSlotRepository.Add | ScheduleSlotRepository |
-| 8 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
-| 9 | ScheduleSlotService.CreateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | ScheduleSlotService.CreateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
-| 11 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
-| 12 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 13 | ScheduleSlotService.CreateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
-| 14 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 15 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
+| 6 | ScheduleSlotService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
+| 7 | ScheduleSlotService.CreateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 8 | ScheduleSlotService.CreateSlot | IScheduleSlotRepository.Add | ScheduleSlotRepository |
+| 9 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 10 | ScheduleSlotService.CreateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 11 | ScheduleSlotService.CreateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
+| 12 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 13 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 14 | ScheduleSlotService.CreateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
+| 15 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 16 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
 
 Entities used: ScheduleSlot, Task, SubTask, ScheduleProposal, ScheduleChangeLog.
 
@@ -11990,7 +12128,7 @@ Entities used: ScheduleSlot.
 
 ## 3.68 Update Schedule Slot
 
-Validates and updates a slot of the user. A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again.
+Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again.
 
 - **Endpoint:** `PUT /api/schedule-slots/{slotId}`  
 - **Access:** Signed-in user
@@ -12013,6 +12151,7 @@ classDiagram
     -ValidateRequest(ScheduleSlotRequestDto request) void
     -ValidateReferences(Guid userId, Guid taskId, ScheduleSlotRequestDto request) void
     -ApplyRequest(ScheduleSlot slot, ScheduleSlotRequestDto request) void
+    -EnsureNoOverlap(Guid userId, ScheduleSlot slot) void
     -AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd) void
     -SyncJobs(ScheduleSlot slot) void
     -ToDto(ScheduleSlot slot) ScheduleSlotDto
@@ -12022,11 +12161,13 @@ classDiagram
     +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
   }
   class ScheduleSlotRepository {
     +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
   }
   class IScheduleChangeLogRepository {
     <<interface>>
@@ -12104,14 +12245,11 @@ classDiagram
     <<Entity>>
     -Guid Id
     -Guid UserId
-    -Guid BlindTestSessionId
     -short Level
     -string Status
     -bool IsFeasible
     -int MissingMinutes
     -string Explanation
-    -short DisplayPosition
-    -bool IsChosen
     -DateTime CreatedAt
   }
   class ScheduleChangeLog {
@@ -12202,6 +12340,13 @@ sequenceDiagram
       opt request.ScheduleProposalId is ( ) proposalId && !slotRepository.ProposalOwned...
         ScheduleSlotService-->>ScheduleSlotsController: throw UserFriendlyException (400)
       end
+    opt (slot.StartTime != oldStart || slot.EndTime != oldEnd || !wasLive)
+      ScheduleSlotService->>ScheduleSlotService: EnsureNoOverlap(userId, slot)
+        ScheduleSlotService->>ScheduleSlotRepository: GetLiveSlotsOverlapping(userId, startUtc, endUtc, excludeSlotId)
+        ScheduleSlotRepository-->>ScheduleSlotService: ScheduleSlot list
+        opt overlaps.Count > 0
+        end
+    end
     opt startChanged || endChanged
       ScheduleSlotService->>ScheduleSlotService: AddLog(slotId, changeType, oldStart, oldEnd, newStart, newEnd)
         ScheduleSlotService->>ScheduleChangeLogRepository: Add(log)
@@ -12237,7 +12382,7 @@ Table 3.68.3.a: ScheduleSlotsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSlot(Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `PUT /api/schedule-slots/{slotId}`. Validates and updates a slot of the user. A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. Requires a signed-in user. |
+| 1 | `UpdateSlot(Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `PUT /api/schedule-slots/{slotId}`. Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. Requires a signed-in user. |
 
 #### 3.68.3.b ScheduleSlotService
 
@@ -12245,14 +12390,15 @@ Table 3.68.3.b: ScheduleSlotService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSlot(Guid userId, Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates and updates a slot of the user. A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. |
+| 1 | `UpdateSlot(Guid userId, Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. |
 | 2 | `private GetOwnedSlot(Guid userId, Guid slotId) : ScheduleSlot` | Loads the slot of the user or raises NotFoundException. |
 | 3 | `private ValidateRequest(ScheduleSlotRequestDto request)` | Checks that the end is after the start, the status is allowed, the explanation is not too long and K-bias is within range. |
 | 4 | `private ValidateReferences(Guid userId, Guid taskId, ScheduleSlotRequestDto request)` | Checks that the sub-task belongs to the task and that the referenced proposal exists. |
 | 5 | `private ApplyRequest(ScheduleSlot slot, ScheduleSlotRequestDto request)` | Copies the times (stored as UTC), planned minutes, sub-task, proposal, manual-override flag, K-bias, explanation and status onto the slot. |
-| 6 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (change type, old and new times, source Manual) for the slot. |
-| 7 | `private SyncJobs(ScheduleSlot slot)` | After a save, keeps the Hangfire jobs in line with the slot: Approved slots get all jobs scheduled, live slots keep their jobs, other slots have every job cancelled. |
-| 8 | `private ToDto(ScheduleSlot slot) : ScheduleSlotDto` | Maps the entity to the DTO returned by the API. |
+| 6 | `private EnsureNoOverlap(Guid userId, ScheduleSlot slot)` | Only for an active slot (Approved, Due, InProgress, Overrun): asks the repository for the user's other active slots that intersect its time (touching ends do not count) and raises SlotOverlapException (HTTP 409 SLOT_OVERLAP) listing them. |
+| 7 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (change type, old and new times, source Manual) for the slot. |
+| 8 | `private SyncJobs(ScheduleSlot slot)` | After a save, keeps the Hangfire jobs in line with the slot: Approved slots get all jobs scheduled, live slots keep their jobs, other slots have every job cancelled. |
+| 9 | `private ToDto(ScheduleSlot slot) : ScheduleSlotDto` | Maps the entity to the DTO returned by the API. |
 
 #### 3.68.3.c ScheduleSlotRepository
 
@@ -12263,6 +12409,7 @@ Table 3.68.3.c: ScheduleSlotRepository Description Table
 | 1 | `GetByIdForUser(Guid slotId, Guid userId) : ScheduleSlot` | Finds the ScheduleSlot by id only when its task belongs to the user. |
 | 2 | `SubTaskBelongsToTask(Guid subTaskId, Guid taskId) : bool` | True when the SubTask belongs to the given Task. |
 | 3 | `ProposalOwnedByUser(Guid proposalId, Guid userId) : bool` | True when the ScheduleProposal belongs to the user. |
+| 4 | `GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, startUtc, endUtc, excludeSlotId); returns nothing or an empty list when there is no match. |
 
 #### 3.68.3.d ScheduleChangeLogRepository
 
@@ -12322,15 +12469,16 @@ Table 3.68.4: Methods used by this function
 | 2 | ScheduleSlotService.GetOwnedSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
 | 3 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.SubTaskBelongsToTask | ScheduleSlotRepository |
 | 4 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.ProposalOwnedByUser | ScheduleSlotRepository |
-| 5 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
-| 6 | ScheduleSlotService.UpdateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 7 | ScheduleSlotService.UpdateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
-| 8 | ScheduleSlotService.UpdateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
-| 9 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
-| 10 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 11 | ScheduleSlotService.UpdateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
-| 12 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 13 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
+| 5 | ScheduleSlotService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
+| 6 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 7 | ScheduleSlotService.UpdateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 8 | ScheduleSlotService.UpdateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | ScheduleSlotService.UpdateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
+| 10 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 11 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 12 | ScheduleSlotService.UpdateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
+| 13 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 14 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
 
 Entities used: ScheduleSlot, SubTask, ScheduleProposal, ScheduleChangeLog.
 
@@ -13250,7 +13398,7 @@ Table 3.74.4: Methods used by this function
 
 ## 3.75 Approve Proposal
 
-Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts answer 409 unless skipConflicts is true (conflicting slots are then left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved.
+Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts with Google events, and proposed slots that overlap an active slot of the user (Approved, Due, InProgress or Overrun), answer 409 (SCHEDULE_CONFLICT or SLOT_OVERLAP) unless skipConflicts is true (those slots are then cancelled and left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved.
 
 - **Endpoint:** `POST /api/schedule/proposals/{proposalId}/approve`  
 - **Access:** Signed-in user
@@ -13273,6 +13421,7 @@ classDiagram
     -RefreshGoogle(Guid userId) string
     -HasActiveGoogleConnection(Guid userId) bool
     -FindConflicts(Guid userId, ScheduleSlot[] slots) SlotConflictDto[]
+    -FindOverlaps(Guid userId, ScheduleSlot[] slots) ProposalSlotOverlapDto[]
     -NewLog(Guid slotId, string changeType, string source, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd, DateTime at) ScheduleChangeLog
     -ToDto(ScheduleProposal proposal) ScheduleProposalDto
   }
@@ -13421,6 +13570,9 @@ sequenceDiagram
     opt conflicts.Count > 0 && !skipConflicts
       ScheduleProposalService-->>ScheduleProposalsController: throw ScheduleConflictException (409)
     end
+    opt overlaps.Count > 0 && !skipConflicts
+      ScheduleProposalService-->>ScheduleProposalsController: throw SlotOverlapException
+    end
     opt toApprove.Count == 0
       ScheduleProposalService-->>ScheduleProposalsController: throw UserFriendlyException (400)
     end
@@ -13457,7 +13609,7 @@ Table 3.75.3.a: ScheduleProposalsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ApproveProposal(Guid proposalId, bool skipConflicts) : ScheduleProposalDto` | `POST /api/schedule/proposals/{proposalId}/approve`. Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts answer 409 unless skipConflicts is true (conflicting slots are then left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved. Requires a signed-in user. |
+| 1 | `ApproveProposal(Guid proposalId, bool skipConflicts) : ScheduleProposalDto` | `POST /api/schedule/proposals/{proposalId}/approve`. Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts with Google events, and proposed slots that overlap an active slot of the user (Approved, Due, InProgress or Overrun), answer 409 (SCHEDULE_CONFLICT or SLOT_OVERLAP) unless skipConflicts is true (those slots are then cancelled and left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved. Requires a signed-in user. |
 
 #### 3.75.3.b ScheduleProposalService
 
@@ -13465,13 +13617,14 @@ Table 3.75.3.b: ScheduleProposalService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ApproveProposal(Guid userId, Guid proposalId, bool skipConflicts) : ScheduleProposalDto` | Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts answer 409 unless skipConflicts is true (conflicting slots are then left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved. |
+| 1 | `ApproveProposal(Guid userId, Guid proposalId, bool skipConflicts) : ScheduleProposalDto` | Pulls the latest Google changes and checks the Proposed slots against Google Calendar. Conflicts with Google events, and proposed slots that overlap an active slot of the user (Approved, Due, InProgress or Overrun), answer 409 (SCHEDULE_CONFLICT or SLOT_OVERLAP) unless skipConflicts is true (those slots are then cancelled and left out); the remaining slots become Approved, their reminder jobs are created and the proposal is approved. |
 | 2 | `private LoadProposal(Guid userId, Guid proposalId) : ScheduleProposal` | Loads the proposal of the user with its slots and tasks, or raises NotFoundException. |
 | 3 | `private RefreshGoogle(Guid userId) : string` | Pulls Google changes just before approving, so that the conflict check uses fresh data. A failure does not block the approval (the cached data is used). Returns NotConnected when the user has no active connection, otherwise a status text for the check. |
 | 4 | `private HasActiveGoogleConnection(Guid userId) : bool` | True when the user has an Active Google connection. |
 | 5 | `private FindConflicts(Guid userId, ScheduleSlot[] slots) : SlotConflictDto[]` | Finds the proposed slots that overlap a cached Google event (touching ends do not count; all-day, cancelled and METANOIA-created events are ignored). |
-| 6 | `private NewLog(Guid slotId, string changeType, string source, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd, DateTime at) : ScheduleChangeLog` | Creates a ScheduleChangeLog row for a slot change. |
-| 7 | `private ToDto(ScheduleProposal proposal) : ScheduleProposalDto` | Maps the entity to the DTO returned by the API. |
+| 6 | `private FindOverlaps(Guid userId, ScheduleSlot[] slots) : ProposalSlotOverlapDto[]` | Finds the proposed slots that intersect an active slot of the user (Approved, Due, InProgress, Overrun) and returns each pair; proposed slots never block each other. |
+| 7 | `private NewLog(Guid slotId, string changeType, string source, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd, DateTime at) : ScheduleChangeLog` | Creates a ScheduleChangeLog row for a slot change. |
+| 8 | `private ToDto(ScheduleProposal proposal) : ScheduleProposalDto` | Maps the entity to the DTO returned by the API. |
 
 #### 3.75.3.c GoogleSyncGate
 
@@ -13872,7 +14025,7 @@ Entities used: ScheduleChangeLog.
 
 ## 3.78 Preview Proposal Conflicts
 
-Lists the Proposed slots that overlap events in the user's cached Google calendar, without synchronizing.
+Lists the Proposed slots that overlap events in the user's cached Google calendar (without synchronizing) and, even when Google is not connected, the ones that overlap an active slot of the user.
 
 - **Endpoint:** `GET /api/schedule/proposals/{proposalId}/conflicts`  
 - **Access:** Signed-in user
@@ -13892,6 +14045,7 @@ classDiagram
   class ScheduleProposalService {
     +GetConflicts(Guid userId, Guid proposalId) ProposalConflictsDto
     -LoadProposal(Guid userId, Guid proposalId) ScheduleProposal
+    -FindOverlaps(Guid userId, ScheduleSlot[] slots) ProposalSlotOverlapDto[]
     -HasActiveGoogleConnection(Guid userId) bool
     -FindConflicts(Guid userId, ScheduleSlot[] slots) SlotConflictDto[]
   }
@@ -13960,7 +14114,7 @@ Table 3.78.3.a: ScheduleProposalsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetConflicts(Guid proposalId) : ProposalConflictsDto` | `GET /api/schedule/proposals/{proposalId}/conflicts`. Lists the Proposed slots that overlap events in the user's cached Google calendar, without synchronizing. Requires a signed-in user. |
+| 1 | `GetConflicts(Guid proposalId) : ProposalConflictsDto` | `GET /api/schedule/proposals/{proposalId}/conflicts`. Lists the Proposed slots that overlap events in the user's cached Google calendar (without synchronizing) and, even when Google is not connected, the ones that overlap an active slot of the user. Requires a signed-in user. |
 
 #### 3.78.3.b ScheduleProposalService
 
@@ -13968,10 +14122,11 @@ Table 3.78.3.b: ScheduleProposalService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetConflicts(Guid userId, Guid proposalId) : ProposalConflictsDto` | Lists the Proposed slots that overlap events in the user's cached Google calendar, without synchronizing. |
+| 1 | `GetConflicts(Guid userId, Guid proposalId) : ProposalConflictsDto` | Lists the Proposed slots that overlap events in the user's cached Google calendar (without synchronizing) and, even when Google is not connected, the ones that overlap an active slot of the user. |
 | 2 | `private LoadProposal(Guid userId, Guid proposalId) : ScheduleProposal` | Loads the proposal of the user with its slots and tasks, or raises NotFoundException. |
-| 3 | `private HasActiveGoogleConnection(Guid userId) : bool` | True when the user has an Active Google connection. |
-| 4 | `private FindConflicts(Guid userId, ScheduleSlot[] slots) : SlotConflictDto[]` | Finds the proposed slots that overlap a cached Google event (touching ends do not count; all-day, cancelled and METANOIA-created events are ignored). |
+| 3 | `private FindOverlaps(Guid userId, ScheduleSlot[] slots) : ProposalSlotOverlapDto[]` | Finds the proposed slots that intersect an active slot of the user (Approved, Due, InProgress, Overrun) and returns each pair; proposed slots never block each other. |
+| 4 | `private HasActiveGoogleConnection(Guid userId) : bool` | True when the user has an Active Google connection. |
+| 5 | `private FindConflicts(Guid userId, ScheduleSlot[] slots) : SlotConflictDto[]` | Finds the proposed slots that overlap a cached Google event (touching ends do not count; all-day, cancelled and METANOIA-created events are ignored). |
 
 #### 3.78.3.c CalendarRepository
 
@@ -14207,7 +14362,7 @@ Entities used: User, ScheduleSlot, GoogleCalendarEvent, GoogleConnection.
 
 ## 3.80 Start Focus Session
 
-Starts a work session on a task (optionally on a slot and a focus track). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time.
+Starts a work session on a task (optionally on a slot). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time.
 
 - **Endpoint:** `POST /api/focus/start`  
 - **Access:** Signed-in user
@@ -14226,7 +14381,6 @@ classDiagram
   }
   class FocusSessionService {
     +StartSession(Guid userId, FocusStartRequest request) FocusStartResponse
-    -EnsureTrackUsable(Guid trackId) void
     -GetStartableSlot(Guid userId, Guid taskId, Guid slotId) ScheduleSlot
   }
   class IFocusSessionRepository {
@@ -14251,13 +14405,6 @@ classDiagram
   }
   class SubTaskRepository {
     +GetByIdForUser(Guid subTaskId, Guid userId) SubTask
-  }
-  class IFocusTrackRepository {
-    <<interface>>
-    +GetById(Guid trackId) FocusTrack
-  }
-  class FocusTrackRepository {
-    +GetById(Guid trackId) FocusTrack
   }
   class IScheduleSlotRepository {
     <<interface>>
@@ -14311,7 +14458,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -14345,15 +14491,6 @@ classDiagram
     -int EstimatedMinutes
     -int OrderIndex
     -string Status
-  }
-  class FocusTrack {
-    <<Entity>>
-    -Guid Id
-    -string Title
-    -string Artist
-    -string FileUrl
-    -int DurationSeconds
-    -bool IsActive
   }
   class ScheduleSlot {
     <<Entity>>
@@ -14405,7 +14542,6 @@ classDiagram
   FocusSessionService ..> IFocusSessionRepository : uses
   FocusSessionService ..> ITaskRepository : uses
   FocusSessionService ..> ISubTaskRepository : uses
-  FocusSessionService ..> IFocusTrackRepository : uses
   FocusSessionService ..> IScheduleSlotRepository : uses
   FocusSessionService ..> IUnitOfWork : uses
   FocusSessionService ..> ITaskProgressService : uses
@@ -14416,7 +14552,6 @@ classDiagram
   IFocusSessionRepository <|.. FocusSessionRepository : implements
   ITaskRepository <|.. TaskRepository : implements
   ISubTaskRepository <|.. SubTaskRepository : implements
-  IFocusTrackRepository <|.. FocusTrackRepository : implements
   IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   ITaskProgressService <|.. TaskProgressService : implements
@@ -14426,7 +14561,6 @@ classDiagram
   FocusSessionRepository ..> FocusSession
   TaskRepository ..> Task
   SubTaskRepository ..> SubTask
-  FocusTrackRepository ..> FocusTrack
   ScheduleSlotRepository ..> ScheduleSlot
   TaskProgressService ..> ScheduleChangeLog
   FocusSessionController ..> User
@@ -14435,7 +14569,6 @@ classDiagram
   Task "1" --> "0..*" SubTask
   SubTask "1" --> "0..*" FocusSession
   SubTask "1" --> "0..*" ScheduleSlot
-  FocusTrack "1" --> "0..*" FocusSession
   ScheduleSlot "1" --> "0..*" FocusSession
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
 ```
@@ -14454,7 +14587,6 @@ sequenceDiagram
   participant FocusSessionRepository
   participant TaskRepository
   participant SubTaskRepository
-  participant FocusTrackRepository
   participant ScheduleSlotRepository
   participant UnitOfWork
   participant TaskProgressService
@@ -14486,12 +14618,6 @@ sequenceDiagram
         FocusSessionService-->>FocusSessionController: throw UserFriendlyException (400)
       end
     end
-    FocusSessionService->>FocusSessionService: EnsureTrackUsable(trackId)
-      FocusSessionService->>FocusTrackRepository: GetById(trackId)
-      FocusTrackRepository-->>FocusSessionService: FocusTrack
-      opt track == null || !track.IsActive
-        FocusSessionService-->>FocusSessionController: throw UserFriendlyException (400)
-      end
     FocusSessionService->>FocusSessionService: GetStartableSlot(userId, taskId, slotId)
       FocusSessionService->>ScheduleSlotRepository: GetByIdForUser(slotId, userId)
       ScheduleSlotRepository-->>FocusSessionService: ScheduleSlot
@@ -14536,7 +14662,7 @@ Table 3.80.3.a: FocusSessionController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `StartSession(FocusStartRequest request) : IActionResult` | `POST /api/focus/start`. Starts a work session on a task (optionally on a slot and a focus track). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time. Requires a signed-in user. |
+| 1 | `StartSession(FocusStartRequest request) : IActionResult` | `POST /api/focus/start`. Starts a work session on a task (optionally on a slot). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time. Requires a signed-in user. |
 
 #### 3.80.3.b FocusSessionService
 
@@ -14544,9 +14670,8 @@ Table 3.80.3.b: FocusSessionService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `StartSession(Guid userId, FocusStartRequest request) : FocusStartResponse` | Starts a work session on a task (optionally on a slot and a focus track). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time. |
-| 2 | `private EnsureTrackUsable(Guid trackId)` | Checks that the chosen focus track exists and is active. |
-| 3 | `private GetStartableSlot(Guid userId, Guid taskId, Guid slotId) : ScheduleSlot` | Loads the optional slot and checks that it belongs to the user, to this task and is in a status that can be worked on. |
+| 1 | `StartSession(Guid userId, FocusStartRequest request) : FocusStartResponse` | Starts a work session on a task (optionally on a slot). Refuses when a session is already running (409). Moves the task and its milestone to InProgress and reschedules the slot jobs from the real start time. |
+| 2 | `private GetStartableSlot(Guid userId, Guid taskId, Guid slotId) : ScheduleSlot` | Loads the optional slot and checks that it belongs to the user, to this task and is in a status that can be worked on. |
 
 #### 3.80.3.c FocusSessionRepository
 
@@ -14573,34 +14698,26 @@ Table 3.80.3.e: SubTaskRepository Description Table
 |---|---|---|
 | 1 | `GetByIdForUser(Guid subTaskId, Guid userId) : SubTask` | Finds the SubTask by id only when its task belongs to the user. |
 
-#### 3.80.3.f FocusTrackRepository
+#### 3.80.3.f ScheduleSlotRepository
 
-Table 3.80.3.f: FocusTrackRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid trackId) : FocusTrack` | Finds the FocusTrack by id; null when none. |
-
-#### 3.80.3.g ScheduleSlotRepository
-
-Table 3.80.3.g: ScheduleSlotRepository Description Table
+Table 3.80.3.f: ScheduleSlotRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByIdForUser(Guid slotId, Guid userId) : ScheduleSlot` | Finds the ScheduleSlot by id only when its task belongs to the user. |
 
-#### 3.80.3.h UnitOfWork
+#### 3.80.3.g UnitOfWork
 
-Table 3.80.3.h: UnitOfWork Description Table
+Table 3.80.3.g: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
 | 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.80.3.i TaskProgressService
+#### 3.80.3.h TaskProgressService
 
-Table 3.80.3.i: TaskProgressService Description Table
+Table 3.80.3.h: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -14612,18 +14729,18 @@ Table 3.80.3.i: TaskProgressService Description Table
 | 6 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 7 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.80.3.j ScheduleJobService
+#### 3.80.3.i ScheduleJobService
 
-Table 3.80.3.j: ScheduleJobService Description Table
+Table 3.80.3.i: ScheduleJobService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `RescheduleSlotJobs(Guid slotId, DateTimeOffset actualStartTime)` | After the user presses Start, cancels the old jobs and re-creates only the closing jobs (near-end reminder, slot ended, overrun, auto timeout) counted from the real start time. The slot StartTime and EndTime are not changed. |
 | 2 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
 
-#### 3.80.3.k AiServiceClient
+#### 3.80.3.j AiServiceClient
 
-Table 3.80.3.k: AiServiceClient Description Table
+Table 3.80.3.j: AiServiceClient Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -14639,18 +14756,17 @@ Table 3.80.4: Methods used by this function
 | 2 | FocusSessionService.StartSession | IFocusSessionRepository.GetRunningWithDetails | FocusSessionRepository |
 | 3 | FocusSessionService.StartSession | ITaskRepository.GetByIdForUser | TaskRepository |
 | 4 | FocusSessionService.StartSession | ISubTaskRepository.GetByIdForUser | SubTaskRepository |
-| 5 | FocusSessionService.EnsureTrackUsable | IFocusTrackRepository.GetById | FocusTrackRepository |
-| 6 | FocusSessionService.GetStartableSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
-| 7 | FocusSessionService.StartSession | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 8 | FocusSessionService.StartSession | IFocusSessionRepository.Add | FocusSessionRepository |
-| 9 | FocusSessionService.StartSession | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | FocusSessionService.StartSession | ITaskProgressService.RefreshTask | TaskProgressService |
-| 11 | FocusSessionService.StartSession | IScheduleJobService.RescheduleSlotJobs | ScheduleJobService |
-| 12 | FocusSessionService.StartSession | ITaskProgressService.AfterCommit | TaskProgressService |
-| 13 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 14 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
+| 5 | FocusSessionService.GetStartableSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
+| 6 | FocusSessionService.StartSession | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 7 | FocusSessionService.StartSession | IFocusSessionRepository.Add | FocusSessionRepository |
+| 8 | FocusSessionService.StartSession | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | FocusSessionService.StartSession | ITaskProgressService.RefreshTask | TaskProgressService |
+| 10 | FocusSessionService.StartSession | IScheduleJobService.RescheduleSlotJobs | ScheduleJobService |
+| 11 | FocusSessionService.StartSession | ITaskProgressService.AfterCommit | TaskProgressService |
+| 12 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 13 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
 
-Entities used: FocusSession, Task, SubTask, FocusTrack, ScheduleSlot, ScheduleChangeLog, User.
+Entities used: FocusSession, Task, SubTask, ScheduleSlot, ScheduleChangeLog, User.
 
 ---
 
@@ -14748,7 +14864,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -15063,7 +15178,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -15225,7 +15339,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -15382,7 +15495,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -15562,7 +15674,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -15900,7 +16011,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -16241,7 +16351,6 @@ classDiagram
     -Guid TaskId
     -Guid SubTaskId
     -Guid ScheduleSlotId
-    -Guid FocusTrackId
     -DateTime StartedAt
     -DateTime EndedAt
     -string StopReason
@@ -16383,6 +16492,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -16521,6 +16632,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -16676,6 +16789,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -18192,7 +18307,7 @@ Table 3.99.3.b: PaymentService Description Table
 | 4 | `private ApplyGatewayInfo(PaymentTransaction payment, PayOSPaymentInfo info)` | Applies the PayOS status to the transaction: PAID or UNDERPAID goes to ApplyPaymentReceived, CANCELLED or EXPIRED closes a Pending transaction, a pending link past its expiry is closed. |
 | 5 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
 | 6 | `private EnsureFulfillment(PaymentTransaction payment)` | A Succeeded payment must have both its subscription and its invoice; creates whichever is missing and saves them together. |
-| 7 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): opens a system refund request when refunds are enabled, otherwise logs an error for manual handling. |
+| 7 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): logs an error for manual handling (the system has no refund feature). |
 | 8 | `private GenerateOrderCode() : long` | Generates a PayOS order code smaller than 2^53 (milliseconds * 1000 + three random digits). |
 
 #### 3.99.3.c PaymentTransactionRepository
@@ -18291,7 +18406,6 @@ classDiagram
     -GetAccessible(Guid userId, bool isAdmin, Guid paymentId) PaymentTransaction
     -SyncWithGateway(PaymentTransaction payment) void
     -EnsureFulfillment(PaymentTransaction payment) void
-    -HasOpenRefund(Guid paymentId) bool
     -StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) UserSubscription
     -StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) Invoice
     -ResolveTimeZone(string timeZoneId) TimeZoneInfo
@@ -18329,13 +18443,6 @@ classDiagram
     +GetByPaymentId(Guid paymentId) UserSubscription
     +GetActiveByUser(Guid userId) UserSubscription
     +Add(UserSubscription subscription) void
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
   }
   class IInvoiceRepository {
     <<interface>>
@@ -18417,19 +18524,6 @@ classDiagram
     -DateTime QuotaResetAt
     -DateTime CreatedAt
   }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
   class User {
     <<Entity>>
     -Guid Id
@@ -18451,7 +18545,6 @@ classDiagram
   PaymentService ..> IPaymentTransactionRepository : uses
   PaymentService ..> IUnitOfWork : uses
   PaymentService ..> IUserSubscriptionRepository : uses
-  PaymentService ..> IPaymentRefundRepository : uses
   PaymentService ..> IInvoiceRepository : uses
   PaymentService ..> IUserRepository : uses
   PaymentService ..> IPayOSClient : uses
@@ -18459,7 +18552,6 @@ classDiagram
   IPaymentTransactionRepository <|.. PaymentTransactionRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserSubscriptionRepository <|.. UserSubscriptionRepository : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
   IInvoiceRepository <|.. InvoiceRepository : implements
   IUserRepository <|.. AuthRepository : implements
   IPayOSClient <|.. PayOSClient : implements
@@ -18468,10 +18560,8 @@ classDiagram
   PaymentService ..> Invoice
   PaymentService ..> UserSubscription
   UserSubscriptionRepository ..> UserSubscription
-  PaymentRefundRepository ..> PaymentRefund
   InvoiceRepository ..> Invoice
   AuthRepository ..> User
-  PaymentTransaction "1" --> "0..*" PaymentRefund
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
   SubscriptionPlan "1" --> "0..*" UserSubscription
   User "1" --> "0..*" PaymentTransaction
@@ -18494,7 +18584,6 @@ sequenceDiagram
   participant PaymentTransactionRepository
   participant UnitOfWork
   participant UserSubscriptionRepository
-  participant PaymentRefundRepository
   participant InvoiceRepository
   participant AuthRepository
   participant PayOSClient
@@ -18517,10 +18606,7 @@ sequenceDiagram
           end
           PaymentService->>UserSubscriptionRepository: GetByPaymentId(paymentId)
           UserSubscriptionRepository-->>PaymentService: UserSubscription
-          PaymentService->>PaymentService: HasOpenRefund(paymentId)
-            PaymentService->>PaymentRefundRepository: GetActiveByPayment(paymentId)
-            PaymentRefundRepository-->>PaymentService: PaymentRefund
-          opt subscription == null && !HasOpenRefund(payment.Id)
+          opt subscription == null
             PaymentService->>PaymentService: StageSubscription(payment, plan)
               PaymentService->>UserSubscriptionRepository: GetActiveByUser(userId)
               UserSubscriptionRepository-->>PaymentService: UserSubscription
@@ -18606,17 +18692,16 @@ Table 3.100.3.b: PaymentService Description Table
 | 2 | `private GetAccessible(Guid userId, bool isAdmin, Guid paymentId) : PaymentTransaction` | Loads the payment visible to the caller (the owner, or an administrator) or raises NotFoundException. |
 | 3 | `private SyncWithGateway(PaymentTransaction payment)` | Reads the real payment status at PayOS and updates the transaction; Succeeded triggers fulfillment, a cancelled or expired payment is marked accordingly. |
 | 4 | `private EnsureFulfillment(PaymentTransaction payment)` | A Succeeded payment must have both its subscription and its invoice; creates whichever is missing and saves them together. |
-| 5 | `private HasOpenRefund(Guid paymentId) : bool` | True when an active refund request exists for the payment (always false while refunds are disabled). |
-| 6 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
-| 7 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
-| 8 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
-| 9 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
-| 10 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
-| 11 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
-| 12 | `private ApplyGatewayInfo(PaymentTransaction payment, PayOSPaymentInfo info)` | Applies the PayOS status to the transaction: PAID or UNDERPAID goes to ApplyPaymentReceived, CANCELLED or EXPIRED closes a Pending transaction, a pending link past its expiry is closed. |
-| 13 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
-| 14 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): opens a system refund request when refunds are enabled, otherwise logs an error for manual handling. |
-| 15 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
+| 5 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
+| 6 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
+| 7 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
+| 8 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
+| 9 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
+| 10 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
+| 11 | `private ApplyGatewayInfo(PaymentTransaction payment, PayOSPaymentInfo info)` | Applies the PayOS status to the transaction: PAID or UNDERPAID goes to ApplyPaymentReceived, CANCELLED or EXPIRED closes a Pending transaction, a pending link past its expiry is closed. |
+| 12 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
+| 13 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): logs an error for manual handling (the system has no refund feature). |
+| 14 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
 
 #### 3.100.3.c PaymentTransactionRepository
 
@@ -18645,17 +18730,9 @@ Table 3.100.3.e: UserSubscriptionRepository Description Table
 | 2 | `GetActiveByUser(Guid userId) : UserSubscription` | Finds the user's Active subscription; null when none. |
 | 3 | `Add(UserSubscription subscription)` | Adds a UserSubscription to the context. |
 
-#### 3.100.3.f PaymentRefundRepository
+#### 3.100.3.f InvoiceRepository
 
-Table 3.100.3.f: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetActiveByPayment(Guid paymentId) : PaymentRefund` | Returns the payment's refund request that has not been rejected (at most one); null when none. |
-
-#### 3.100.3.g InvoiceRepository
-
-Table 3.100.3.g: InvoiceRepository Description Table
+Table 3.100.3.f: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -18664,17 +18741,17 @@ Table 3.100.3.g: InvoiceRepository Description Table
 | 3 | `Add(Invoice invoice)` | Adds an Invoice to the context. |
 | 4 | `InvoiceNumberExists(string invoiceNumber, Guid excludeId) : bool` | True when another invoice already has this number. |
 
-#### 3.100.3.h AuthRepository
+#### 3.100.3.g AuthRepository
 
-Table 3.100.3.h: AuthRepository Description Table
+Table 3.100.3.g: AuthRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
 
-#### 3.100.3.i PayOSClient
+#### 3.100.3.h PayOSClient
 
-Table 3.100.3.i: PayOSClient Description Table
+Table 3.100.3.h: PayOSClient Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -18692,23 +18769,22 @@ Table 3.100.4: Methods used by this function
 | 3 | PaymentService.EnsureFulfillment | IPaymentTransactionRepository.GetPlan | PaymentTransactionRepository |
 | 4 | PaymentService.EnsureFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
 | 5 | PaymentService.EnsureFulfillment | IUserSubscriptionRepository.GetByPaymentId | UserSubscriptionRepository |
-| 6 | PaymentService.HasOpenRefund | IPaymentRefundRepository.GetActiveByPayment | PaymentRefundRepository |
-| 7 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
-| 8 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
-| 9 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
-| 10 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
-| 11 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
-| 12 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
-| 13 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
-| 14 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
-| 15 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
-| 16 | PaymentService.SyncWithGateway | IPayOSClient.GetPaymentInfo | PayOSClient |
-| 17 | PaymentService.SyncWithGateway | IUnitOfWork.SaveChanges | UnitOfWork |
-| 18 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
-| 19 | PaymentService.ApplyGatewayInfo | IUnitOfWork.SaveChanges | UnitOfWork |
-| 20 | PaymentService.ApplyGatewayInfo | IPayOSClient.CancelPaymentLink | PayOSClient |
+| 6 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
+| 7 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
+| 8 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
+| 9 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
+| 10 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
+| 11 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
+| 12 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
+| 13 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
+| 15 | PaymentService.SyncWithGateway | IPayOSClient.GetPaymentInfo | PayOSClient |
+| 16 | PaymentService.SyncWithGateway | IUnitOfWork.SaveChanges | UnitOfWork |
+| 17 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
+| 18 | PaymentService.ApplyGatewayInfo | IUnitOfWork.SaveChanges | UnitOfWork |
+| 19 | PaymentService.ApplyGatewayInfo | IPayOSClient.CancelPaymentLink | PayOSClient |
 
-Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, PaymentRefund, User.
+Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, User.
 
 ---
 
@@ -18737,7 +18813,6 @@ classDiagram
     -ToDto(PaymentTransaction payment) PaymentTransactionDto
     -SyncWithGateway(PaymentTransaction payment) void
     -EnsureFulfillment(PaymentTransaction payment) void
-    -HasOpenRefund(Guid paymentId) bool
     -StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) UserSubscription
     -StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) Invoice
     -ResolveTimeZone(string timeZoneId) TimeZoneInfo
@@ -18783,13 +18858,6 @@ classDiagram
     +GetByPaymentId(Guid paymentId) UserSubscription
     +GetActiveByUser(Guid userId) UserSubscription
     +Add(UserSubscription subscription) void
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
   }
   class IInvoiceRepository {
     <<interface>>
@@ -18862,19 +18930,6 @@ classDiagram
     -DateTime QuotaResetAt
     -DateTime CreatedAt
   }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
   class User {
     <<Entity>>
     -Guid Id
@@ -18897,7 +18952,6 @@ classDiagram
   PaymentService ..> IPayOSClient : uses
   PaymentService ..> IUnitOfWork : uses
   PaymentService ..> IUserSubscriptionRepository : uses
-  PaymentService ..> IPaymentRefundRepository : uses
   PaymentService ..> IInvoiceRepository : uses
   PaymentService ..> IUserRepository : uses
   IPaymentService <|.. PaymentService : implements
@@ -18905,7 +18959,6 @@ classDiagram
   IPayOSClient <|.. PayOSClient : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserSubscriptionRepository <|.. UserSubscriptionRepository : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
   IInvoiceRepository <|.. InvoiceRepository : implements
   IUserRepository <|.. AuthRepository : implements
   PaymentTransactionRepository ..> PaymentTransaction
@@ -18913,10 +18966,8 @@ classDiagram
   PaymentService ..> Invoice
   PaymentService ..> UserSubscription
   UserSubscriptionRepository ..> UserSubscription
-  PaymentRefundRepository ..> PaymentRefund
   InvoiceRepository ..> Invoice
   AuthRepository ..> User
-  PaymentTransaction "1" --> "0..*" PaymentRefund
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
   SubscriptionPlan "1" --> "0..*" UserSubscription
   User "1" --> "0..*" PaymentTransaction
@@ -18940,7 +18991,6 @@ sequenceDiagram
   participant PayOSClient
   participant UnitOfWork
   participant UserSubscriptionRepository
-  participant PaymentRefundRepository
   participant InvoiceRepository
   participant AuthRepository
   User->>UI: Cancel Payment
@@ -18965,10 +19015,7 @@ sequenceDiagram
             end
             PaymentService->>UserSubscriptionRepository: GetByPaymentId(paymentId)
             UserSubscriptionRepository-->>PaymentService: UserSubscription
-            PaymentService->>PaymentService: HasOpenRefund(paymentId)
-              PaymentService->>PaymentRefundRepository: GetActiveByPayment(paymentId)
-              PaymentRefundRepository-->>PaymentService: PaymentRefund
-            opt subscription == null && !HasOpenRefund(payment.Id)
+            opt subscription == null
               PaymentService->>PaymentService: StageSubscription(payment, plan)
                 PaymentService->>UserSubscriptionRepository: GetActiveByUser(userId)
                 UserSubscriptionRepository-->>PaymentService: UserSubscription
@@ -19060,16 +19107,15 @@ Table 3.101.3.b: PaymentService Description Table
 | 3 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
 | 4 | `private SyncWithGateway(PaymentTransaction payment)` | Reads the real payment status at PayOS and updates the transaction; Succeeded triggers fulfillment, a cancelled or expired payment is marked accordingly. |
 | 5 | `private EnsureFulfillment(PaymentTransaction payment)` | A Succeeded payment must have both its subscription and its invoice; creates whichever is missing and saves them together. |
-| 6 | `private HasOpenRefund(Guid paymentId) : bool` | True when an active refund request exists for the payment (always false while refunds are disabled). |
-| 7 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
-| 8 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
-| 9 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
-| 10 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
-| 11 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
-| 12 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
-| 13 | `private ApplyGatewayInfo(PaymentTransaction payment, PayOSPaymentInfo info)` | Applies the PayOS status to the transaction: PAID or UNDERPAID goes to ApplyPaymentReceived, CANCELLED or EXPIRED closes a Pending transaction, a pending link past its expiry is closed. |
-| 14 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
-| 15 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): opens a system refund request when refunds are enabled, otherwise logs an error for manual handling. |
+| 6 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
+| 7 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
+| 8 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
+| 9 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
+| 10 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
+| 11 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
+| 12 | `private ApplyGatewayInfo(PaymentTransaction payment, PayOSPaymentInfo info)` | Applies the PayOS status to the transaction: PAID or UNDERPAID goes to ApplyPaymentReceived, CANCELLED or EXPIRED closes a Pending transaction, a pending link past its expiry is closed. |
+| 13 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
+| 14 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): logs an error for manual handling (the system has no refund feature). |
 
 #### 3.101.3.c PaymentTransactionRepository
 
@@ -19107,17 +19153,9 @@ Table 3.101.3.f: UserSubscriptionRepository Description Table
 | 2 | `GetActiveByUser(Guid userId) : UserSubscription` | Finds the user's Active subscription; null when none. |
 | 3 | `Add(UserSubscription subscription)` | Adds a UserSubscription to the context. |
 
-#### 3.101.3.g PaymentRefundRepository
+#### 3.101.3.g InvoiceRepository
 
-Table 3.101.3.g: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetActiveByPayment(Guid paymentId) : PaymentRefund` | Returns the payment's refund request that has not been rejected (at most one); null when none. |
-
-#### 3.101.3.h InvoiceRepository
-
-Table 3.101.3.h: InvoiceRepository Description Table
+Table 3.101.3.g: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -19126,9 +19164,9 @@ Table 3.101.3.h: InvoiceRepository Description Table
 | 3 | `Add(Invoice invoice)` | Adds an Invoice to the context. |
 | 4 | `InvoiceNumberExists(string invoiceNumber, Guid excludeId) : bool` | True when another invoice already has this number. |
 
-#### 3.101.3.i AuthRepository
+#### 3.101.3.h AuthRepository
 
-Table 3.101.3.i: AuthRepository Description Table
+Table 3.101.3.h: AuthRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -19146,24 +19184,23 @@ Table 3.101.4: Methods used by this function
 | 4 | PaymentService.EnsureFulfillment | IPaymentTransactionRepository.GetPlan | PaymentTransactionRepository |
 | 5 | PaymentService.EnsureFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
 | 6 | PaymentService.EnsureFulfillment | IUserSubscriptionRepository.GetByPaymentId | UserSubscriptionRepository |
-| 7 | PaymentService.HasOpenRefund | IPaymentRefundRepository.GetActiveByPayment | PaymentRefundRepository |
-| 8 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
-| 9 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
-| 11 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
-| 12 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
-| 13 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
-| 14 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
-| 15 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
-| 16 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
-| 17 | PaymentService.SyncWithGateway | IPayOSClient.GetPaymentInfo | PayOSClient |
-| 18 | PaymentService.SyncWithGateway | IUnitOfWork.SaveChanges | UnitOfWork |
-| 19 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
-| 20 | PaymentService.ApplyGatewayInfo | IUnitOfWork.SaveChanges | UnitOfWork |
-| 21 | PaymentService.ApplyGatewayInfo | IPayOSClient.CancelPaymentLink | PayOSClient |
-| 22 | PaymentService.Cancel | IUnitOfWork.SaveChanges | UnitOfWork |
+| 7 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
+| 8 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
+| 10 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
+| 11 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
+| 12 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
+| 13 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
+| 14 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
+| 15 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
+| 16 | PaymentService.SyncWithGateway | IPayOSClient.GetPaymentInfo | PayOSClient |
+| 17 | PaymentService.SyncWithGateway | IUnitOfWork.SaveChanges | UnitOfWork |
+| 18 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
+| 19 | PaymentService.ApplyGatewayInfo | IUnitOfWork.SaveChanges | UnitOfWork |
+| 20 | PaymentService.ApplyGatewayInfo | IPayOSClient.CancelPaymentLink | PayOSClient |
+| 21 | PaymentService.Cancel | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, PaymentRefund, User.
+Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, User.
 
 ---
 
@@ -19190,7 +19227,6 @@ classDiagram
     +HandleWebhook(string rawBody) WebhookOutcome
     -ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) WebhookOutcome
     -EnsureFulfillment(PaymentTransaction payment) void
-    -HasOpenRefund(Guid paymentId) bool
     -StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) UserSubscription
     -StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) Invoice
     -ResolveTimeZone(string timeZoneId) TimeZoneInfo
@@ -19198,7 +19234,6 @@ classDiagram
     -Truncate(string value, int max) string
     -SaveFulfillment(PaymentTransaction payment, Invoice invoice) void
     -HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) WebhookOutcome
-    -OpenSystemRefund(PaymentTransaction payment, long amount, string reason) void
   }
   class IPayOSClient {
     <<interface>>
@@ -19233,15 +19268,6 @@ classDiagram
     +GetByPaymentId(Guid paymentId) UserSubscription
     +GetActiveByUser(Guid userId) UserSubscription
     +Add(UserSubscription subscription) void
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-    +Add(PaymentRefund refund) void
-  }
-  class PaymentRefundRepository {
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-    +Add(PaymentRefund refund) void
   }
   class IInvoiceRepository {
     <<interface>>
@@ -19314,19 +19340,6 @@ classDiagram
     -DateTime QuotaResetAt
     -DateTime CreatedAt
   }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
   class User {
     <<Entity>>
     -Guid Id
@@ -19349,7 +19362,6 @@ classDiagram
   PaymentService ..> IPaymentTransactionRepository : uses
   PaymentService ..> IUnitOfWork : uses
   PaymentService ..> IUserSubscriptionRepository : uses
-  PaymentService ..> IPaymentRefundRepository : uses
   PaymentService ..> IInvoiceRepository : uses
   PaymentService ..> IUserRepository : uses
   IPaymentService <|.. PaymentService : implements
@@ -19357,19 +19369,15 @@ classDiagram
   IPaymentTransactionRepository <|.. PaymentTransactionRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserSubscriptionRepository <|.. UserSubscriptionRepository : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
   IInvoiceRepository <|.. InvoiceRepository : implements
   IUserRepository <|.. AuthRepository : implements
   PaymentTransactionRepository ..> PaymentTransaction
   PaymentTransactionRepository ..> SubscriptionPlan
   PaymentService ..> Invoice
   PaymentService ..> UserSubscription
-  PaymentService ..> PaymentRefund
   UserSubscriptionRepository ..> UserSubscription
-  PaymentRefundRepository ..> PaymentRefund
   InvoiceRepository ..> Invoice
   AuthRepository ..> User
-  PaymentTransaction "1" --> "0..*" PaymentRefund
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
   SubscriptionPlan "1" --> "0..*" UserSubscription
   User "1" --> "0..*" PaymentTransaction
@@ -19392,7 +19400,6 @@ sequenceDiagram
   participant PaymentTransactionRepository
   participant UnitOfWork
   participant UserSubscriptionRepository
-  participant PaymentRefundRepository
   participant InvoiceRepository
   participant AuthRepository
   PayOS->>PayOSWebhookController: POST /api/payos/webhook
@@ -19411,10 +19418,7 @@ sequenceDiagram
           end
           PaymentService->>UserSubscriptionRepository: GetByPaymentId(paymentId)
           UserSubscriptionRepository-->>PaymentService: UserSubscription
-          PaymentService->>PaymentService: HasOpenRefund(paymentId)
-            PaymentService->>PaymentRefundRepository: GetActiveByPayment(paymentId)
-            PaymentRefundRepository-->>PaymentService: PaymentRefund
-          opt subscription == null && !HasOpenRefund(payment.Id)
+          opt subscription == null
             PaymentService->>PaymentService: StageSubscription(payment, plan)
               PaymentService->>UserSubscriptionRepository: GetActiveByUser(userId)
               UserSubscriptionRepository-->>PaymentService: UserSubscription
@@ -19450,15 +19454,6 @@ sequenceDiagram
       end
       opt receivedAmount != payment.Amount
         PaymentService->>PaymentService: HandleUnexpectedMoney(payment, amount, reason)
-          opt options.RefundsEnabled
-            PaymentService->>PaymentService: OpenSystemRefund(payment, amount, reason)
-              PaymentService->>PaymentRefundRepository: GetActiveByPayment(paymentId)
-              PaymentRefundRepository-->>PaymentService: PaymentRefund
-              opt refunds.GetActiveByPayment(payment.Id) == null
-                PaymentService->>PaymentRefundRepository: Add(refund)
-              end
-              PaymentService->>UnitOfWork: SaveChanges()
-          end
           PaymentService->>UnitOfWork: SaveChanges()
       end
       opt payment.Status is Cancelled or Failed
@@ -19493,15 +19488,13 @@ Table 3.102.3.b: PaymentService Description Table
 | 1 | `HandleWebhook(string rawBody) : WebhookOutcome` | Anonymous endpoint called by PayOS. Verifies the signature of the raw body, then updates the matching transaction exactly like the manual synchronization. |
 | 2 | `private ApplyPaymentReceived(PaymentTransaction payment, long receivedAmount, DateTime paidAtUtc, bool fromWebhook) : WebhookOutcome` | Handles money received: an already Succeeded payment only ensures fulfillment; a wrong amount or a closed order opens an unexpected-money case; otherwise the payment becomes Succeeded and the subscription and invoice are created. |
 | 3 | `private EnsureFulfillment(PaymentTransaction payment)` | A Succeeded payment must have both its subscription and its invoice; creates whichever is missing and saves them together. |
-| 4 | `private HasOpenRefund(Guid paymentId) : bool` | True when an active refund request exists for the payment (always false while refunds are disabled). |
-| 5 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
-| 6 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
-| 7 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
-| 8 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
-| 9 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
-| 10 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
-| 11 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): opens a system refund request when refunds are enabled, otherwise logs an error for manual handling. |
-| 12 | `private OpenSystemRefund(PaymentTransaction payment, long amount, string reason)` | Adds a refund request with source System for the payment unless an active one already exists. |
+| 4 | `private StageSubscription(PaymentTransaction payment, SubscriptionPlan plan) : UserSubscription` | Prepares the UserSubscription of the purchased plan. When the current plan is still valid (end date in the future) the new one is queued as Scheduled after it; otherwise the current one is expired and the new one is Active. |
+| 5 | `private StageInvoice(PaymentTransaction payment, SubscriptionPlan plan, UserSubscription subscription) : Invoice` | Prepares the Invoice from the payment, the plan and the buyer; the invoice period equals the period of the subscription just granted. |
+| 6 | `private ResolveTimeZone(string timeZoneId) : TimeZoneInfo` | Finds the time zone for the invoice date, falling back to UTC+7. |
+| 7 | `private NextInvoiceNumber(int attempt) : string` | Builds the next invoice number `MTN-<year>-<6 digits>`; an attempt counter is used when the number was taken by a concurrent payment. |
+| 8 | `private Truncate(string value, int max) : string` | Cuts a text to a maximum length. |
+| 9 | `private SaveFulfillment(PaymentTransaction payment, Invoice invoice)` | Saves subscription, invoice and payment status together; when the invoice number collides it takes the next number and saves again. |
+| 10 | `private HandleUnexpectedMoney(PaymentTransaction payment, long amount, string reason) : WebhookOutcome` | Money arrived for an invalid order (wrong amount, cancelled order): logs an error for manual handling (the system has no refund feature). |
 
 #### 3.102.3.c PayOSClient
 
@@ -19538,18 +19531,9 @@ Table 3.102.3.f: UserSubscriptionRepository Description Table
 | 2 | `GetActiveByUser(Guid userId) : UserSubscription` | Finds the user's Active subscription; null when none. |
 | 3 | `Add(UserSubscription subscription)` | Adds a UserSubscription to the context. |
 
-#### 3.102.3.g PaymentRefundRepository
+#### 3.102.3.g InvoiceRepository
 
-Table 3.102.3.g: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetActiveByPayment(Guid paymentId) : PaymentRefund` | Returns the payment's refund request that has not been rejected (at most one); null when none. |
-| 2 | `Add(PaymentRefund refund)` | Adds a PaymentRefund to the context. |
-
-#### 3.102.3.h InvoiceRepository
-
-Table 3.102.3.h: InvoiceRepository Description Table
+Table 3.102.3.g: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -19558,9 +19542,9 @@ Table 3.102.3.h: InvoiceRepository Description Table
 | 3 | `Add(Invoice invoice)` | Adds an Invoice to the context. |
 | 4 | `InvoiceNumberExists(string invoiceNumber, Guid excludeId) : bool` | True when another invoice already has this number. |
 
-#### 3.102.3.i AuthRepository
+#### 3.102.3.h AuthRepository
 
-Table 3.102.3.i: AuthRepository Description Table
+Table 3.102.3.h: AuthRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -19578,22 +19562,18 @@ Table 3.102.4: Methods used by this function
 | 4 | PaymentService.EnsureFulfillment | IPaymentTransactionRepository.GetPlan | PaymentTransactionRepository |
 | 5 | PaymentService.EnsureFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
 | 6 | PaymentService.EnsureFulfillment | IUserSubscriptionRepository.GetByPaymentId | UserSubscriptionRepository |
-| 7 | PaymentService.HasOpenRefund | IPaymentRefundRepository.GetActiveByPayment | PaymentRefundRepository |
-| 8 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
-| 9 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
-| 11 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
-| 12 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
-| 13 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
-| 14 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
-| 15 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
-| 16 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
-| 17 | PaymentService.OpenSystemRefund | IPaymentRefundRepository.GetActiveByPayment | PaymentRefundRepository |
-| 18 | PaymentService.OpenSystemRefund | IPaymentRefundRepository.Add | PaymentRefundRepository |
-| 19 | PaymentService.OpenSystemRefund | IUnitOfWork.SaveChanges | UnitOfWork |
-| 20 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
+| 7 | PaymentService.StageSubscription | IUserSubscriptionRepository.GetActiveByUser | UserSubscriptionRepository |
+| 8 | PaymentService.StageSubscription | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | PaymentService.StageSubscription | IUserSubscriptionRepository.Add | UserSubscriptionRepository |
+| 10 | PaymentService.EnsureFulfillment | IInvoiceRepository.PaymentHasInvoice | InvoiceRepository |
+| 11 | PaymentService.StageInvoice | IUserRepository.GetById | AuthRepository |
+| 12 | PaymentService.NextInvoiceNumber | IInvoiceRepository.GetRecentInvoiceNumbers | InvoiceRepository |
+| 13 | PaymentService.StageInvoice | IInvoiceRepository.Add | InvoiceRepository |
+| 14 | PaymentService.SaveFulfillment | IUnitOfWork.SaveChanges | UnitOfWork |
+| 15 | PaymentService.SaveFulfillment | IInvoiceRepository.InvoiceNumberExists | InvoiceRepository |
+| 16 | PaymentService.HandleUnexpectedMoney | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, PaymentRefund, User.
+Entities used: PaymentTransaction, Invoice, SubscriptionPlan, UserSubscription, User.
 
 ---
 
@@ -19694,1107 +19674,16 @@ Table 3.103.4: Methods used by this function
 
 ---
 
-# Refund
-
-## 3.104 Request Refund
-
-The owner of a Succeeded payment asks for a refund with a reason. It is refused when refunds are disabled, an active request already exists, the refund window has passed or the purchased plan was already used (AI calls used).
-
-- **Endpoint:** `POST /api/payments/{paymentId}/refunds`  
-- **Access:** Signed-in user
-
-### 3.104.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class PaymentsController {
-    +RequestRefund(Guid paymentId, RefundRequestDto request) RefundDto
-  }
-  class IRefundService {
-    <<interface>>
-    +RequestRefund(Guid userId, Guid paymentId, RefundRequestDto request) RefundDto
-  }
-  class RefundService {
-    +RequestRefund(Guid userId, Guid paymentId, RefundRequestDto request) RefundDto
-    -EnsureEnabled() void
-    -ToDto(PaymentRefund refund) RefundDto
-  }
-  class IPaymentTransactionRepository {
-    <<interface>>
-    +GetById(Guid paymentId) PaymentTransaction
-  }
-  class PaymentTransactionRepository {
-    +GetById(Guid paymentId) PaymentTransaction
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-    +Add(PaymentRefund refund) void
-  }
-  class PaymentRefundRepository {
-    +GetActiveByPayment(Guid paymentId) PaymentRefund
-    +Add(PaymentRefund refund) void
-  }
-  class IUserSubscriptionRepository {
-    <<interface>>
-    +GetByPaymentId(Guid paymentId) UserSubscription
-  }
-  class UserSubscriptionRepository {
-    +GetByPaymentId(Guid paymentId) UserSubscription
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  class PaymentTransaction {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid PlanId
-    -long OrderCode
-    -string Gateway
-    -long Amount
-    -string Status
-    -DateTime CreatedAt
-    -DateTime ExpiresAt
-    -DateTime PaidAt
-    -DateTime WebhookReceivedAt
-  }
-  class UserSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid PlanId
-    -Guid PaymentTransactionId
-    -DateTime StartAt
-    -DateTime EndAt
-    -string Status
-    -int AiCallsUsed
-    -DateTime QuotaResetAt
-    -DateTime CreatedAt
-  }
-  PaymentsController ..> IRefundService : uses
-  RefundService ..> IPaymentTransactionRepository : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  RefundService ..> IUserSubscriptionRepository : uses
-  RefundService ..> IUnitOfWork : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentTransactionRepository <|.. PaymentTransactionRepository : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  IUserSubscriptionRepository <|.. UserSubscriptionRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  RefundService ..> PaymentRefund
-  RefundService ..> PaymentTransaction
-  PaymentTransactionRepository ..> PaymentTransaction
-  PaymentRefundRepository ..> PaymentRefund
-  UserSubscriptionRepository ..> UserSubscription
-  PaymentTransaction "1" --> "0..*" PaymentRefund
-  PaymentTransaction "1" --> "0..1" UserSubscription
-```
-
-Figure 3.104.1 Class Diagram
-
-### 3.104.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor User
-  participant UI as Client App
-  participant PaymentsController
-  participant RefundService
-  participant PaymentTransactionRepository
-  participant PaymentRefundRepository
-  participant UserSubscriptionRepository
-  participant UnitOfWork
-  User->>UI: Request Refund
-  UI->>PaymentsController: POST /api/payments/(paymentId)/refunds
-  PaymentsController->>RefundService: RequestRefund(userId, paymentId, request)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>PaymentsController: throw UserFriendlyException (400)
-      end
-    opt string.IsNullOrEmpty(reason)
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    opt reason.Length > MaxReasonLength
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    RefundService->>PaymentTransactionRepository: GetById(paymentId)
-    PaymentTransactionRepository-->>RefundService: PaymentTransaction
-    opt payment == null || payment.UserId != userId
-      RefundService-->>PaymentsController: throw NotFoundException (404)
-    end
-    opt payment.Status != 'Succeeded'
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    RefundService->>PaymentRefundRepository: GetActiveByPayment(paymentId)
-    PaymentRefundRepository-->>RefundService: PaymentRefund
-    opt refunds.GetActiveByPayment(paymentId) is ( ) existing
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    opt DateTime.UtcNow > paidAt.AddDays(options.RefundWindowDays)
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    RefundService->>UserSubscriptionRepository: GetByPaymentId(paymentId)
-    UserSubscriptionRepository-->>RefundService: UserSubscription
-    opt subscription is ( AiCallsUsed: > 0 )
-      RefundService-->>PaymentsController: throw UserFriendlyException (400)
-    end
-    RefundService->>PaymentRefundRepository: Add(refund)
-    RefundService->>UnitOfWork: SaveChanges()
-  RefundService-->>PaymentsController: RefundDto
-  PaymentsController-->>UI: 201 Created (RefundDto)
-  UI-->>User: Show result
-```
-
-Figure 3.104.2 Sequence Diagram
-
-### 3.104.3 Class Specification
-
-#### 3.104.3.a PaymentsController
-
-Table 3.104.3.a: PaymentsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `RequestRefund(Guid paymentId, RefundRequestDto request) : RefundDto` | `POST /api/payments/{paymentId}/refunds`. The owner of a Succeeded payment asks for a refund with a reason. It is refused when refunds are disabled, an active request already exists, the refund window has passed or the purchased plan was already used (AI calls used). Requires a signed-in user. |
-
-#### 3.104.3.b RefundService
-
-Table 3.104.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `RequestRefund(Guid userId, Guid paymentId, RefundRequestDto request) : RefundDto` | The owner of a Succeeded payment asks for a refund with a reason. It is refused when refunds are disabled, an active request already exists, the refund window has passed or the purchased plan was already used (AI calls used). |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-| 3 | `private ToDto(PaymentRefund refund) : RefundDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.104.3.c PaymentTransactionRepository
-
-Table 3.104.3.c: PaymentTransactionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid paymentId) : PaymentTransaction` | Finds the PaymentTransaction by id; null when none. |
-
-#### 3.104.3.d PaymentRefundRepository
-
-Table 3.104.3.d: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetActiveByPayment(Guid paymentId) : PaymentRefund` | Returns the payment's refund request that has not been rejected (at most one); null when none. |
-| 2 | `Add(PaymentRefund refund)` | Adds a PaymentRefund to the context. |
-
-#### 3.104.3.e UserSubscriptionRepository
-
-Table 3.104.3.e: UserSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByPaymentId(Guid paymentId) : UserSubscription` | Finds the UserSubscription that was granted for a payment. |
-
-#### 3.104.3.f UnitOfWork
-
-Table 3.104.3.f: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-### 3.104.4 Methods Used
-
-Table 3.104.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | PaymentsController.RequestRefund | IRefundService.RequestRefund | RefundService |
-| 2 | RefundService.RequestRefund | IPaymentTransactionRepository.GetById | PaymentTransactionRepository |
-| 3 | RefundService.RequestRefund | IPaymentRefundRepository.GetActiveByPayment | PaymentRefundRepository |
-| 4 | RefundService.RequestRefund | IUserSubscriptionRepository.GetByPaymentId | UserSubscriptionRepository |
-| 5 | RefundService.RequestRefund | IPaymentRefundRepository.Add | PaymentRefundRepository |
-| 6 | RefundService.RequestRefund | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: PaymentRefund, PaymentTransaction, UserSubscription.
-
----
-
-## 3.105 View Refund Requests
-
-A normal user sees their own requests; an administrator sees all and can filter by status. Available only while refunds are enabled.
-
-- **Endpoint:** `GET /api/refunds`  
-- **Access:** Signed-in user
-
-### 3.105.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class RefundsController {
-    +GetRefunds(string status) RefundDto[]
-  }
-  class IRefundService {
-    <<interface>>
-    +GetRefunds(Guid userId, bool isAdmin, string status) RefundDto[]
-  }
-  class RefundService {
-    +GetRefunds(Guid userId, bool isAdmin, string status) RefundDto[]
-    -EnsureEnabled() void
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +Get(Guid userId, string status) PaymentRefund[]
-  }
-  class PaymentRefundRepository {
-    +Get(Guid userId, string status) PaymentRefund[]
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  RefundsController ..> IRefundService : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  PaymentRefundRepository ..> PaymentRefund
-```
-
-Figure 3.105.1 Class Diagram
-
-### 3.105.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor User
-  participant UI as Client App
-  participant RefundsController
-  participant RefundService
-  participant PaymentRefundRepository
-  User->>UI: View Refund Requests
-  UI->>RefundsController: GET /api/refunds
-  RefundsController->>RefundService: GetRefunds(userId, isAdmin, status)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    opt !string.IsNullOrWhiteSpace(status) && !AllowedStatuses.Contains(status)
-      RefundService-->>RefundsController: throw UserFriendlyException (400)
-    end
-    RefundService->>PaymentRefundRepository: Get(userId, status)
-    PaymentRefundRepository-->>RefundService: PaymentRefund list
-  RefundService-->>RefundsController: RefundDto list
-  RefundsController-->>UI: 200 OK (RefundDto list)
-  UI-->>User: Show result
-```
-
-Figure 3.105.2 Sequence Diagram
-
-### 3.105.3 Class Specification
-
-#### 3.105.3.a RefundsController
-
-Table 3.105.3.a: RefundsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetRefunds(string status) : RefundDto[]` | `GET /api/refunds`. A normal user sees their own requests; an administrator sees all and can filter by status. Available only while refunds are enabled. Requires a signed-in user. |
-
-#### 3.105.3.b RefundService
-
-Table 3.105.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetRefunds(Guid userId, bool isAdmin, string status) : RefundDto[]` | A normal user sees their own requests; an administrator sees all and can filter by status. Available only while refunds are enabled. |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-
-#### 3.105.3.c PaymentRefundRepository
-
-Table 3.105.3.c: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Get(Guid userId, string status) : PaymentRefund[]` | Returns refund requests of a user (or everyone) filtered by status. |
-
-### 3.105.4 Methods Used
-
-Table 3.105.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | RefundsController.GetRefunds | IRefundService.GetRefunds | RefundService |
-| 2 | RefundService.GetRefunds | IPaymentRefundRepository.Get | PaymentRefundRepository |
-
-Entities used: PaymentRefund.
-
----
-
-## 3.106 View Refund Request Detail
-
-Returns one refund request visible to the caller. Available only while refunds are enabled.
-
-- **Endpoint:** `GET /api/refunds/{refundId}`  
-- **Access:** Signed-in user
-
-### 3.106.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class RefundsController {
-    +GetRefund(Guid refundId) RefundDto
-  }
-  class IRefundService {
-    <<interface>>
-    +GetRefund(Guid userId, bool isAdmin, Guid refundId) RefundDto
-  }
-  class RefundService {
-    +GetRefund(Guid userId, bool isAdmin, Guid refundId) RefundDto
-    -EnsureEnabled() void
-    -GetExisting(Guid refundId) PaymentRefund
-    -ToDto(PaymentRefund refund) RefundDto
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  RefundsController ..> IRefundService : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  PaymentRefundRepository ..> PaymentRefund
-```
-
-Figure 3.106.1 Class Diagram
-
-### 3.106.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor User
-  participant UI as Client App
-  participant RefundsController
-  participant RefundService
-  participant PaymentRefundRepository
-  User->>UI: View Refund Request Detail
-  UI->>RefundsController: GET /api/refunds/(refundId)
-  RefundsController->>RefundService: GetRefund(userId, isAdmin, refundId)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    RefundService->>RefundService: GetExisting(refundId)
-      RefundService->>PaymentRefundRepository: GetById(refundId)
-      PaymentRefundRepository-->>RefundService: PaymentRefund
-      opt value is missing
-        RefundService-->>RefundsController: throw NotFoundException (404)
-      end
-    opt !isAdmin && refund.PaymentTransaction.UserId != userId
-      RefundService-->>RefundsController: throw NotFoundException (404)
-    end
-  RefundService-->>RefundsController: RefundDto
-  RefundsController-->>UI: 200 OK (RefundDto)
-  UI-->>User: Show result
-```
-
-Figure 3.106.2 Sequence Diagram
-
-### 3.106.3 Class Specification
-
-#### 3.106.3.a RefundsController
-
-Table 3.106.3.a: RefundsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetRefund(Guid refundId) : RefundDto` | `GET /api/refunds/{refundId}`. Returns one refund request visible to the caller. Available only while refunds are enabled. Requires a signed-in user. |
-
-#### 3.106.3.b RefundService
-
-Table 3.106.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetRefund(Guid userId, bool isAdmin, Guid refundId) : RefundDto` | Returns one refund request visible to the caller. Available only while refunds are enabled. |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-| 3 | `private GetExisting(Guid refundId) : PaymentRefund` | Loads the refund request or raises NotFoundException. |
-| 4 | `private ToDto(PaymentRefund refund) : RefundDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.106.3.c PaymentRefundRepository
-
-Table 3.106.3.c: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid refundId) : PaymentRefund` | Finds the PaymentRefund by id; null when none. |
-
-### 3.106.4 Methods Used
-
-Table 3.106.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | RefundsController.GetRefund | IRefundService.GetRefund | RefundService |
-| 2 | RefundService.GetExisting | IPaymentRefundRepository.GetById | PaymentRefundRepository |
-
-Entities used: PaymentRefund.
-
----
-
-## 3.107 Approve Refund
-
-Administrator only. Requested becomes Approved and the subscription bought by the payment is revoked: a queued plan or the Free plan takes over. Available only while refunds are enabled.
-
-- **Endpoint:** `POST /api/refunds/{refundId}/approve`  
-- **Access:** Admin role
-
-### 3.107.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class RefundsController {
-    +Approve(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class IRefundService {
-    <<interface>>
-    +Approve(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class RefundService {
-    +Approve(Guid refundId, RefundProcessDto request) RefundDto
-    -EnsureEnabled() void
-    -GetExisting(Guid refundId) PaymentRefund
-    -EnsureStatus(PaymentRefund refund, string expected, string action) void
-    -Clean(string value) string
-    -ToDto(PaymentRefund refund) RefundDto
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class IUserSubscriptionRepository {
-    <<interface>>
-    +GetByPaymentId(Guid paymentId) UserSubscription
-    +GetFirstScheduledByUser(Guid userId) UserSubscription
-  }
-  class UserSubscriptionRepository {
-    +GetByPaymentId(Guid paymentId) UserSubscription
-    +GetFirstScheduledByUser(Guid userId) UserSubscription
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +ExecuteInTransaction(Func~void~ action) void
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +ExecuteInTransaction(Func~void~ action) void
-    +SaveChanges() int
-  }
-  class IUserInitializationService {
-    <<interface>>
-    +StageFreeSubscription(Guid userId) bool
-  }
-  class UserInitializationService {
-    +StageFreeSubscription(Guid userId) bool
-    -GetFreePlan() SubscriptionPlan
-  }
-  class IUserSetupRepository {
-    <<interface>>
-    +HasActiveSubscription(Guid userId) bool
-    +GetPlan(Guid planId) SubscriptionPlan
-    +AddSubscription(UserSubscription subscription) void
-  }
-  class UserSetupRepository {
-    +HasActiveSubscription(Guid userId) bool
-    +GetPlan(Guid planId) SubscriptionPlan
-    +AddSubscription(UserSubscription subscription) void
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  class UserSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid PlanId
-    -Guid PaymentTransactionId
-    -DateTime StartAt
-    -DateTime EndAt
-    -string Status
-    -int AiCallsUsed
-    -DateTime QuotaResetAt
-    -DateTime CreatedAt
-  }
-  class SubscriptionPlan {
-    <<Entity>>
-    -Guid Id
-    -string Name
-    -long Price
-    -int DurationDays
-    -int AiCallLimit
-    -int StorageLimitMb
-    -int ProjectLimit
-    -bool IsActive
-  }
-  RefundsController ..> IRefundService : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  RefundService ..> IUserSubscriptionRepository : uses
-  RefundService ..> IUnitOfWork : uses
-  RefundService ..> IUserInitializationService : uses
-  UserInitializationService ..> IUserSetupRepository : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  IUserSubscriptionRepository <|.. UserSubscriptionRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  IUserInitializationService <|.. UserInitializationService : implements
-  IUserSetupRepository <|.. UserSetupRepository : implements
-  PaymentRefundRepository ..> PaymentRefund
-  UserSubscriptionRepository ..> UserSubscription
-  UserInitializationService ..> UserSubscription
-  UserSetupRepository ..> UserSubscription
-  UserSetupRepository ..> SubscriptionPlan
-  SubscriptionPlan "1" --> "0..*" UserSubscription
-```
-
-Figure 3.107.1 Class Diagram
-
-### 3.107.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant RefundsController
-  participant RefundService
-  participant PaymentRefundRepository
-  participant UserSubscriptionRepository
-  participant UnitOfWork
-  participant UserInitializationService
-  participant UserSetupRepository
-  Admin->>UI: Approve Refund
-  UI->>RefundsController: POST /api/refunds/(refundId)/approve
-  RefundsController->>RefundService: Approve(refundId, request)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    RefundService->>RefundService: GetExisting(refundId)
-      RefundService->>PaymentRefundRepository: GetById(refundId)
-      PaymentRefundRepository-->>RefundService: PaymentRefund
-      opt value is missing
-        RefundService-->>RefundsController: throw NotFoundException (404)
-      end
-    RefundService->>RefundService: EnsureStatus(refund, expected, action)
-      opt refund.Status != expected
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    RefundService->>UserSubscriptionRepository: GetByPaymentId(paymentId)
-    UserSubscriptionRepository-->>RefundService: UserSubscription
-    RefundService->>UnitOfWork: ExecuteInTransaction(action)
-    opt otherwise (not: subscription is ( Status: 'Scheduled' ))
-      opt subscription is ( Status: 'Active' )
-        RefundService->>UnitOfWork: SaveChanges()
-        RefundService->>UserSubscriptionRepository: GetFirstScheduledByUser(userId)
-        UserSubscriptionRepository-->>RefundService: UserSubscription
-        opt otherwise (not: queued != null)
-          RefundService->>UserInitializationService: StageFreeSubscription(userId)
-            UserInitializationService->>UserSetupRepository: HasActiveSubscription(userId)
-            UserSetupRepository-->>UserInitializationService: bool
-            UserInitializationService->>UserInitializationService: GetFreePlan()
-              opt options.FreePlanId == Guid.Empty
-                UserInitializationService-->>RefundService: throw InvalidOperationException (500)
-              end
-              UserInitializationService->>UserSetupRepository: GetPlan(planId)
-              UserSetupRepository-->>UserInitializationService: SubscriptionPlan
-              opt plan == null || !plan.IsActive || plan.Price != 0
-                UserInitializationService-->>RefundService: throw InvalidOperationException (500)
-              end
-            UserInitializationService->>UserSetupRepository: AddSubscription(subscription)
-          UserInitializationService-->>RefundService: bool
-        end
-      end
-    end
-    RefundService->>UnitOfWork: SaveChanges()
-  RefundService-->>RefundsController: RefundDto
-  RefundsController-->>UI: 200 OK (RefundDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.107.2 Sequence Diagram
-
-### 3.107.3 Class Specification
-
-#### 3.107.3.a RefundsController
-
-Table 3.107.3.a: RefundsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Approve(Guid refundId, RefundProcessDto request) : RefundDto` | `POST /api/refunds/{refundId}/approve`. Administrator only. Requested becomes Approved and the subscription bought by the payment is revoked: a queued plan or the Free plan takes over. Available only while refunds are enabled. Requires the Admin role. |
-
-#### 3.107.3.b RefundService
-
-Table 3.107.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Approve(Guid refundId, RefundProcessDto request) : RefundDto` | Administrator only. Requested becomes Approved and the subscription bought by the payment is revoked: a queued plan or the Free plan takes over. Available only while refunds are enabled. |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-| 3 | `private GetExisting(Guid refundId) : PaymentRefund` | Loads the refund request or raises NotFoundException. |
-| 4 | `private EnsureStatus(PaymentRefund refund, string expected, string action)` | Checks that the refund is in the expected status before an action, otherwise raises UserFriendlyException. |
-| 5 | `private Clean(string value) : string` | Trims a text and cuts it to the maximum reason length; empty becomes nothing. |
-| 6 | `private ToDto(PaymentRefund refund) : RefundDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.107.3.c PaymentRefundRepository
-
-Table 3.107.3.c: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid refundId) : PaymentRefund` | Finds the PaymentRefund by id; null when none. |
-
-#### 3.107.3.d UserSubscriptionRepository
-
-Table 3.107.3.d: UserSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByPaymentId(Guid paymentId) : UserSubscription` | Finds the UserSubscription that was granted for a payment. |
-| 2 | `GetFirstScheduledByUser(Guid userId) : UserSubscription` | Returns the user's earliest Scheduled subscription, whether or not its start date has arrived. |
-
-#### 3.107.3.e UnitOfWork
-
-Table 3.107.3.e: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
-| 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-#### 3.107.3.f UserInitializationService
-
-Table 3.107.3.f: UserInitializationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
-| 2 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
-
-#### 3.107.3.g UserSetupRepository
-
-Table 3.107.3.g: UserSetupRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
-| 2 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
-| 3 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
-
-### 3.107.4 Methods Used
-
-Table 3.107.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | RefundsController.Approve | IRefundService.Approve | RefundService |
-| 2 | RefundService.GetExisting | IPaymentRefundRepository.GetById | PaymentRefundRepository |
-| 3 | RefundService.Approve | IUserSubscriptionRepository.GetByPaymentId | UserSubscriptionRepository |
-| 4 | RefundService.Approve | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 5 | RefundService.Approve | IUnitOfWork.SaveChanges | UnitOfWork |
-| 6 | RefundService.Approve | IUserSubscriptionRepository.GetFirstScheduledByUser | UserSubscriptionRepository |
-| 7 | RefundService.Approve | IUserInitializationService.StageFreeSubscription | UserInitializationService |
-| 8 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
-| 9 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
-| 10 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
-
-Entities used: PaymentRefund, UserSubscription, SubscriptionPlan.
-
----
-
-## 3.108 Reject Refund
-
-Administrator only. Requested becomes Rejected; a reason is mandatory. Available only while refunds are enabled.
-
-- **Endpoint:** `POST /api/refunds/{refundId}/reject`  
-- **Access:** Admin role
-
-### 3.108.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class RefundsController {
-    +Reject(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class IRefundService {
-    <<interface>>
-    +Reject(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class RefundService {
-    +Reject(Guid refundId, RefundProcessDto request) RefundDto
-    -EnsureEnabled() void
-    -GetExisting(Guid refundId) PaymentRefund
-    -EnsureStatus(PaymentRefund refund, string expected, string action) void
-    -Clean(string value) string
-    -ToDto(PaymentRefund refund) RefundDto
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  RefundsController ..> IRefundService : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  RefundService ..> IUnitOfWork : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  PaymentRefundRepository ..> PaymentRefund
-```
-
-Figure 3.108.1 Class Diagram
-
-### 3.108.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant RefundsController
-  participant RefundService
-  participant PaymentRefundRepository
-  participant UnitOfWork
-  Admin->>UI: Reject Refund
-  UI->>RefundsController: POST /api/refunds/(refundId)/reject
-  RefundsController->>RefundService: Reject(refundId, request)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    RefundService->>RefundService: GetExisting(refundId)
-      RefundService->>PaymentRefundRepository: GetById(refundId)
-      PaymentRefundRepository-->>RefundService: PaymentRefund
-      opt value is missing
-        RefundService-->>RefundsController: throw NotFoundException (404)
-      end
-    RefundService->>RefundService: EnsureStatus(refund, expected, action)
-      opt refund.Status != expected
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    opt note == null
-      RefundService-->>RefundsController: throw UserFriendlyException (400)
-    end
-    RefundService->>UnitOfWork: SaveChanges()
-  RefundService-->>RefundsController: RefundDto
-  RefundsController-->>UI: 200 OK (RefundDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.108.2 Sequence Diagram
-
-### 3.108.3 Class Specification
-
-#### 3.108.3.a RefundsController
-
-Table 3.108.3.a: RefundsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Reject(Guid refundId, RefundProcessDto request) : RefundDto` | `POST /api/refunds/{refundId}/reject`. Administrator only. Requested becomes Rejected; a reason is mandatory. Available only while refunds are enabled. Requires the Admin role. |
-
-#### 3.108.3.b RefundService
-
-Table 3.108.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Reject(Guid refundId, RefundProcessDto request) : RefundDto` | Administrator only. Requested becomes Rejected; a reason is mandatory. Available only while refunds are enabled. |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-| 3 | `private GetExisting(Guid refundId) : PaymentRefund` | Loads the refund request or raises NotFoundException. |
-| 4 | `private EnsureStatus(PaymentRefund refund, string expected, string action)` | Checks that the refund is in the expected status before an action, otherwise raises UserFriendlyException. |
-| 5 | `private Clean(string value) : string` | Trims a text and cuts it to the maximum reason length; empty becomes nothing. |
-| 6 | `private ToDto(PaymentRefund refund) : RefundDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.108.3.c PaymentRefundRepository
-
-Table 3.108.3.c: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid refundId) : PaymentRefund` | Finds the PaymentRefund by id; null when none. |
-
-#### 3.108.3.d UnitOfWork
-
-Table 3.108.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-### 3.108.4 Methods Used
-
-Table 3.108.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | RefundsController.Reject | IRefundService.Reject | RefundService |
-| 2 | RefundService.GetExisting | IPaymentRefundRepository.GetById | PaymentRefundRepository |
-| 3 | RefundService.Reject | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: PaymentRefund.
-
----
-
-## 3.109 Complete Refund
-
-Administrator only. Approved becomes Completed after the money was transferred; the bank transaction code is mandatory. Available only while refunds are enabled.
-
-- **Endpoint:** `POST /api/refunds/{refundId}/complete`  
-- **Access:** Admin role
-
-### 3.109.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class RefundsController {
-    +Complete(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class IRefundService {
-    <<interface>>
-    +Complete(Guid refundId, RefundProcessDto request) RefundDto
-  }
-  class RefundService {
-    +Complete(Guid refundId, RefundProcessDto request) RefundDto
-    -EnsureEnabled() void
-    -GetExisting(Guid refundId) PaymentRefund
-    -EnsureStatus(PaymentRefund refund, string expected, string action) void
-    -Clean(string value) string
-    -ToDto(PaymentRefund refund) RefundDto
-  }
-  class IPaymentRefundRepository {
-    <<interface>>
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class PaymentRefundRepository {
-    +GetById(Guid refundId) PaymentRefund
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
-  RefundsController ..> IRefundService : uses
-  RefundService ..> IPaymentRefundRepository : uses
-  RefundService ..> IUnitOfWork : uses
-  IRefundService <|.. RefundService : implements
-  IPaymentRefundRepository <|.. PaymentRefundRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  PaymentRefundRepository ..> PaymentRefund
-```
-
-Figure 3.109.1 Class Diagram
-
-### 3.109.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant RefundsController
-  participant RefundService
-  participant PaymentRefundRepository
-  participant UnitOfWork
-  Admin->>UI: Complete Refund
-  UI->>RefundsController: POST /api/refunds/(refundId)/complete
-  RefundsController->>RefundService: Complete(refundId, request)
-    RefundService->>RefundService: EnsureEnabled()
-      opt !options.RefundsEnabled
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    RefundService->>RefundService: GetExisting(refundId)
-      RefundService->>PaymentRefundRepository: GetById(refundId)
-      PaymentRefundRepository-->>RefundService: PaymentRefund
-      opt value is missing
-        RefundService-->>RefundsController: throw NotFoundException (404)
-      end
-    RefundService->>RefundService: EnsureStatus(refund, expected, action)
-      opt refund.Status != expected
-        RefundService-->>RefundsController: throw UserFriendlyException (400)
-      end
-    opt bankReference == null
-      RefundService-->>RefundsController: throw UserFriendlyException (400)
-    end
-    RefundService->>UnitOfWork: SaveChanges()
-  RefundService-->>RefundsController: RefundDto
-  RefundsController-->>UI: 200 OK (RefundDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.109.2 Sequence Diagram
-
-### 3.109.3 Class Specification
-
-#### 3.109.3.a RefundsController
-
-Table 3.109.3.a: RefundsController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Complete(Guid refundId, RefundProcessDto request) : RefundDto` | `POST /api/refunds/{refundId}/complete`. Administrator only. Approved becomes Completed after the money was transferred; the bank transaction code is mandatory. Available only while refunds are enabled. Requires the Admin role. |
-
-#### 3.109.3.b RefundService
-
-Table 3.109.3.b: RefundService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Complete(Guid refundId, RefundProcessDto request) : RefundDto` | Administrator only. Approved becomes Completed after the money was transferred; the bank transaction code is mandatory. Available only while refunds are enabled. |
-| 2 | `private EnsureEnabled()` | Raises UserFriendlyException while the refund feature is switched off (`Payments:RefundsEnabled`). |
-| 3 | `private GetExisting(Guid refundId) : PaymentRefund` | Loads the refund request or raises NotFoundException. |
-| 4 | `private EnsureStatus(PaymentRefund refund, string expected, string action)` | Checks that the refund is in the expected status before an action, otherwise raises UserFriendlyException. |
-| 5 | `private Clean(string value) : string` | Trims a text and cuts it to the maximum reason length; empty becomes nothing. |
-| 6 | `private ToDto(PaymentRefund refund) : RefundDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.109.3.c PaymentRefundRepository
-
-Table 3.109.3.c: PaymentRefundRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid refundId) : PaymentRefund` | Finds the PaymentRefund by id; null when none. |
-
-#### 3.109.3.d UnitOfWork
-
-Table 3.109.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-### 3.109.4 Methods Used
-
-Table 3.109.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | RefundsController.Complete | IRefundService.Complete | RefundService |
-| 2 | RefundService.GetExisting | IPaymentRefundRepository.GetById | PaymentRefundRepository |
-| 3 | RefundService.Complete | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: PaymentRefund.
-
----
-
 # Payment Transactions, Invoices and User Subscriptions
 
-## 3.110 View Payment Transactions
+## 3.104 View Payment Transactions
 
 A normal user sees only their own transactions; an administrator sees all. Supports filters and paging.
 
 - **Endpoint:** `GET /api/payment-transactions`  
 - **Access:** Signed-in user
 
-### 3.110.1 Class Diagram
+### 3.104.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -20838,9 +19727,9 @@ classDiagram
   PaymentTransactionRepository ..> PaymentTransaction
 ```
 
-Figure 3.110.1 Class Diagram
+Figure 3.104.1 Class Diagram
 
-### 3.110.2 Sequence Diagram
+### 3.104.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -20870,38 +19759,38 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.110.2 Sequence Diagram
+Figure 3.104.2 Sequence Diagram
 
-### 3.110.3 Class Specification
+### 3.104.3 Class Specification
 
-#### 3.110.3.a PaymentTransactionsController
+#### 3.104.3.a PaymentTransactionsController
 
-Table 3.110.3.a: PaymentTransactionsController Description Table
+Table 3.104.3.a: PaymentTransactionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetPayments(PaymentTransactionFilter filter) : PaymentTransactionDto[]` | `GET /api/payment-transactions`. A normal user sees only their own transactions; an administrator sees all. Supports filters and paging. Requires a signed-in user. |
 
-#### 3.110.3.b PaymentTransactionService
+#### 3.104.3.b PaymentTransactionService
 
-Table 3.110.3.b: PaymentTransactionService Description Table
+Table 3.104.3.b: PaymentTransactionService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SearchPayments(Guid userId, bool isAdmin, PaymentTransactionFilter filter) : Tuple` | A normal user sees only their own transactions; an administrator sees all. Supports filters and paging. |
 | 2 | `private PagingArgs(int page, int pageSize) : Tuple` | Turns page and pageSize into skip and take (page from 1, pageSize 1 to 100, default 20) or no paging when none is given. |
 
-#### 3.110.3.c PaymentTransactionRepository
+#### 3.104.3.c PaymentTransactionRepository
 
-Table 3.110.3.c: PaymentTransactionRepository Description Table
+Table 3.104.3.c: PaymentTransactionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(Guid userId, string status, Guid planId, DateTime from, DateTime to, int skip, int take) : Tuple` | Filters transactions by user, status, plan and created date range with optional paging; returns the rows and the total count. |
 
-### 3.110.4 Methods Used
+### 3.104.4 Methods Used
 
-Table 3.110.4: Methods used by this function
+Table 3.104.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -20912,14 +19801,14 @@ Entities used: PaymentTransaction.
 
 ---
 
-## 3.111 View Payment Transaction Detail
+## 3.105 View Payment Transaction Detail
 
 Returns one transaction visible to the caller.
 
 - **Endpoint:** `GET /api/payment-transactions/{paymentId}`  
 - **Access:** Signed-in user
 
-### 3.111.1 Class Diagram
+### 3.105.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -20964,9 +19853,9 @@ classDiagram
   PaymentTransactionRepository ..> PaymentTransaction
 ```
 
-Figure 3.111.1 Class Diagram
+Figure 3.105.1 Class Diagram
 
-### 3.111.2 Sequence Diagram
+### 3.105.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -20993,21 +19882,21 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.111.2 Sequence Diagram
+Figure 3.105.2 Sequence Diagram
 
-### 3.111.3 Class Specification
+### 3.105.3 Class Specification
 
-#### 3.111.3.a PaymentTransactionsController
+#### 3.105.3.a PaymentTransactionsController
 
-Table 3.111.3.a: PaymentTransactionsController Description Table
+Table 3.105.3.a: PaymentTransactionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetPayment(Guid paymentId) : PaymentTransactionDto` | `GET /api/payment-transactions/{paymentId}`. Returns one transaction visible to the caller. Requires a signed-in user. |
 
-#### 3.111.3.b PaymentTransactionService
+#### 3.105.3.b PaymentTransactionService
 
-Table 3.111.3.b: PaymentTransactionService Description Table
+Table 3.105.3.b: PaymentTransactionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21015,17 +19904,17 @@ Table 3.111.3.b: PaymentTransactionService Description Table
 | 2 | `private GetExisting(Guid paymentId) : PaymentTransaction` | Loads the transaction or raises NotFoundException. |
 | 3 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.111.3.c PaymentTransactionRepository
+#### 3.105.3.c PaymentTransactionRepository
 
-Table 3.111.3.c: PaymentTransactionRepository Description Table
+Table 3.105.3.c: PaymentTransactionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid paymentId) : PaymentTransaction` | Finds the PaymentTransaction by id; null when none. |
 
-### 3.111.4 Methods Used
+### 3.105.4 Methods Used
 
-Table 3.111.4: Methods used by this function
+Table 3.105.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -21036,14 +19925,14 @@ Entities used: PaymentTransaction.
 
 ---
 
-## 3.112 Create Payment Transaction (Admin)
+## 3.106 Create Payment Transaction (Admin)
 
 Administrator only. Creates a transaction record manually (reason required).
 
 - **Endpoint:** `POST /api/payment-transactions`  
 - **Access:** Admin role
 
-### 3.112.1 Class Diagram
+### 3.106.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -21137,9 +20026,9 @@ classDiagram
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
 ```
 
-Figure 3.112.1 Class Diagram
+Figure 3.106.1 Class Diagram
 
-### 3.112.2 Sequence Diagram
+### 3.106.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21191,21 +20080,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.112.2 Sequence Diagram
+Figure 3.106.2 Sequence Diagram
 
-### 3.112.3 Class Specification
+### 3.106.3 Class Specification
 
-#### 3.112.3.a PaymentTransactionsController
+#### 3.106.3.a PaymentTransactionsController
 
-Table 3.112.3.a: PaymentTransactionsController Description Table
+Table 3.106.3.a: PaymentTransactionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CreatePayment(PaymentTransactionRequestDto request) : PaymentTransactionDto` | `POST /api/payment-transactions`. Administrator only. Creates a transaction record manually (reason required). Requires the Admin role. |
 
-#### 3.112.3.b PaymentTransactionService
+#### 3.106.3.b PaymentTransactionService
 
-Table 3.112.3.b: PaymentTransactionService Description Table
+Table 3.106.3.b: PaymentTransactionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21214,9 +20103,9 @@ Table 3.112.3.b: PaymentTransactionService Description Table
 | 3 | `private ApplyRequest(PaymentTransaction payment, PaymentTransactionRequestDto request)` | Copies user, plan, order code, gateway, amount, status and times onto the transaction. |
 | 4 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.112.3.c PaymentTransactionRepository
+#### 3.106.3.c PaymentTransactionRepository
 
-Table 3.112.3.c: PaymentTransactionRepository Description Table
+Table 3.106.3.c: PaymentTransactionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21225,17 +20114,17 @@ Table 3.112.3.c: PaymentTransactionRepository Description Table
 | 3 | `OrderCodeExists(long orderCode, Guid excludeId) : bool` | True when another transaction already has this order code. |
 | 4 | `Add(PaymentTransaction payment)` | Adds a PaymentTransaction to the context. |
 
-#### 3.112.3.d UnitOfWork
+#### 3.106.3.d UnitOfWork
 
-Table 3.112.3.d: UnitOfWork Description Table
+Table 3.106.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.112.4 Methods Used
+### 3.106.4 Methods Used
 
-Table 3.112.4: Methods used by this function
+Table 3.106.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -21250,14 +20139,14 @@ Entities used: PaymentTransaction, User, SubscriptionPlan.
 
 ---
 
-## 3.113 Update Payment Transaction (Admin)
+## 3.107 Update Payment Transaction (Admin)
 
 Administrator only. Corrects a transaction record (reason required).
 
 - **Endpoint:** `PUT /api/payment-transactions/{paymentId}`  
 - **Access:** Admin role
 
-### 3.113.1 Class Diagram
+### 3.107.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -21351,9 +20240,9 @@ classDiagram
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
 ```
 
-Figure 3.113.1 Class Diagram
+Figure 3.107.1 Class Diagram
 
-### 3.113.2 Sequence Diagram
+### 3.107.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21410,21 +20299,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.113.2 Sequence Diagram
+Figure 3.107.2 Sequence Diagram
 
-### 3.113.3 Class Specification
+### 3.107.3 Class Specification
 
-#### 3.113.3.a PaymentTransactionsController
+#### 3.107.3.a PaymentTransactionsController
 
-Table 3.113.3.a: PaymentTransactionsController Description Table
+Table 3.107.3.a: PaymentTransactionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `UpdatePayment(Guid paymentId, PaymentTransactionRequestDto request) : PaymentTransactionDto` | `PUT /api/payment-transactions/{paymentId}`. Administrator only. Corrects a transaction record (reason required). Requires the Admin role. |
 
-#### 3.113.3.b PaymentTransactionService
+#### 3.107.3.b PaymentTransactionService
 
-Table 3.113.3.b: PaymentTransactionService Description Table
+Table 3.107.3.b: PaymentTransactionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21434,9 +20323,9 @@ Table 3.113.3.b: PaymentTransactionService Description Table
 | 4 | `private ApplyRequest(PaymentTransaction payment, PaymentTransactionRequestDto request)` | Copies user, plan, order code, gateway, amount, status and times onto the transaction. |
 | 5 | `private ToDto(PaymentTransaction payment) : PaymentTransactionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.113.3.c PaymentTransactionRepository
+#### 3.107.3.c PaymentTransactionRepository
 
-Table 3.113.3.c: PaymentTransactionRepository Description Table
+Table 3.107.3.c: PaymentTransactionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21445,17 +20334,17 @@ Table 3.113.3.c: PaymentTransactionRepository Description Table
 | 3 | `PlanExists(Guid planId) : bool` | True when the SubscriptionPlan exists. |
 | 4 | `OrderCodeExists(long orderCode, Guid excludeId) : bool` | True when another transaction already has this order code. |
 
-#### 3.113.3.d UnitOfWork
+#### 3.107.3.d UnitOfWork
 
-Table 3.113.3.d: UnitOfWork Description Table
+Table 3.107.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.113.4 Methods Used
+### 3.107.4 Methods Used
 
-Table 3.113.4: Methods used by this function
+Table 3.107.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -21470,14 +20359,14 @@ Entities used: PaymentTransaction, User, SubscriptionPlan.
 
 ---
 
-## 3.114 Delete Payment Transaction (Admin)
+## 3.108 Delete Payment Transaction (Admin)
 
 Administrator only. Deletes a transaction that has no dependent data (reason required).
 
 - **Endpoint:** `DELETE /api/payment-transactions/{paymentId}`  
 - **Access:** Admin role
 
-### 3.114.1 Class Diagram
+### 3.108.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -21497,14 +20386,12 @@ classDiagram
     <<interface>>
     +GetById(Guid paymentId) PaymentTransaction
     +HasInvoice(Guid paymentId) bool
-    +HasRefund(Guid paymentId) bool
     +HasSubscription(Guid paymentId) bool
     +Remove(PaymentTransaction payment) void
   }
   class PaymentTransactionRepository {
     +GetById(Guid paymentId) PaymentTransaction
     +HasInvoice(Guid paymentId) bool
-    +HasRefund(Guid paymentId) bool
     +HasSubscription(Guid paymentId) bool
     +Remove(PaymentTransaction payment) void
   }
@@ -21542,19 +20429,6 @@ classDiagram
     -DateOnly PeriodEnd
     -DateTime IssuedAt
   }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
-  }
   class UserSubscription {
     <<Entity>>
     -Guid Id
@@ -21576,16 +20450,14 @@ classDiagram
   IUnitOfWork <|.. UnitOfWork : implements
   PaymentTransactionRepository ..> PaymentTransaction
   PaymentTransactionRepository ..> Invoice
-  PaymentTransactionRepository ..> PaymentRefund
   PaymentTransactionRepository ..> UserSubscription
-  PaymentTransaction "1" --> "0..*" PaymentRefund
   PaymentTransaction "1" --> "0..1" Invoice
   PaymentTransaction "1" --> "0..1" UserSubscription
 ```
 
-Figure 3.114.1 Class Diagram
+Figure 3.108.1 Class Diagram
 
-### 3.114.2 Sequence Diagram
+### 3.108.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21610,11 +20482,6 @@ sequenceDiagram
     opt paymentRepository.HasInvoice(paymentId)
       PaymentTransactionService-->>PaymentTransactionsController: throw UserFriendlyException (400)
     end
-    PaymentTransactionService->>PaymentTransactionRepository: HasRefund(paymentId)
-    PaymentTransactionRepository-->>PaymentTransactionService: bool
-    opt options.RefundsEnabled && paymentRepository.HasRefund(paymentId)
-      PaymentTransactionService-->>PaymentTransactionsController: throw UserFriendlyException (400)
-    end
     PaymentTransactionService->>PaymentTransactionRepository: HasSubscription(paymentId)
     PaymentTransactionRepository-->>PaymentTransactionService: bool
     opt paymentRepository.HasSubscription(paymentId)
@@ -21626,73 +20493,71 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.114.2 Sequence Diagram
+Figure 3.108.2 Sequence Diagram
 
-### 3.114.3 Class Specification
+### 3.108.3 Class Specification
 
-#### 3.114.3.a PaymentTransactionsController
+#### 3.108.3.a PaymentTransactionsController
 
-Table 3.114.3.a: PaymentTransactionsController Description Table
+Table 3.108.3.a: PaymentTransactionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeletePayment(Guid paymentId) : IActionResult` | `DELETE /api/payment-transactions/{paymentId}`. Administrator only. Deletes a transaction that has no dependent data (reason required). Requires the Admin role. |
 
-#### 3.114.3.b PaymentTransactionService
+#### 3.108.3.b PaymentTransactionService
 
-Table 3.114.3.b: PaymentTransactionService Description Table
+Table 3.108.3.b: PaymentTransactionService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeletePayment(Guid paymentId)` | Administrator only. Deletes a transaction that has no dependent data (reason required). |
 | 2 | `private GetExisting(Guid paymentId) : PaymentTransaction` | Loads the transaction or raises NotFoundException. |
 
-#### 3.114.3.c PaymentTransactionRepository
+#### 3.108.3.c PaymentTransactionRepository
 
-Table 3.114.3.c: PaymentTransactionRepository Description Table
+Table 3.108.3.c: PaymentTransactionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid paymentId) : PaymentTransaction` | Finds the PaymentTransaction by id; null when none. |
 | 2 | `HasInvoice(Guid paymentId) : bool` | True when an Invoice exists for the transaction. |
-| 3 | `HasRefund(Guid paymentId) : bool` | True when a PaymentRefund exists for the transaction. |
-| 4 | `HasSubscription(Guid paymentId) : bool` | True when a UserSubscription was created from the transaction. |
-| 5 | `Remove(PaymentTransaction payment)` | Marks the PaymentTransaction for deletion. |
+| 3 | `HasSubscription(Guid paymentId) : bool` | True when a UserSubscription was created from the transaction. |
+| 4 | `Remove(PaymentTransaction payment)` | Marks the PaymentTransaction for deletion. |
 
-#### 3.114.3.d UnitOfWork
+#### 3.108.3.d UnitOfWork
 
-Table 3.114.3.d: UnitOfWork Description Table
+Table 3.108.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.114.4 Methods Used
+### 3.108.4 Methods Used
 
-Table 3.114.4: Methods used by this function
+Table 3.108.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
 | 1 | PaymentTransactionsController.DeletePayment | IPaymentTransactionService.DeletePayment | PaymentTransactionService |
 | 2 | PaymentTransactionService.GetExisting | IPaymentTransactionRepository.GetById | PaymentTransactionRepository |
 | 3 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.HasInvoice | PaymentTransactionRepository |
-| 4 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.HasRefund | PaymentTransactionRepository |
-| 5 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.HasSubscription | PaymentTransactionRepository |
-| 6 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.Remove | PaymentTransactionRepository |
-| 7 | PaymentTransactionService.DeletePayment | IUnitOfWork.SaveChanges | UnitOfWork |
+| 4 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.HasSubscription | PaymentTransactionRepository |
+| 5 | PaymentTransactionService.DeletePayment | IPaymentTransactionRepository.Remove | PaymentTransactionRepository |
+| 6 | PaymentTransactionService.DeletePayment | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: PaymentTransaction, Invoice, PaymentRefund, UserSubscription.
+Entities used: PaymentTransaction, Invoice, UserSubscription.
 
 ---
 
-## 3.115 View Invoices
+## 3.109 View Invoices
 
 A normal user sees only their own invoices; an administrator sees all. Supports filters and paging.
 
 - **Endpoint:** `GET /api/invoices`  
 - **Access:** Signed-in user
 
-### 3.115.1 Class Diagram
+### 3.109.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -21734,9 +20599,9 @@ classDiagram
   InvoiceRepository ..> Invoice
 ```
 
-Figure 3.115.1 Class Diagram
+Figure 3.109.1 Class Diagram
 
-### 3.115.2 Sequence Diagram
+### 3.109.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21759,37 +20624,37 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.115.2 Sequence Diagram
+Figure 3.109.2 Sequence Diagram
 
-### 3.115.3 Class Specification
+### 3.109.3 Class Specification
 
-#### 3.115.3.a InvoicesController
+#### 3.109.3.a InvoicesController
 
-Table 3.115.3.a: InvoicesController Description Table
+Table 3.109.3.a: InvoicesController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetInvoices(InvoiceFilter filter) : InvoiceDto[]` | `GET /api/invoices`. A normal user sees only their own invoices; an administrator sees all. Supports filters and paging. Requires a signed-in user. |
 
-#### 3.115.3.b InvoiceService
+#### 3.109.3.b InvoiceService
 
-Table 3.115.3.b: InvoiceService Description Table
+Table 3.109.3.b: InvoiceService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SearchInvoices(Guid userId, bool isAdmin, InvoiceFilter filter) : Tuple` | A normal user sees only their own invoices; an administrator sees all. Supports filters and paging. |
 
-#### 3.115.3.c InvoiceRepository
+#### 3.109.3.c InvoiceRepository
 
-Table 3.115.3.c: InvoiceRepository Description Table
+Table 3.109.3.c: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(Guid userId, DateTime from, DateTime to, string search, int skip, int take) : Tuple` | Filters invoices by user, issue date range and keyword with optional paging; returns the rows and the total count. |
 
-### 3.115.4 Methods Used
+### 3.109.4 Methods Used
 
-Table 3.115.4: Methods used by this function
+Table 3.109.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -21800,14 +20665,14 @@ Entities used: Invoice.
 
 ---
 
-## 3.116 View Invoice Detail
+## 3.110 View Invoice Detail
 
 Returns one invoice visible to the caller.
 
 - **Endpoint:** `GET /api/invoices/{invoiceId}`  
 - **Access:** Signed-in user
 
-### 3.116.1 Class Diagram
+### 3.110.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -21869,9 +20734,9 @@ classDiagram
   Invoice "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.116.1 Class Diagram
+Figure 3.110.1 Class Diagram
 
-### 3.116.2 Sequence Diagram
+### 3.110.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -21902,21 +20767,21 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.116.2 Sequence Diagram
+Figure 3.110.2 Sequence Diagram
 
-### 3.116.3 Class Specification
+### 3.110.3 Class Specification
 
-#### 3.116.3.a InvoicesController
+#### 3.110.3.a InvoicesController
 
-Table 3.116.3.a: InvoicesController Description Table
+Table 3.110.3.a: InvoicesController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetInvoice(Guid invoiceId) : InvoiceDto` | `GET /api/invoices/{invoiceId}`. Returns one invoice visible to the caller. Requires a signed-in user. |
 
-#### 3.116.3.b InvoiceService
+#### 3.110.3.b InvoiceService
 
-Table 3.116.3.b: InvoiceService Description Table
+Table 3.110.3.b: InvoiceService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -21924,18 +20789,18 @@ Table 3.116.3.b: InvoiceService Description Table
 | 2 | `private GetExisting(Guid invoiceId) : Invoice` | Loads the invoice or raises NotFoundException. |
 | 3 | `private ToDto(Invoice invoice) : InvoiceDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.116.3.c InvoiceRepository
+#### 3.110.3.c InvoiceRepository
 
-Table 3.116.3.c: InvoiceRepository Description Table
+Table 3.110.3.c: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid invoiceId) : Invoice` | Finds the Invoice by id; null when none. |
 | 2 | `GetPayment(Guid paymentId) : PaymentTransaction` | Finds the PaymentTransaction an invoice is issued for. |
 
-### 3.116.4 Methods Used
+### 3.110.4 Methods Used
 
-Table 3.116.4: Methods used by this function
+Table 3.110.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -21947,14 +20812,14 @@ Entities used: Invoice, PaymentTransaction.
 
 ---
 
-## 3.117 Create Invoice (Admin)
+## 3.111 Create Invoice (Admin)
 
 Administrator only. Creates an invoice for a paid transaction (reason required).
 
 - **Endpoint:** `POST /api/invoices`  
 - **Access:** Admin role
 
-### 3.117.1 Class Diagram
+### 3.111.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22032,9 +20897,9 @@ classDiagram
   Invoice "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.117.1 Class Diagram
+Figure 3.111.1 Class Diagram
 
-### 3.117.2 Sequence Diagram
+### 3.111.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22091,21 +20956,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.117.2 Sequence Diagram
+Figure 3.111.2 Sequence Diagram
 
-### 3.117.3 Class Specification
+### 3.111.3 Class Specification
 
-#### 3.117.3.a InvoicesController
+#### 3.111.3.a InvoicesController
 
-Table 3.117.3.a: InvoicesController Description Table
+Table 3.111.3.a: InvoicesController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CreateInvoice(InvoiceRequestDto request) : InvoiceDto` | `POST /api/invoices`. Administrator only. Creates an invoice for a paid transaction (reason required). Requires the Admin role. |
 
-#### 3.117.3.b InvoiceService
+#### 3.111.3.b InvoiceService
 
-Table 3.117.3.b: InvoiceService Description Table
+Table 3.111.3.b: InvoiceService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22115,9 +20980,9 @@ Table 3.117.3.b: InvoiceService Description Table
 | 4 | `private ValidatePeriod(DateOnly start, DateOnly end)` | Checks that the period end is after the period start. |
 | 5 | `private ToDto(Invoice invoice) : InvoiceDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.117.3.c InvoiceRepository
+#### 3.111.3.c InvoiceRepository
 
-Table 3.117.3.c: InvoiceRepository Description Table
+Table 3.111.3.c: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22126,17 +20991,17 @@ Table 3.117.3.c: InvoiceRepository Description Table
 | 3 | `InvoiceNumberExists(string invoiceNumber, Guid excludeId) : bool` | True when another invoice already has this number. |
 | 4 | `Add(Invoice invoice)` | Adds an Invoice to the context. |
 
-#### 3.117.3.d UnitOfWork
+#### 3.111.3.d UnitOfWork
 
-Table 3.117.3.d: UnitOfWork Description Table
+Table 3.111.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.117.4 Methods Used
+### 3.111.4 Methods Used
 
-Table 3.117.4: Methods used by this function
+Table 3.111.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22151,14 +21016,14 @@ Entities used: Invoice, PaymentTransaction.
 
 ---
 
-## 3.118 Update Invoice (Admin)
+## 3.112 Update Invoice (Admin)
 
 Administrator only. Corrects an invoice (reason required).
 
 - **Endpoint:** `PUT /api/invoices/{invoiceId}`  
 - **Access:** Admin role
 
-### 3.118.1 Class Diagram
+### 3.112.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22212,9 +21077,9 @@ classDiagram
   InvoiceRepository ..> Invoice
 ```
 
-Figure 3.118.1 Class Diagram
+Figure 3.112.1 Class Diagram
 
-### 3.118.2 Sequence Diagram
+### 3.112.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22247,21 +21112,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.118.2 Sequence Diagram
+Figure 3.112.2 Sequence Diagram
 
-### 3.118.3 Class Specification
+### 3.112.3 Class Specification
 
-#### 3.118.3.a InvoicesController
+#### 3.112.3.a InvoicesController
 
-Table 3.118.3.a: InvoicesController Description Table
+Table 3.112.3.a: InvoicesController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `UpdateInvoice(Guid invoiceId, InvoiceUpdateDto request) : InvoiceDto` | `PUT /api/invoices/{invoiceId}`. Administrator only. Corrects an invoice (reason required). Requires the Admin role. |
 
-#### 3.118.3.b InvoiceService
+#### 3.112.3.b InvoiceService
 
-Table 3.118.3.b: InvoiceService Description Table
+Table 3.112.3.b: InvoiceService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22270,25 +21135,25 @@ Table 3.118.3.b: InvoiceService Description Table
 | 3 | `private ValidateBilling(string billingName, string billingEmail)` | Checks that the buyer name is present and not too long and that the buyer e-mail is well formed. |
 | 4 | `private ToDto(Invoice invoice) : InvoiceDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.118.3.c InvoiceRepository
+#### 3.112.3.c InvoiceRepository
 
-Table 3.118.3.c: InvoiceRepository Description Table
+Table 3.112.3.c: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid invoiceId) : Invoice` | Finds the Invoice by id; null when none. |
 
-#### 3.118.3.d UnitOfWork
+#### 3.112.3.d UnitOfWork
 
-Table 3.118.3.d: UnitOfWork Description Table
+Table 3.112.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.118.4 Methods Used
+### 3.112.4 Methods Used
 
-Table 3.118.4: Methods used by this function
+Table 3.112.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22300,14 +21165,14 @@ Entities used: Invoice.
 
 ---
 
-## 3.119 Delete Invoice (Admin)
+## 3.113 Delete Invoice (Admin)
 
 Administrator only. Deletes an invoice (reason required).
 
 - **Endpoint:** `DELETE /api/invoices/{invoiceId}`  
 - **Access:** Admin role
 
-### 3.119.1 Class Diagram
+### 3.113.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22361,9 +21226,9 @@ classDiagram
   InvoiceRepository ..> Invoice
 ```
 
-Figure 3.119.1 Class Diagram
+Figure 3.113.1 Class Diagram
 
-### 3.119.2 Sequence Diagram
+### 3.113.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22389,47 +21254,47 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.119.2 Sequence Diagram
+Figure 3.113.2 Sequence Diagram
 
-### 3.119.3 Class Specification
+### 3.113.3 Class Specification
 
-#### 3.119.3.a InvoicesController
+#### 3.113.3.a InvoicesController
 
-Table 3.119.3.a: InvoicesController Description Table
+Table 3.113.3.a: InvoicesController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeleteInvoice(Guid invoiceId) : IActionResult` | `DELETE /api/invoices/{invoiceId}`. Administrator only. Deletes an invoice (reason required). Requires the Admin role. |
 
-#### 3.119.3.b InvoiceService
+#### 3.113.3.b InvoiceService
 
-Table 3.119.3.b: InvoiceService Description Table
+Table 3.113.3.b: InvoiceService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeleteInvoice(Guid invoiceId)` | Administrator only. Deletes an invoice (reason required). |
 | 2 | `private GetExisting(Guid invoiceId) : Invoice` | Loads the invoice or raises NotFoundException. |
 
-#### 3.119.3.c InvoiceRepository
+#### 3.113.3.c InvoiceRepository
 
-Table 3.119.3.c: InvoiceRepository Description Table
+Table 3.113.3.c: InvoiceRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid invoiceId) : Invoice` | Finds the Invoice by id; null when none. |
 | 2 | `Remove(Invoice invoice)` | Marks the Invoice for deletion. |
 
-#### 3.119.3.d UnitOfWork
+#### 3.113.3.d UnitOfWork
 
-Table 3.119.3.d: UnitOfWork Description Table
+Table 3.113.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.119.4 Methods Used
+### 3.113.4 Methods Used
 
-Table 3.119.4: Methods used by this function
+Table 3.113.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22442,14 +21307,14 @@ Entities used: Invoice.
 
 ---
 
-## 3.120 View User Subscriptions
+## 3.114 View User Subscriptions
 
 A normal user sees only their own subscriptions; an administrator sees all.
 
 - **Endpoint:** `GET /api/user-subscriptions`  
 - **Access:** Signed-in user
 
-### 3.120.1 Class Diagram
+### 3.114.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22491,9 +21356,9 @@ classDiagram
   UserSubscriptionRepository ..> UserSubscription
 ```
 
-Figure 3.120.1 Class Diagram
+Figure 3.114.1 Class Diagram
 
-### 3.120.2 Sequence Diagram
+### 3.114.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22513,37 +21378,37 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.120.2 Sequence Diagram
+Figure 3.114.2 Sequence Diagram
 
-### 3.120.3 Class Specification
+### 3.114.3 Class Specification
 
-#### 3.120.3.a UserSubscriptionsController
+#### 3.114.3.a UserSubscriptionsController
 
-Table 3.120.3.a: UserSubscriptionsController Description Table
+Table 3.114.3.a: UserSubscriptionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetSubscriptions() : UserSubscriptionDto[]` | `GET /api/user-subscriptions`. A normal user sees only their own subscriptions; an administrator sees all. Requires a signed-in user. |
 
-#### 3.120.3.b UserSubscriptionService
+#### 3.114.3.b UserSubscriptionService
 
-Table 3.120.3.b: UserSubscriptionService Description Table
+Table 3.114.3.b: UserSubscriptionService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetSubscriptions(Guid userId, bool isAdmin) : UserSubscriptionDto[]` | A normal user sees only their own subscriptions; an administrator sees all. |
 
-#### 3.120.3.c UserSubscriptionRepository
+#### 3.114.3.c UserSubscriptionRepository
 
-Table 3.120.3.c: UserSubscriptionRepository Description Table
+Table 3.114.3.c: UserSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(Guid userId) : UserSubscription[]` | Returns the subscriptions of a user (or of everyone when no user is given). |
 
-### 3.120.4 Methods Used
+### 3.114.4 Methods Used
 
-Table 3.120.4: Methods used by this function
+Table 3.114.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22554,14 +21419,14 @@ Entities used: UserSubscription.
 
 ---
 
-## 3.121 View User Subscription Detail
+## 3.115 View User Subscription Detail
 
 Returns one subscription visible to the caller.
 
 - **Endpoint:** `GET /api/user-subscriptions/{subscriptionId}`  
 - **Access:** Signed-in user
 
-### 3.121.1 Class Diagram
+### 3.115.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22605,9 +21470,9 @@ classDiagram
   UserSubscriptionRepository ..> UserSubscription
 ```
 
-Figure 3.121.1 Class Diagram
+Figure 3.115.1 Class Diagram
 
-### 3.121.2 Sequence Diagram
+### 3.115.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22634,21 +21499,21 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.121.2 Sequence Diagram
+Figure 3.115.2 Sequence Diagram
 
-### 3.121.3 Class Specification
+### 3.115.3 Class Specification
 
-#### 3.121.3.a UserSubscriptionsController
+#### 3.115.3.a UserSubscriptionsController
 
-Table 3.121.3.a: UserSubscriptionsController Description Table
+Table 3.115.3.a: UserSubscriptionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetSubscription(Guid subscriptionId) : UserSubscriptionDto` | `GET /api/user-subscriptions/{subscriptionId}`. Returns one subscription visible to the caller. Requires a signed-in user. |
 
-#### 3.121.3.b UserSubscriptionService
+#### 3.115.3.b UserSubscriptionService
 
-Table 3.121.3.b: UserSubscriptionService Description Table
+Table 3.115.3.b: UserSubscriptionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22656,17 +21521,17 @@ Table 3.121.3.b: UserSubscriptionService Description Table
 | 2 | `private GetExisting(Guid subscriptionId) : UserSubscription` | Loads the subscription or raises NotFoundException. |
 | 3 | `private ToDto(UserSubscription subscription) : UserSubscriptionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.121.3.c UserSubscriptionRepository
+#### 3.115.3.c UserSubscriptionRepository
 
-Table 3.121.3.c: UserSubscriptionRepository Description Table
+Table 3.115.3.c: UserSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetById(Guid subscriptionId) : UserSubscription` | Finds the UserSubscription by id; null when none. |
 
-### 3.121.4 Methods Used
+### 3.115.4 Methods Used
 
-Table 3.121.4: Methods used by this function
+Table 3.115.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22677,14 +21542,14 @@ Entities used: UserSubscription.
 
 ---
 
-## 3.122 Create User Subscription (Admin)
+## 3.116 Create User Subscription (Admin)
 
 Administrator only. Grants a plan to a user manually (reason required).
 
 - **Endpoint:** `POST /api/user-subscriptions`  
 - **Access:** Admin role
 
-### 3.122.1 Class Diagram
+### 3.116.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -22799,9 +21664,9 @@ classDiagram
   UserSubscription "*" --> "1" User
 ```
 
-Figure 3.122.1 Class Diagram
+Figure 3.116.1 Class Diagram
 
-### 3.122.2 Sequence Diagram
+### 3.116.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -22859,21 +21724,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.122.2 Sequence Diagram
+Figure 3.116.2 Sequence Diagram
 
-### 3.122.3 Class Specification
+### 3.116.3 Class Specification
 
-#### 3.122.3.a UserSubscriptionsController
+#### 3.116.3.a UserSubscriptionsController
 
-Table 3.122.3.a: UserSubscriptionsController Description Table
+Table 3.116.3.a: UserSubscriptionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CreateSubscription(UserSubscriptionRequestDto request) : UserSubscriptionDto` | `POST /api/user-subscriptions`. Administrator only. Grants a plan to a user manually (reason required). Requires the Admin role. |
 
-#### 3.122.3.b UserSubscriptionService
+#### 3.116.3.b UserSubscriptionService
 
-Table 3.122.3.b: UserSubscriptionService Description Table
+Table 3.116.3.b: UserSubscriptionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22882,9 +21747,9 @@ Table 3.122.3.b: UserSubscriptionService Description Table
 | 3 | `private ApplyRequest(UserSubscription subscription, UserSubscriptionRequestDto request)` | Copies user, plan, payment, period, status and AI usage onto the subscription. |
 | 4 | `private ToDto(UserSubscription subscription) : UserSubscriptionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.122.3.c UserSubscriptionRepository
+#### 3.116.3.c UserSubscriptionRepository
 
-Table 3.122.3.c: UserSubscriptionRepository Description Table
+Table 3.116.3.c: UserSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -22895,17 +21760,17 @@ Table 3.122.3.c: UserSubscriptionRepository Description Table
 | 5 | `OtherActiveSubscriptionExists(Guid userId, Guid excludeId) : bool` | True when the user has another Active subscription (only one is allowed). |
 | 6 | `Add(UserSubscription subscription)` | Adds a UserSubscription to the context. |
 
-#### 3.122.3.d UnitOfWork
+#### 3.116.3.d UnitOfWork
 
-Table 3.122.3.d: UnitOfWork Description Table
+Table 3.116.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.122.4 Methods Used
+### 3.116.4 Methods Used
 
-Table 3.122.4: Methods used by this function
+Table 3.116.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -22922,14 +21787,14 @@ Entities used: UserSubscription, User, SubscriptionPlan, PaymentTransaction.
 
 ---
 
-## 3.123 Update User Subscription (Admin)
+## 3.117 Update User Subscription (Admin)
 
 Administrator only. Changes the period or status of a subscription (reason required).
 
 - **Endpoint:** `PUT /api/user-subscriptions/{subscriptionId}`  
 - **Access:** Admin role
 
-### 3.123.1 Class Diagram
+### 3.117.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -23044,9 +21909,9 @@ classDiagram
   UserSubscription "*" --> "1" User
 ```
 
-Figure 3.123.1 Class Diagram
+Figure 3.117.1 Class Diagram
 
-### 3.123.2 Sequence Diagram
+### 3.117.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -23109,21 +21974,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.123.2 Sequence Diagram
+Figure 3.117.2 Sequence Diagram
 
-### 3.123.3 Class Specification
+### 3.117.3 Class Specification
 
-#### 3.123.3.a UserSubscriptionsController
+#### 3.117.3.a UserSubscriptionsController
 
-Table 3.123.3.a: UserSubscriptionsController Description Table
+Table 3.117.3.a: UserSubscriptionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `UpdateSubscription(Guid subscriptionId, UserSubscriptionRequestDto request) : UserSubscriptionDto` | `PUT /api/user-subscriptions/{subscriptionId}`. Administrator only. Changes the period or status of a subscription (reason required). Requires the Admin role. |
 
-#### 3.123.3.b UserSubscriptionService
+#### 3.117.3.b UserSubscriptionService
 
-Table 3.123.3.b: UserSubscriptionService Description Table
+Table 3.117.3.b: UserSubscriptionService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -23133,9 +21998,9 @@ Table 3.123.3.b: UserSubscriptionService Description Table
 | 4 | `private ApplyRequest(UserSubscription subscription, UserSubscriptionRequestDto request)` | Copies user, plan, payment, period, status and AI usage onto the subscription. |
 | 5 | `private ToDto(UserSubscription subscription) : UserSubscriptionDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.123.3.c UserSubscriptionRepository
+#### 3.117.3.c UserSubscriptionRepository
 
-Table 3.123.3.c: UserSubscriptionRepository Description Table
+Table 3.117.3.c: UserSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -23146,17 +22011,17 @@ Table 3.123.3.c: UserSubscriptionRepository Description Table
 | 5 | `PaymentLinkedToOtherSubscription(Guid paymentId, Guid excludeId) : bool` | True when the payment is already linked to another subscription. |
 | 6 | `OtherActiveSubscriptionExists(Guid userId, Guid excludeId) : bool` | True when the user has another Active subscription (only one is allowed). |
 
-#### 3.123.3.d UnitOfWork
+#### 3.117.3.d UnitOfWork
 
-Table 3.123.3.d: UnitOfWork Description Table
+Table 3.117.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.123.4 Methods Used
+### 3.117.4 Methods Used
 
-Table 3.123.4: Methods used by this function
+Table 3.117.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -23173,14 +22038,14 @@ Entities used: UserSubscription, User, SubscriptionPlan, PaymentTransaction.
 
 ---
 
-## 3.124 Delete User Subscription (Admin)
+## 3.118 Delete User Subscription (Admin)
 
 Administrator only. Deletes a subscription (reason required).
 
 - **Endpoint:** `DELETE /api/user-subscriptions/{subscriptionId}`  
 - **Access:** Admin role
 
-### 3.124.1 Class Diagram
+### 3.118.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -23252,9 +22117,9 @@ classDiagram
   UserSubscription "1" --> "0..*" AiusageLog
 ```
 
-Figure 3.124.1 Class Diagram
+Figure 3.118.1 Class Diagram
 
-### 3.124.2 Sequence Diagram
+### 3.118.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -23285,30 +22150,30 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.124.2 Sequence Diagram
+Figure 3.118.2 Sequence Diagram
 
-### 3.124.3 Class Specification
+### 3.118.3 Class Specification
 
-#### 3.124.3.a UserSubscriptionsController
+#### 3.118.3.a UserSubscriptionsController
 
-Table 3.124.3.a: UserSubscriptionsController Description Table
+Table 3.118.3.a: UserSubscriptionsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeleteSubscription(Guid subscriptionId) : IActionResult` | `DELETE /api/user-subscriptions/{subscriptionId}`. Administrator only. Deletes a subscription (reason required). Requires the Admin role. |
 
-#### 3.124.3.b UserSubscriptionService
+#### 3.118.3.b UserSubscriptionService
 
-Table 3.124.3.b: UserSubscriptionService Description Table
+Table 3.118.3.b: UserSubscriptionService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `DeleteSubscription(Guid subscriptionId)` | Administrator only. Deletes a subscription (reason required). |
 | 2 | `private GetExisting(Guid subscriptionId) : UserSubscription` | Loads the subscription or raises NotFoundException. |
 
-#### 3.124.3.c UserSubscriptionRepository
+#### 3.118.3.c UserSubscriptionRepository
 
-Table 3.124.3.c: UserSubscriptionRepository Description Table
+Table 3.118.3.c: UserSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -23316,17 +22181,17 @@ Table 3.124.3.c: UserSubscriptionRepository Description Table
 | 2 | `HasAiUsage(Guid subscriptionId) : bool` | True when AI usage rows refer to the subscription. |
 | 3 | `Remove(UserSubscription subscription)` | Marks the UserSubscription for deletion. |
 
-#### 3.124.3.d UnitOfWork
+#### 3.118.3.d UnitOfWork
 
-Table 3.124.3.d: UnitOfWork Description Table
+Table 3.118.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.124.4 Methods Used
+### 3.118.4 Methods Used
 
-Table 3.124.4: Methods used by this function
+Table 3.118.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -23342,14 +22207,14 @@ Entities used: UserSubscription, AiusageLog.
 
 # Administration
 
-## 3.125 Admin: Search Users
+## 3.119 Admin: Search Users
 
 Lists users with search text, role and deleted filters and paging.
 
 - **Endpoint:** `GET /api/admin/users`  
 - **Access:** Admin role
 
-### 3.125.1 Class Diagram
+### 3.119.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -23417,9 +22282,9 @@ classDiagram
   User "1" --> "0..1" UserSubscription
 ```
 
-Figure 3.125.1 Class Diagram
+Figure 3.119.1 Class Diagram
 
-### 3.125.2 Sequence Diagram
+### 3.119.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -23439,37 +22304,37 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.125.2 Sequence Diagram
+Figure 3.119.2 Sequence Diagram
 
-### 3.125.3 Class Specification
+### 3.119.3 Class Specification
 
-#### 3.125.3.a AdminUsersController
+#### 3.119.3.a AdminUsersController
 
-Table 3.125.3.a: AdminUsersController Description Table
+Table 3.119.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string role, bool includeDeleted, int page, int pageSize) : <>` | `GET /api/admin/users`. Lists users with search text, role and deleted filters and paging. Requires the Admin role. |
 
-#### 3.125.3.b AdminUserService
+#### 3.119.3.b AdminUserService
 
-Table 3.125.3.b: AdminUserService Description Table
+Table 3.119.3.b: AdminUserService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string role, bool includeDeleted, int page, int pageSize) : <>` | Lists users with search text, role and deleted filters and paging. |
 
-#### 3.125.3.c AdminUserRepository
+#### 3.119.3.c AdminUserRepository
 
-Table 3.125.3.c: AdminUserRepository Description Table
+Table 3.119.3.c: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string role, bool includeDeleted, int page, int pageSize) : <>` | Pages through users filtered by search text, role and the include-deleted flag. |
 
-### 3.125.4 Methods Used
+### 3.119.4 Methods Used
 
-Table 3.125.4: Methods used by this function
+Table 3.119.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -23480,14 +22345,14 @@ Entities used: User, UserSubscription, Role.
 
 ---
 
-## 3.126 Admin: View User Detail
+## 3.120 Admin: View User Detail
 
 Returns one user with role, subscription and status.
 
 - **Endpoint:** `GET /api/admin/users/{userId}`  
 - **Access:** Admin role
 
-### 3.126.1 Class Diagram
+### 3.120.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -23638,9 +22503,9 @@ classDiagram
   UserSubscription "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.126.1 Class Diagram
+Figure 3.120.1 Class Diagram
 
-### 3.126.2 Sequence Diagram
+### 3.120.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -23663,37 +22528,37 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.126.2 Sequence Diagram
+Figure 3.120.2 Sequence Diagram
 
-### 3.126.3 Class Specification
+### 3.120.3 Class Specification
 
-#### 3.126.3.a AdminUsersController
+#### 3.120.3.a AdminUsersController
 
-Table 3.126.3.a: AdminUsersController Description Table
+Table 3.120.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(Guid userId) : AdminUserDetailDto` | `GET /api/admin/users/{userId}`. Returns one user with role, subscription and status. Requires the Admin role. |
 
-#### 3.126.3.b AdminUserService
+#### 3.120.3.b AdminUserService
 
-Table 3.126.3.b: AdminUserService Description Table
+Table 3.120.3.b: AdminUserService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(Guid userId) : AdminUserDetailDto` | Returns the user detail (role, subscription, status) or raises NotFoundException. |
 
-#### 3.126.3.c AdminUserRepository
+#### 3.120.3.c AdminUserRepository
 
-Table 3.126.3.c: AdminUserRepository Description Table
+Table 3.120.3.c: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetDetail(Guid userId) : AdminUserDetailDto` | Returns the admin detail of a user: profile, role, active subscription and status; null when none. |
 
-### 3.126.4 Methods Used
+### 3.120.4 Methods Used
 
-Table 3.126.4: Methods used by this function
+Table 3.120.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -23704,14 +22569,14 @@ Entities used: User, UserSubscription, PaymentTransaction, GoogleConnection, Pro
 
 ---
 
-## 3.127 Admin: Create User
+## 3.121 Admin: Create User
 
-Creates an account before its owner signs in (unique e-mail, existing role). The personal project, the Free subscription and the circadian profile are prepared and the owner claims the account on the first Google sign-in.
+Creates an account before its owner signs in (unique e-mail, existing role). The Free subscription and the circadian profile are prepared (no project is created) and the owner claims the account on the first Google sign-in. The time zone is the placeholder UTC unless given.
 
 - **Endpoint:** `POST /api/admin/users`  
 - **Access:** Admin role
 
-### 3.127.1 Class Diagram
+### 3.121.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -23754,15 +22619,12 @@ classDiagram
   }
   class UserInitializationService {
     +InitializeNewUser(Guid userId) void
-    -StageProject(Guid userId) void
     +StageFreeSubscription(Guid userId) bool
     -GetFreePlan() SubscriptionPlan
     -StageCircadianProfiles(Guid userId) void
   }
   class IUserSetupRepository {
     <<interface>>
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -23770,8 +22632,6 @@ classDiagram
     +AddCircadianProfiles(UserCircadianProfile[] profiles) void
   }
   class UserSetupRepository {
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -23806,19 +22666,6 @@ classDiagram
     <<Entity>>
     -Guid Id
     -string Name
-  }
-  class Project {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ClientId
-    -string Name
-    -string Description
-    -DateOnly StartDate
-    -DateOnly Deadline
-    -string Status
-    -bool IsDefault
-    -DateTime CreatedAt
   }
   class UserSubscription {
     <<Entity>>
@@ -23880,6 +22727,19 @@ classDiagram
     -string LastSyncError
     -DateTime CreatedAt
   }
+  class Project {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ClientId
+    -string Name
+    -string Description
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -bool IsDefault
+    -DateTime CreatedAt
+  }
   class Task {
     <<Entity>>
     -Guid Id
@@ -23936,29 +22796,27 @@ classDiagram
   AdminUserRepository ..> Role
   AuthRepository ..> Role
   AuthRepository ..> User
-  UserInitializationService ..> Project
   UserInitializationService ..> UserSubscription
   UserInitializationService ..> UserCircadianProfile
-  UserSetupRepository ..> Project
   UserSetupRepository ..> UserSubscription
   UserSetupRepository ..> SubscriptionPlan
   UserSetupRepository ..> UserCircadianProfile
   User "1" --> "0..*" PaymentTransaction
   User "1" --> "0..*" UserCircadianProfile
   Role "1" --> "0..*" User
-  Project "1" --> "0..*" Task
   UserSubscription "1" --> "0..*" AiusageLog
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
   SubscriptionPlan "1" --> "0..*" UserSubscription
+  Project "1" --> "0..*" Task
   User "1" --> "0..1" GoogleConnection
   User "1" --> "0..1" Project
   User "1" --> "0..1" UserSubscription
   UserSubscription "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.127.1 Class Diagram
+Figure 3.121.1 Class Diagram
 
-### 3.127.2 Sequence Diagram
+### 3.121.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -24002,10 +22860,6 @@ sequenceDiagram
       end
     AdminUserService->>AuthRepository: Add(user)
     AdminUserService->>UserInitializationService: InitializeNewUser(userId)
-      UserInitializationService->>UserInitializationService: StageProject(userId)
-        UserInitializationService->>UserSetupRepository: HasDefaultProject(userId)
-        UserSetupRepository-->>UserInitializationService: bool
-        UserInitializationService->>UserSetupRepository: AddProject(project)
       UserInitializationService->>UserInitializationService: StageFreeSubscription(userId)
         UserInitializationService->>UserSetupRepository: HasActiveSubscription(userId)
         UserSetupRepository-->>UserInitializationService: bool
@@ -24037,85 +22891,82 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.127.2 Sequence Diagram
+Figure 3.121.2 Sequence Diagram
 
-### 3.127.3 Class Specification
+### 3.121.3 Class Specification
 
-#### 3.127.3.a AdminUsersController
+#### 3.121.3.a AdminUsersController
 
-Table 3.127.3.a: AdminUsersController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Create(AdminUserRequestDto request) : AdminUserDetailDto` | `POST /api/admin/users`. Creates an account before its owner signs in (unique e-mail, existing role). The personal project, the Free subscription and the circadian profile are prepared and the owner claims the account on the first Google sign-in. Requires the Admin role. |
-
-#### 3.127.3.b AdminUserService
-
-Table 3.127.3.b: AdminUserService Description Table
+Table 3.121.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Create(AdminUserRequestDto request) : AdminUserDetailDto` | Creates an account before its owner signs in (unique e-mail, existing role). The personal project, the Free subscription and the circadian profile are prepared and the owner claims the account on the first Google sign-in. |
+| 1 | `Create(AdminUserRequestDto request) : AdminUserDetailDto` | `POST /api/admin/users`. Creates an account before its owner signs in (unique e-mail, existing role). The Free subscription and the circadian profile are prepared (no project is created) and the owner claims the account on the first Google sign-in. The time zone is the placeholder UTC unless given. Requires the Admin role. |
+
+#### 3.121.3.b AdminUserService
+
+Table 3.121.3.b: AdminUserService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Create(AdminUserRequestDto request) : AdminUserDetailDto` | Creates an account before its owner signs in (unique e-mail, existing role). The Free subscription and the circadian profile are prepared (no project is created) and the owner claims the account on the first Google sign-in. The time zone is the placeholder UTC unless given. |
 | 2 | `private NormalizeEmail(string value) : string` | Trims and lower-cases the e-mail and rejects an empty, too long or malformed address. |
 | 3 | `private NormalizeName(string value) : string` | Trims the full name and rejects an empty or too long one. |
 | 4 | `private GetRole(string name) : Role` | Loads the role by name or raises UserFriendlyException when it does not exist. |
 | 5 | `private Get(Guid userId) : AdminUserDetailDto` | Returns the user detail (role, subscription, status) or raises NotFoundException. |
 
-#### 3.127.3.c AdminUserRepository
+#### 3.121.3.c AdminUserRepository
 
-Table 3.127.3.c: AdminUserRepository Description Table
+Table 3.121.3.c: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `EmailInUse(string email, Guid excludeUserId) : bool` | True when another user (including a deleted one) already uses the e-mail. |
 | 2 | `GetDetail(Guid userId) : AdminUserDetailDto` | Returns the admin detail of a user: profile, role, active subscription and status; null when none. |
 
-#### 3.127.3.d AuthRepository
+#### 3.121.3.d AuthRepository
 
-Table 3.127.3.d: AuthRepository Description Table
+Table 3.121.3.d: AuthRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetRoleByName(string roleName) : Role` | Finds the Role by its name (for example Freelancer or Admin); null when none. |
 | 2 | `Add(User user)` | Adds a new User to the context; written when the unit of work is saved. |
 
-#### 3.127.3.e UserInitializationService
+#### 3.121.3.e UserInitializationService
 
-Table 3.127.3.e: UserInitializationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the personal default project, the Free subscription and the 24 circadian rows, then saves them with one SaveChanges (one transaction together with the pending user). |
-| 2 | `private StageProject(Guid userId)` | Adds the default personal project of the user unless it already exists. |
-| 3 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
-| 4 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
-| 5 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
-
-#### 3.127.3.f UserSetupRepository
-
-Table 3.127.3.f: UserSetupRepository Description Table
+Table 3.121.3.e: UserInitializationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `HasDefaultProject(Guid userId) : bool` | True when the user already has the default personal Project. |
-| 2 | `AddProject(Project project)` | Adds a Project to the context. |
-| 3 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
-| 4 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
-| 5 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
-| 6 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
-| 7 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
+| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the Free subscription and the 24 circadian rows (no default project), then saves them with one SaveChanges (one transaction together with the pending user). |
+| 2 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
+| 3 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
+| 4 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
 
-#### 3.127.3.g UnitOfWork
+#### 3.121.3.f UserSetupRepository
 
-Table 3.127.3.g: UnitOfWork Description Table
+Table 3.121.3.f: UserSetupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
+| 2 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
+| 3 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
+| 4 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
+| 5 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
+
+#### 3.121.3.g UnitOfWork
+
+Table 3.121.3.g: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.127.4 Methods Used
+### 3.121.4 Methods Used
 
-Table 3.127.4: Methods used by this function
+Table 3.121.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -24124,28 +22975,26 @@ Table 3.127.4: Methods used by this function
 | 3 | AdminUserService.GetRole | IUserRepository.GetRoleByName | AuthRepository |
 | 4 | AdminUserService.Create | IUserRepository.Add | AuthRepository |
 | 5 | AdminUserService.Create | IUserInitializationService.InitializeNewUser | UserInitializationService |
-| 6 | UserInitializationService.StageProject | IUserSetupRepository.HasDefaultProject | UserSetupRepository |
-| 7 | UserInitializationService.StageProject | IUserSetupRepository.AddProject | UserSetupRepository |
-| 8 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
-| 9 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
-| 10 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
-| 11 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
-| 12 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
-| 13 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
-| 14 | AdminUserService.Get | IAdminUserRepository.GetDetail | AdminUserRepository |
+| 6 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
+| 7 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
+| 8 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
+| 9 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
+| 10 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
+| 11 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
+| 12 | AdminUserService.Get | IAdminUserRepository.GetDetail | AdminUserRepository |
 
-Entities used: User, Role, Project, UserSubscription, SubscriptionPlan, UserCircadianProfile, PaymentTransaction, GoogleConnection, Task, AiusageLog.
+Entities used: User, Role, UserSubscription, SubscriptionPlan, UserCircadianProfile, PaymentTransaction, GoogleConnection, Project, Task, AiusageLog.
 
 ---
 
-## 3.128 Admin: Update User
+## 3.122 Admin: Update User
 
 Changes the e-mail, the full name or the role of a user that is not deleted. The e-mail must be unique; demoting the last administrator is refused.
 
 - **Endpoint:** `PUT /api/admin/users/{userId}`  
 - **Access:** Admin role
 
-### 3.128.1 Class Diagram
+### 3.122.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -24334,9 +23183,9 @@ classDiagram
   UserSubscription "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.128.1 Class Diagram
+Figure 3.122.1 Class Diagram
 
-### 3.128.2 Sequence Diagram
+### 3.122.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -24403,21 +23252,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.128.2 Sequence Diagram
+Figure 3.122.2 Sequence Diagram
 
-### 3.128.3 Class Specification
+### 3.122.3 Class Specification
 
-#### 3.128.3.a AdminUsersController
+#### 3.122.3.a AdminUsersController
 
-Table 3.128.3.a: AdminUsersController Description Table
+Table 3.122.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Update(Guid userId, AdminUserRequestDto request) : AdminUserDetailDto` | `PUT /api/admin/users/{userId}`. Changes the e-mail, the full name or the role of a user that is not deleted. The e-mail must be unique; demoting the last administrator is refused. Requires the Admin role. |
 
-#### 3.128.3.b AdminUserService
+#### 3.122.3.b AdminUserService
 
-Table 3.128.3.b: AdminUserService Description Table
+Table 3.122.3.b: AdminUserService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -24428,17 +23277,17 @@ Table 3.128.3.b: AdminUserService Description Table
 | 5 | `private GetRole(string name) : Role` | Loads the role by name or raises UserFriendlyException when it does not exist. |
 | 6 | `private Get(Guid userId) : AdminUserDetailDto` | Returns the user detail (role, subscription, status) or raises NotFoundException. |
 
-#### 3.128.3.c UserSetupRepository
+#### 3.122.3.c UserSetupRepository
 
-Table 3.128.3.c: UserSetupRepository Description Table
+Table 3.122.3.c: UserSetupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetUser(Guid userId) : User` | Loads the User together with its Role; null when none. |
 
-#### 3.128.3.d AdminUserRepository
+#### 3.122.3.d AdminUserRepository
 
-Table 3.128.3.d: AdminUserRepository Description Table
+Table 3.122.3.d: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -24446,25 +23295,25 @@ Table 3.128.3.d: AdminUserRepository Description Table
 | 2 | `CountActiveAdmins() : int` | Counts the Admin users that are not soft-deleted (used by the last-admin guard). |
 | 3 | `GetDetail(Guid userId) : AdminUserDetailDto` | Returns the admin detail of a user: profile, role, active subscription and status; null when none. |
 
-#### 3.128.3.e AuthRepository
+#### 3.122.3.e AuthRepository
 
-Table 3.128.3.e: AuthRepository Description Table
+Table 3.122.3.e: AuthRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetRoleByName(string roleName) : Role` | Finds the Role by its name (for example Freelancer or Admin); null when none. |
 
-#### 3.128.3.f UnitOfWork
+#### 3.122.3.f UnitOfWork
 
-Table 3.128.3.f: UnitOfWork Description Table
+Table 3.122.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.128.4 Methods Used
+### 3.122.4 Methods Used
 
-Table 3.128.4: Methods used by this function
+Table 3.122.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -24480,14 +23329,14 @@ Entities used: User, Role, UserSubscription, PaymentTransaction, GoogleConnectio
 
 ---
 
-## 3.129 Admin: Delete User
+## 3.123 Admin: Delete User
 
 Soft-deletes a user (reason required). An administrator cannot delete themselves or the last administrator; the user's refresh tokens are revoked and Google Calendar is disconnected.
 
 - **Endpoint:** `DELETE /api/admin/users/{userId}`  
 - **Access:** Admin role
 
-### 3.129.1 Class Diagram
+### 3.123.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -24595,9 +23444,9 @@ classDiagram
   User "1" --> "0..*" RefreshToken
 ```
 
-Figure 3.129.1 Class Diagram
+Figure 3.123.1 Class Diagram
 
-### 3.129.2 Sequence Diagram
+### 3.123.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -24652,79 +23501,79 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.129.2 Sequence Diagram
+Figure 3.123.2 Sequence Diagram
 
-### 3.129.3 Class Specification
+### 3.123.3 Class Specification
 
-#### 3.129.3.a AdminUsersController
+#### 3.123.3.a AdminUsersController
 
-Table 3.129.3.a: AdminUsersController Description Table
+Table 3.123.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Delete(Guid userId) : IActionResult` | `DELETE /api/admin/users/{userId}`. Soft-deletes a user (reason required). An administrator cannot delete themselves or the last administrator; the user's refresh tokens are revoked and Google Calendar is disconnected. Requires the Admin role. |
 
-#### 3.129.3.b AdminUserService
+#### 3.123.3.b AdminUserService
 
-Table 3.129.3.b: AdminUserService Description Table
+Table 3.123.3.b: AdminUserService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Delete(Guid actingAdminId, Guid userId)` | Soft-deletes a user (reason required). An administrator cannot delete themselves or the last administrator; the user's refresh tokens are revoked and Google Calendar is disconnected. |
 | 2 | `private GetExisting(Guid userId) : User` | Loads the user (including a soft-deleted one) or raises NotFoundException. |
 
-#### 3.129.3.c UserSetupRepository
+#### 3.123.3.c UserSetupRepository
 
-Table 3.129.3.c: UserSetupRepository Description Table
+Table 3.123.3.c: UserSetupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetUser(Guid userId) : User` | Loads the User together with its Role; null when none. |
 
-#### 3.129.3.d AdminUserRepository
+#### 3.123.3.d AdminUserRepository
 
-Table 3.129.3.d: AdminUserRepository Description Table
+Table 3.123.3.d: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CountActiveAdmins() : int` | Counts the Admin users that are not soft-deleted (used by the last-admin guard). |
 
-#### 3.129.3.e MeService
+#### 3.123.3.e MeService
 
-Table 3.129.3.e: MeService Description Table
+Table 3.123.3.e: MeService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Delete(Guid userId)` | Soft-deletes the account (DeletedAt), refuses to remove the last administrator and disconnects Google Calendar. |
 | 2 | `private GetUser(Guid userId) : User` | Loads the user or raises NotFoundException when the user does not exist or is soft-deleted. |
 
-#### 3.129.3.f RefreshTokenRepository
+#### 3.123.3.f RefreshTokenRepository
 
-Table 3.129.3.f: RefreshTokenRepository Description Table
+Table 3.123.3.f: RefreshTokenRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetActiveByUser(Guid userId, DateTime now) : RefreshToken[]` | Returns the user's refresh tokens that are neither revoked nor expired at the given time. |
 
-#### 3.129.3.g GoogleCalendarConnectionService
+#### 3.123.3.g GoogleCalendarConnectionService
 
-Table 3.129.3.g: GoogleCalendarConnectionService Description Table
+Table 3.123.3.g: GoogleCalendarConnectionService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Disconnect(Guid userId)` | Deletes the GoogleConnection (and its cached events), then revokes the grant at Google on a best-effort basis. Safe when nothing is connected. |
 
-#### 3.129.3.h UnitOfWork
+#### 3.123.3.h UnitOfWork
 
-Table 3.129.3.h: UnitOfWork Description Table
+Table 3.123.3.h: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.129.4 Methods Used
+### 3.123.4 Methods Used
 
-Table 3.129.4: Methods used by this function
+Table 3.123.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -24742,14 +23591,14 @@ Entities used: User, RefreshToken.
 
 ---
 
-## 3.130 Admin: Restore User
+## 3.124 Admin: Restore User
 
 Restores a soft-deleted user (their e-mail must not be used by another account) and prepares any missing default data.
 
 - **Endpoint:** `POST /api/admin/users/{userId}/restore`  
 - **Access:** Admin role
 
-### 3.130.1 Class Diagram
+### 3.124.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -24769,8 +23618,6 @@ classDiagram
   class IUserSetupRepository {
     <<interface>>
     +GetUser(Guid userId) User
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -24779,8 +23626,6 @@ classDiagram
   }
   class UserSetupRepository {
     +GetUser(Guid userId) User
-    +HasDefaultProject(Guid userId) bool
-    +AddProject(Project project) void
     +HasActiveSubscription(Guid userId) bool
     +GetPlan(Guid planId) SubscriptionPlan
     +AddSubscription(UserSubscription subscription) void
@@ -24802,7 +23647,6 @@ classDiagram
   }
   class UserInitializationService {
     +InitializeNewUser(Guid userId) void
-    -StageProject(Guid userId) void
     +StageFreeSubscription(Guid userId) bool
     -GetFreePlan() SubscriptionPlan
     -StageCircadianProfiles(Guid userId) void
@@ -24830,19 +23674,6 @@ classDiagram
     -bool OnboardingCompleted
     -DateTime CreatedAt
     -DateTime DeletedAt
-  }
-  class Project {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ClientId
-    -string Name
-    -string Description
-    -DateOnly StartDate
-    -DateOnly Deadline
-    -string Status
-    -bool IsDefault
-    -DateTime CreatedAt
   }
   class UserSubscription {
     <<Entity>>
@@ -24904,6 +23735,19 @@ classDiagram
     -string LastSyncError
     -DateTime CreatedAt
   }
+  class Project {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ClientId
+    -string Name
+    -string Description
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -bool IsDefault
+    -DateTime CreatedAt
+  }
   class Task {
     <<Entity>>
     -Guid Id
@@ -24953,7 +23797,6 @@ classDiagram
   IUserInitializationService <|.. UserInitializationService : implements
   IUnitOfWork <|.. UnitOfWork : implements
   UserSetupRepository ..> User
-  UserSetupRepository ..> Project
   UserSetupRepository ..> UserSubscription
   UserSetupRepository ..> SubscriptionPlan
   UserSetupRepository ..> UserCircadianProfile
@@ -24965,15 +23808,14 @@ classDiagram
   AdminUserRepository ..> Task
   AdminUserRepository ..> AiusageLog
   AdminUserRepository ..> Role
-  UserInitializationService ..> Project
   UserInitializationService ..> UserSubscription
   UserInitializationService ..> UserCircadianProfile
   User "1" --> "0..*" PaymentTransaction
   User "1" --> "0..*" UserCircadianProfile
-  Project "1" --> "0..*" Task
   UserSubscription "1" --> "0..*" AiusageLog
   SubscriptionPlan "1" --> "0..*" PaymentTransaction
   SubscriptionPlan "1" --> "0..*" UserSubscription
+  Project "1" --> "0..*" Task
   Role "1" --> "0..*" User
   User "1" --> "0..1" GoogleConnection
   User "1" --> "0..1" Project
@@ -24981,9 +23823,9 @@ classDiagram
   UserSubscription "*" --> "1" PaymentTransaction
 ```
 
-Figure 3.130.1 Class Diagram
+Figure 3.124.1 Class Diagram
 
-### 3.130.2 Sequence Diagram
+### 3.124.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -25014,10 +23856,6 @@ sequenceDiagram
       AdminUserService-->>AdminUsersController: throw UserFriendlyException (400)
     end
     AdminUserService->>UserInitializationService: InitializeNewUser(userId)
-      UserInitializationService->>UserInitializationService: StageProject(userId)
-        UserInitializationService->>UserSetupRepository: HasDefaultProject(userId)
-        UserSetupRepository-->>UserInitializationService: bool
-        UserInitializationService->>UserSetupRepository: AddProject(project)
       UserInitializationService->>UserInitializationService: StageFreeSubscription(userId)
         UserInitializationService->>UserSetupRepository: HasActiveSubscription(userId)
         UserSetupRepository-->>UserInitializationService: bool
@@ -25049,21 +23887,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.130.2 Sequence Diagram
+Figure 3.124.2 Sequence Diagram
 
-### 3.130.3 Class Specification
+### 3.124.3 Class Specification
 
-#### 3.130.3.a AdminUsersController
+#### 3.124.3.a AdminUsersController
 
-Table 3.130.3.a: AdminUsersController Description Table
+Table 3.124.3.a: AdminUsersController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Restore(Guid userId) : AdminUserDetailDto` | `POST /api/admin/users/{userId}/restore`. Restores a soft-deleted user (their e-mail must not be used by another account) and prepares any missing default data. Requires the Admin role. |
 
-#### 3.130.3.b AdminUserService
+#### 3.124.3.b AdminUserService
 
-Table 3.130.3.b: AdminUserService Description Table
+Table 3.124.3.b: AdminUserService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -25071,53 +23909,50 @@ Table 3.130.3.b: AdminUserService Description Table
 | 2 | `private GetExisting(Guid userId) : User` | Loads the user (including a soft-deleted one) or raises NotFoundException. |
 | 3 | `private Get(Guid userId) : AdminUserDetailDto` | Returns the user detail (role, subscription, status) or raises NotFoundException. |
 
-#### 3.130.3.c UserSetupRepository
+#### 3.124.3.c UserSetupRepository
 
-Table 3.130.3.c: UserSetupRepository Description Table
+Table 3.124.3.c: UserSetupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetUser(Guid userId) : User` | Loads the User together with its Role; null when none. |
-| 2 | `HasDefaultProject(Guid userId) : bool` | True when the user already has the default personal Project. |
-| 3 | `AddProject(Project project)` | Adds a Project to the context. |
-| 4 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
-| 5 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
-| 6 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
-| 7 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
-| 8 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
+| 2 | `HasActiveSubscription(Guid userId) : bool` | True when the user already has an Active UserSubscription. |
+| 3 | `GetPlan(Guid planId) : SubscriptionPlan` | Finds the SubscriptionPlan by id; null when none. |
+| 4 | `AddSubscription(UserSubscription subscription)` | Adds a UserSubscription to the context. |
+| 5 | `GetCircadianProfiles(Guid userId) : UserCircadianProfile[]` | Returns the UserCircadianProfile rows (one per hour) of the user. |
+| 6 | `AddCircadianProfiles(UserCircadianProfile[] profiles)` | Adds the missing UserCircadianProfile rows to the context. |
 
-#### 3.130.3.d AdminUserRepository
+#### 3.124.3.d AdminUserRepository
 
-Table 3.130.3.d: AdminUserRepository Description Table
+Table 3.124.3.d: AdminUserRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `EmailInUse(string email, Guid excludeUserId) : bool` | True when another user (including a deleted one) already uses the e-mail. |
 | 2 | `GetDetail(Guid userId) : AdminUserDetailDto` | Returns the admin detail of a user: profile, role, active subscription and status; null when none. |
 
-#### 3.130.3.e UserInitializationService
+#### 3.124.3.e UserInitializationService
 
-Table 3.130.3.e: UserInitializationService Description Table
+Table 3.124.3.e: UserInitializationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the personal default project, the Free subscription and the 24 circadian rows, then saves them with one SaveChanges (one transaction together with the pending user). |
-| 2 | `private StageProject(Guid userId)` | Adds the default personal project of the user unless it already exists. |
-| 3 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
-| 4 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
-| 5 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
+| 1 | `InitializeNewUser(Guid userId)` | Idempotently prepares the Free subscription and the 24 circadian rows (no default project), then saves them with one SaveChanges (one transaction together with the pending user). |
+| 2 | `private StageFreeSubscription(Guid userId) : bool` | Adds an Active Free-plan UserSubscription unless the user already has an active subscription; returns true when one was added. |
+| 3 | `private GetFreePlan() : SubscriptionPlan` | Loads the Free plan configured in `Subscription:FreePlanId` and checks that it is active and costs 0; otherwise raises an error. |
+| 4 | `private StageCircadianProfiles(Guid userId)` | Adds the missing UserCircadianProfile rows so that the user has one row for each of the 24 hours. |
 
-#### 3.130.3.f UnitOfWork
+#### 3.124.3.f UnitOfWork
 
-Table 3.130.3.f: UnitOfWork Description Table
+Table 3.124.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.130.4 Methods Used
+### 3.124.4 Methods Used
 
-Table 3.130.4: Methods used by this function
+Table 3.124.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -25125,28 +23960,26 @@ Table 3.130.4: Methods used by this function
 | 2 | AdminUserService.GetExisting | IUserSetupRepository.GetUser | UserSetupRepository |
 | 3 | AdminUserService.Restore | IAdminUserRepository.EmailInUse | AdminUserRepository |
 | 4 | AdminUserService.Restore | IUserInitializationService.InitializeNewUser | UserInitializationService |
-| 5 | UserInitializationService.StageProject | IUserSetupRepository.HasDefaultProject | UserSetupRepository |
-| 6 | UserInitializationService.StageProject | IUserSetupRepository.AddProject | UserSetupRepository |
-| 7 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
-| 8 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
-| 9 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
-| 10 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
-| 11 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
-| 12 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
-| 13 | AdminUserService.Get | IAdminUserRepository.GetDetail | AdminUserRepository |
+| 5 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.HasActiveSubscription | UserSetupRepository |
+| 6 | UserInitializationService.GetFreePlan | IUserSetupRepository.GetPlan | UserSetupRepository |
+| 7 | UserInitializationService.StageFreeSubscription | IUserSetupRepository.AddSubscription | UserSetupRepository |
+| 8 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.GetCircadianProfiles | UserSetupRepository |
+| 9 | UserInitializationService.StageCircadianProfiles | IUserSetupRepository.AddCircadianProfiles | UserSetupRepository |
+| 10 | UserInitializationService.InitializeNewUser | IUnitOfWork.SaveChanges | UnitOfWork |
+| 11 | AdminUserService.Get | IAdminUserRepository.GetDetail | AdminUserRepository |
 
-Entities used: User, Project, UserSubscription, SubscriptionPlan, UserCircadianProfile, PaymentTransaction, GoogleConnection, Task, AiusageLog, Role.
+Entities used: User, UserSubscription, SubscriptionPlan, UserCircadianProfile, PaymentTransaction, GoogleConnection, Project, Task, AiusageLog, Role.
 
 ---
 
-## 3.131 Admin: View Revenue Report
+## 3.125 Admin: View Revenue Report
 
-Summarizes gross, refunded and net revenue and the average order value, grouped by day, month or plan, for a date range of at most 366 days.
+Summarizes gross revenue, the average order value, invoices and new paying users, grouped by day, month or plan, for a date range of at most 366 days.
 
 - **Endpoint:** `GET /api/admin/revenue`  
 - **Access:** Admin role
 
-### 3.131.1 Class Diagram
+### 3.125.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -25160,20 +23993,18 @@ classDiagram
   }
   class RevenueReportService {
     +GetReport(string groupBy, DateTimeOffset from, DateTimeOffset to) RevenueReportDto
-    -BuildRows(string grouping, DateTime fromUtc, DateTime toUtc, RevenuePaidRow[] paid, RevenueRefundRow[] refunds, long gross) RevenueRowDto[]
+    -BuildRows(string grouping, DateTime fromUtc, DateTime toUtc, RevenuePaidRow[] paid, long gross) RevenueRowDto[]
     -KeyOf(string grouping, DateTime value) string
   }
   class IRevenueRepository {
     <<interface>>
     +GetPaid(DateTime from, DateTime to) RevenuePaidRow[]
-    +GetCompletedRefunds(DateTime from, DateTime to) RevenueRefundRow[]
     +CountTransactionsByStatus(DateTime from, DateTime to) Dictionary~string,int~
     +CountInvoices(DateTime from, DateTime to) int
     +CountNewPayingUsers(DateTime from, DateTime to) int
   }
   class RevenueRepository {
     +GetPaid(DateTime from, DateTime to) RevenuePaidRow[]
-    +GetCompletedRefunds(DateTime from, DateTime to) RevenueRefundRow[]
     +CountTransactionsByStatus(DateTime from, DateTime to) Dictionary~string,int~
     +CountInvoices(DateTime from, DateTime to) int
     +CountNewPayingUsers(DateTime from, DateTime to) int
@@ -25191,19 +24022,6 @@ classDiagram
     -DateTime ExpiresAt
     -DateTime PaidAt
     -DateTime WebhookReceivedAt
-  }
-  class PaymentRefund {
-    <<Entity>>
-    -Guid Id
-    -Guid PaymentTransactionId
-    -long Amount
-    -string Reason
-    -string Source
-    -string Status
-    -string AdminNote
-    -string BankReference
-    -DateTime CreatedAt
-    -DateTime ProcessedAt
   }
   class Invoice {
     <<Entity>>
@@ -25223,15 +24041,13 @@ classDiagram
   IRevenueReportService <|.. RevenueReportService : implements
   IRevenueRepository <|.. RevenueRepository : implements
   RevenueRepository ..> PaymentTransaction
-  RevenueRepository ..> PaymentRefund
   RevenueRepository ..> Invoice
-  PaymentTransaction "1" --> "0..*" PaymentRefund
   PaymentTransaction "1" --> "0..1" Invoice
 ```
 
-Figure 3.131.1 Class Diagram
+Figure 3.125.1 Class Diagram
 
-### 3.131.2 Sequence Diagram
+### 3.125.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -25255,8 +24071,6 @@ sequenceDiagram
     end
     RevenueReportService->>RevenueRepository: GetPaid(from, to)
     RevenueRepository-->>RevenueReportService: RevenuePaidRow list
-    RevenueReportService->>RevenueRepository: GetCompletedRefunds(from, to)
-    RevenueRepository-->>RevenueReportService: RevenueRefundRow list
     RevenueReportService->>RevenueRepository: CountTransactionsByStatus(from, to)
     RevenueRepository-->>RevenueReportService: Dictionary of string,int
     RevenueReportService->>RevenueRepository: CountInvoices(from, to)
@@ -25268,65 +24082,63 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.131.2 Sequence Diagram
+Figure 3.125.2 Sequence Diagram
 
-### 3.131.3 Class Specification
+### 3.125.3 Class Specification
 
-#### 3.131.3.a AdminRevenueController
+#### 3.125.3.a AdminRevenueController
 
-Table 3.131.3.a: AdminRevenueController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Get(string groupBy, DateTimeOffset from, DateTimeOffset to) : RevenueReportDto` | `GET /api/admin/revenue`. Summarizes gross, refunded and net revenue and the average order value, grouped by day, month or plan, for a date range of at most 366 days. Requires the Admin role. |
-
-#### 3.131.3.b RevenueReportService
-
-Table 3.131.3.b: RevenueReportService Description Table
+Table 3.125.3.a: AdminRevenueController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetReport(string groupBy, DateTimeOffset from, DateTimeOffset to) : RevenueReportDto` | Summarizes gross, refunded and net revenue and the average order value, grouped by day, month or plan, for a date range of at most 366 days. |
-| 2 | `private BuildRows(string grouping, DateTime fromUtc, DateTime toUtc, RevenuePaidRow[] paid, RevenueRefundRow[] refunds, long gross) : RevenueRowDto[]` | Builds the report rows: every day or month of the range is created (empty periods are zero), then gross, refunded and net amounts are added per key. |
+| 1 | `Get(string groupBy, DateTimeOffset from, DateTimeOffset to) : RevenueReportDto` | `GET /api/admin/revenue`. Summarizes gross revenue, the average order value, invoices and new paying users, grouped by day, month or plan, for a date range of at most 366 days. Requires the Admin role. |
+
+#### 3.125.3.b RevenueReportService
+
+Table 3.125.3.b: RevenueReportService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetReport(string groupBy, DateTimeOffset from, DateTimeOffset to) : RevenueReportDto` | Summarizes gross revenue, the average order value, invoices and new paying users, grouped by day, month or plan, for a date range of at most 366 days. |
+| 2 | `private BuildRows(string grouping, DateTime fromUtc, DateTime toUtc, RevenuePaidRow[] paid, long gross) : RevenueRowDto[]` | Builds the report rows: every day or month of the range is created (empty periods are zero), then the gross amount and the number of transactions are added per key. |
 | 3 | `private KeyOf(string grouping, DateTime value) : string` | Returns the row key of a date: `yyyy-MM-dd` for day grouping or `yyyy-MM` for month grouping. |
 
-#### 3.131.3.c RevenueRepository
+#### 3.125.3.c RevenueRepository
 
-Table 3.131.3.c: RevenueRepository Description Table
+Table 3.125.3.c: RevenueRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetPaid(DateTime from, DateTime to) : RevenuePaidRow[]` | Returns the Succeeded transactions whose PaidAt is in the range. |
-| 2 | `GetCompletedRefunds(DateTime from, DateTime to) : RevenueRefundRow[]` | Returns the Completed refunds processed in the range (CreatedAt when ProcessedAt is missing). |
-| 3 | `CountTransactionsByStatus(DateTime from, DateTime to) : <>` | Counts the transactions created in the range, grouped by status. |
-| 4 | `CountInvoices(DateTime from, DateTime to) : int` | Counts the invoices issued in the range. |
-| 5 | `CountNewPayingUsers(DateTime from, DateTime to) : int` | Counts the users whose first Succeeded transaction is in the range. |
+| 2 | `CountTransactionsByStatus(DateTime from, DateTime to) : <>` | Counts the transactions created in the range, grouped by status. |
+| 3 | `CountInvoices(DateTime from, DateTime to) : int` | Counts the invoices issued in the range. |
+| 4 | `CountNewPayingUsers(DateTime from, DateTime to) : int` | Counts the users whose first Succeeded transaction is in the range. |
 
-### 3.131.4 Methods Used
+### 3.125.4 Methods Used
 
-Table 3.131.4: Methods used by this function
+Table 3.125.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
 | 1 | AdminRevenueController.Get | IRevenueReportService.GetReport | RevenueReportService |
 | 2 | RevenueReportService.GetReport | IRevenueRepository.GetPaid | RevenueRepository |
-| 3 | RevenueReportService.GetReport | IRevenueRepository.GetCompletedRefunds | RevenueRepository |
-| 4 | RevenueReportService.GetReport | IRevenueRepository.CountTransactionsByStatus | RevenueRepository |
-| 5 | RevenueReportService.GetReport | IRevenueRepository.CountInvoices | RevenueRepository |
-| 6 | RevenueReportService.GetReport | IRevenueRepository.CountNewPayingUsers | RevenueRepository |
+| 3 | RevenueReportService.GetReport | IRevenueRepository.CountTransactionsByStatus | RevenueRepository |
+| 4 | RevenueReportService.GetReport | IRevenueRepository.CountInvoices | RevenueRepository |
+| 5 | RevenueReportService.GetReport | IRevenueRepository.CountNewPayingUsers | RevenueRepository |
 
-Entities used: PaymentTransaction, PaymentRefund, Invoice.
+Entities used: PaymentTransaction, Invoice.
 
 ---
 
-## 3.132 Admin: View AI Usage Report
+## 3.126 Admin: View AI Usage Report
 
 Summarizes AI calls (succeeded, failed and charged to the user's quota) and tokens grouped by feature, model or day, with a total row. The date range is limited like the revenue report.
 
 - **Endpoint:** `GET /api/admin/ai-usage`  
 - **Access:** Admin role
 
-### 3.132.1 Class Diagram
+### 3.126.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -25371,9 +24183,9 @@ classDiagram
   AiUsageRepository ..> AiusageLog
 ```
 
-Figure 3.132.1 Class Diagram
+Figure 3.126.1 Class Diagram
 
-### 3.132.2 Sequence Diagram
+### 3.126.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -25404,38 +24216,38 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.132.2 Sequence Diagram
+Figure 3.126.2 Sequence Diagram
 
-### 3.132.3 Class Specification
+### 3.126.3 Class Specification
 
-#### 3.132.3.a AdminAiUsageController
+#### 3.126.3.a AdminAiUsageController
 
-Table 3.132.3.a: AdminAiUsageController Description Table
+Table 3.126.3.a: AdminAiUsageController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(string groupBy, DateTimeOffset from, DateTimeOffset to) : AiUsageReportDto` | `GET /api/admin/ai-usage`. Summarizes AI calls (succeeded, failed and charged to the user's quota) and tokens grouped by feature, model or day, with a total row. The date range is limited like the revenue report. Requires the Admin role. |
 
-#### 3.132.3.b AiUsageReportService
+#### 3.126.3.b AiUsageReportService
 
-Table 3.132.3.b: AiUsageReportService Description Table
+Table 3.126.3.b: AiUsageReportService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetReport(string groupBy, DateTimeOffset from, DateTimeOffset to) : AiUsageReportDto` | Summarizes AI calls (succeeded, failed and charged to the user's quota) and tokens grouped by feature, model or day, with a total row. The date range is limited like the revenue report. |
 
-#### 3.132.3.c AiUsageRepository
+#### 3.126.3.c AiUsageRepository
 
-Table 3.132.3.c: AiUsageRepository Description Table
+Table 3.126.3.c: AiUsageRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Summarize(string groupBy, DateTime from, DateTime to) : AiUsageRowDto[]` | Groups the AiusageLog rows in the range by feature, model or day (calls and tokens). |
 | 2 | `Total(DateTime from, DateTime to) : AiUsageRowDto` | Aggregates all AI usage rows in the range into one total row. |
 
-### 3.132.4 Methods Used
+### 3.126.4 Methods Used
 
-Table 3.132.4: Methods used by this function
+Table 3.126.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -25447,538 +24259,14 @@ Entities used: AiusageLog.
 
 ---
 
-## 3.133 Admin: View Focus Tracks
-
-Lists the focus tracks (music tracks played during a focus session), optionally only active or only inactive ones.
-
-- **Endpoint:** `GET /api/admin/focus-tracks`  
-- **Access:** Admin role
-
-### 3.133.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class AdminFocusTracksController {
-    +GetTracks(bool isActive) FocusTrackDto[]
-  }
-  class IFocusTrackService {
-    <<interface>>
-    +GetTracks(bool isActive) FocusTrackDto[]
-  }
-  class FocusTrackService {
-    +GetTracks(bool isActive) FocusTrackDto[]
-  }
-  class IFocusTrackRepository {
-    <<interface>>
-    +Get(bool isActive) FocusTrack[]
-  }
-  class FocusTrackRepository {
-    +Get(bool isActive) FocusTrack[]
-  }
-  class FocusTrack {
-    <<Entity>>
-    -Guid Id
-    -string Title
-    -string Artist
-    -string FileUrl
-    -int DurationSeconds
-    -bool IsActive
-  }
-  AdminFocusTracksController ..> IFocusTrackService : uses
-  FocusTrackService ..> IFocusTrackRepository : uses
-  IFocusTrackService <|.. FocusTrackService : implements
-  IFocusTrackRepository <|.. FocusTrackRepository : implements
-  FocusTrackRepository ..> FocusTrack
-```
-
-Figure 3.133.1 Class Diagram
-
-### 3.133.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant AdminFocusTracksController
-  participant FocusTrackService
-  participant FocusTrackRepository
-  Admin->>UI: Admin: View Focus Tracks
-  UI->>AdminFocusTracksController: GET /api/admin/focus-tracks
-  AdminFocusTracksController->>FocusTrackService: GetTracks(isActive)
-    FocusTrackService->>FocusTrackRepository: Get(isActive)
-    FocusTrackRepository-->>FocusTrackService: FocusTrack list
-  FocusTrackService-->>AdminFocusTracksController: FocusTrackDto list
-  AdminFocusTracksController-->>UI: 200 OK (FocusTrackDto list)
-  UI-->>Admin: Show result
-```
-
-Figure 3.133.2 Sequence Diagram
-
-### 3.133.3 Class Specification
-
-#### 3.133.3.a AdminFocusTracksController
-
-Table 3.133.3.a: AdminFocusTracksController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetTracks(bool isActive) : FocusTrackDto[]` | `GET /api/admin/focus-tracks`. Lists the focus tracks (music tracks played during a focus session), optionally only active or only inactive ones. Requires the Admin role. |
-
-#### 3.133.3.b FocusTrackService
-
-Table 3.133.3.b: FocusTrackService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetTracks(bool isActive) : FocusTrackDto[]` | Lists the focus tracks (music tracks played during a focus session), optionally only active or only inactive ones. |
-
-#### 3.133.3.c FocusTrackRepository
-
-Table 3.133.3.c: FocusTrackRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Get(bool isActive) : FocusTrack[]` | Returns the focus tracks (optionally only active or only inactive ones) ordered by title. |
-
-### 3.133.4 Methods Used
-
-Table 3.133.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | AdminFocusTracksController.GetTracks | IFocusTrackService.GetTracks | FocusTrackService |
-| 2 | FocusTrackService.GetTracks | IFocusTrackRepository.Get | FocusTrackRepository |
-
-Entities used: FocusTrack.
-
----
-
-## 3.134 Admin: View Focus Track Detail
-
-Returns one focus track.
-
-- **Endpoint:** `GET /api/admin/focus-tracks/{trackId}`  
-- **Access:** Admin role
-
-### 3.134.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class AdminFocusTracksController {
-    +GetTrack(Guid trackId) FocusTrackDto
-  }
-  class IFocusTrackService {
-    <<interface>>
-    +GetTrack(Guid trackId) FocusTrackDto
-  }
-  class FocusTrackService {
-    +GetTrack(Guid trackId) FocusTrackDto
-    -ToDto(FocusTrack track) FocusTrackDto
-    -GetExisting(Guid trackId) FocusTrack
-  }
-  class IFocusTrackRepository {
-    <<interface>>
-    +GetById(Guid trackId) FocusTrack
-  }
-  class FocusTrackRepository {
-    +GetById(Guid trackId) FocusTrack
-  }
-  class FocusTrack {
-    <<Entity>>
-    -Guid Id
-    -string Title
-    -string Artist
-    -string FileUrl
-    -int DurationSeconds
-    -bool IsActive
-  }
-  AdminFocusTracksController ..> IFocusTrackService : uses
-  FocusTrackService ..> IFocusTrackRepository : uses
-  IFocusTrackService <|.. FocusTrackService : implements
-  IFocusTrackRepository <|.. FocusTrackRepository : implements
-  FocusTrackRepository ..> FocusTrack
-```
-
-Figure 3.134.1 Class Diagram
-
-### 3.134.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant AdminFocusTracksController
-  participant FocusTrackService
-  participant FocusTrackRepository
-  Admin->>UI: Admin: View Focus Track Detail
-  UI->>AdminFocusTracksController: GET /api/admin/focus-tracks/(trackId)
-  AdminFocusTracksController->>FocusTrackService: GetTrack(trackId)
-    FocusTrackService->>FocusTrackService: GetExisting(trackId)
-      FocusTrackService->>FocusTrackRepository: GetById(trackId)
-      FocusTrackRepository-->>FocusTrackService: FocusTrack
-      opt value is missing
-        FocusTrackService-->>AdminFocusTracksController: throw NotFoundException (404)
-      end
-  FocusTrackService-->>AdminFocusTracksController: FocusTrackDto
-  AdminFocusTracksController-->>UI: 200 OK (FocusTrackDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.134.2 Sequence Diagram
-
-### 3.134.3 Class Specification
-
-#### 3.134.3.a AdminFocusTracksController
-
-Table 3.134.3.a: AdminFocusTracksController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetTrack(Guid trackId) : FocusTrackDto` | `GET /api/admin/focus-tracks/{trackId}`. Returns one focus track. Requires the Admin role. |
-
-#### 3.134.3.b FocusTrackService
-
-Table 3.134.3.b: FocusTrackService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetTrack(Guid trackId) : FocusTrackDto` | Returns one focus track. |
-| 2 | `private ToDto(FocusTrack track) : FocusTrackDto` | Maps the entity to the DTO returned by the API. |
-| 3 | `private GetExisting(Guid trackId) : FocusTrack` | Loads the focus track or raises NotFoundException. |
-
-#### 3.134.3.c FocusTrackRepository
-
-Table 3.134.3.c: FocusTrackRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid trackId) : FocusTrack` | Finds the FocusTrack by id; null when none. |
-
-### 3.134.4 Methods Used
-
-Table 3.134.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | AdminFocusTracksController.GetTrack | IFocusTrackService.GetTrack | FocusTrackService |
-| 2 | FocusTrackService.GetExisting | IFocusTrackRepository.GetById | FocusTrackRepository |
-
-Entities used: FocusTrack.
-
----
-
-## 3.135 Admin: Create Focus Track
-
-Creates a focus track after validating its fields.
-
-- **Endpoint:** `POST /api/admin/focus-tracks`  
-- **Access:** Admin role
-
-### 3.135.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class AdminFocusTracksController {
-    +CreateTrack(FocusTrackRequestDto request) FocusTrackDto
-  }
-  class IFocusTrackService {
-    <<interface>>
-    +CreateTrack(FocusTrackRequestDto request) FocusTrackDto
-  }
-  class FocusTrackService {
-    +CreateTrack(FocusTrackRequestDto request) FocusTrackDto
-    -Validate(FocusTrackRequestDto request) void
-    -Apply(FocusTrack track, FocusTrackRequestDto request) void
-    -ToDto(FocusTrack track) FocusTrackDto
-  }
-  class IFocusTrackRepository {
-    <<interface>>
-    +Add(FocusTrack track) void
-  }
-  class FocusTrackRepository {
-    +Add(FocusTrack track) void
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class FocusTrack {
-    <<Entity>>
-    -Guid Id
-    -string Title
-    -string Artist
-    -string FileUrl
-    -int DurationSeconds
-    -bool IsActive
-  }
-  AdminFocusTracksController ..> IFocusTrackService : uses
-  FocusTrackService ..> IFocusTrackRepository : uses
-  FocusTrackService ..> IUnitOfWork : uses
-  IFocusTrackService <|.. FocusTrackService : implements
-  IFocusTrackRepository <|.. FocusTrackRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  FocusTrackService ..> FocusTrack
-  FocusTrackRepository ..> FocusTrack
-```
-
-Figure 3.135.1 Class Diagram
-
-### 3.135.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant AdminFocusTracksController
-  participant FocusTrackService
-  participant FocusTrackRepository
-  participant UnitOfWork
-  Admin->>UI: Admin: Create Focus Track
-  UI->>AdminFocusTracksController: POST /api/admin/focus-tracks
-  AdminFocusTracksController->>FocusTrackService: CreateTrack(request)
-    FocusTrackService->>FocusTrackService: Validate(request)
-      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt string.IsNullOrWhiteSpace(request.Artist) || request.Artist.Trim().Length > M...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt string.IsNullOrEmpty(url) || url.Length > MaxUrlLength || !Uri.TryCreate(url,...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt request.DurationSeconds <= 0
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-    FocusTrackService->>FocusTrackRepository: Add(track)
-    FocusTrackService->>UnitOfWork: SaveChanges()
-  FocusTrackService-->>AdminFocusTracksController: FocusTrackDto
-  AdminFocusTracksController-->>UI: 201 Created (FocusTrackDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.135.2 Sequence Diagram
-
-### 3.135.3 Class Specification
-
-#### 3.135.3.a AdminFocusTracksController
-
-Table 3.135.3.a: AdminFocusTracksController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `CreateTrack(FocusTrackRequestDto request) : FocusTrackDto` | `POST /api/admin/focus-tracks`. Creates a focus track after validating its fields. Requires the Admin role. |
-
-#### 3.135.3.b FocusTrackService
-
-Table 3.135.3.b: FocusTrackService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `CreateTrack(FocusTrackRequestDto request) : FocusTrackDto` | Creates a focus track after validating its fields. |
-| 2 | `private Validate(FocusTrackRequestDto request)` | Checks title and artist (required, max length), FileUrl (valid http or https URL) and duration (greater than 0). |
-| 3 | `private Apply(FocusTrack track, FocusTrackRequestDto request)` | Copies title, artist, URL, duration and the active flag onto the track. |
-| 4 | `private ToDto(FocusTrack track) : FocusTrackDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.135.3.c FocusTrackRepository
-
-Table 3.135.3.c: FocusTrackRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Add(FocusTrack track)` | Adds a FocusTrack to the context. |
-
-#### 3.135.3.d UnitOfWork
-
-Table 3.135.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-### 3.135.4 Methods Used
-
-Table 3.135.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | AdminFocusTracksController.CreateTrack | IFocusTrackService.CreateTrack | FocusTrackService |
-| 2 | FocusTrackService.CreateTrack | IFocusTrackRepository.Add | FocusTrackRepository |
-| 3 | FocusTrackService.CreateTrack | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: FocusTrack.
-
----
-
-## 3.136 Admin: Update Focus Track
-
-Edits a focus track or switches it on or off.
-
-- **Endpoint:** `PUT /api/admin/focus-tracks/{trackId}`  
-- **Access:** Admin role
-
-### 3.136.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class AdminFocusTracksController {
-    +UpdateTrack(Guid trackId, FocusTrackRequestDto request) FocusTrackDto
-  }
-  class IFocusTrackService {
-    <<interface>>
-    +UpdateTrack(Guid trackId, FocusTrackRequestDto request) FocusTrackDto
-  }
-  class FocusTrackService {
-    +UpdateTrack(Guid trackId, FocusTrackRequestDto request) FocusTrackDto
-    -GetExisting(Guid trackId) FocusTrack
-    -Validate(FocusTrackRequestDto request) void
-    -Apply(FocusTrack track, FocusTrackRequestDto request) void
-    -ToDto(FocusTrack track) FocusTrackDto
-  }
-  class IFocusTrackRepository {
-    <<interface>>
-    +GetById(Guid trackId) FocusTrack
-  }
-  class FocusTrackRepository {
-    +GetById(Guid trackId) FocusTrack
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class FocusTrack {
-    <<Entity>>
-    -Guid Id
-    -string Title
-    -string Artist
-    -string FileUrl
-    -int DurationSeconds
-    -bool IsActive
-  }
-  AdminFocusTracksController ..> IFocusTrackService : uses
-  FocusTrackService ..> IFocusTrackRepository : uses
-  FocusTrackService ..> IUnitOfWork : uses
-  IFocusTrackService <|.. FocusTrackService : implements
-  IFocusTrackRepository <|.. FocusTrackRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  FocusTrackRepository ..> FocusTrack
-```
-
-Figure 3.136.1 Class Diagram
-
-### 3.136.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor Admin
-  participant UI as Client App
-  participant AdminFocusTracksController
-  participant FocusTrackService
-  participant FocusTrackRepository
-  participant UnitOfWork
-  Admin->>UI: Admin: Update Focus Track
-  UI->>AdminFocusTracksController: PUT /api/admin/focus-tracks/(trackId)
-  AdminFocusTracksController->>FocusTrackService: UpdateTrack(trackId, request)
-    FocusTrackService->>FocusTrackService: GetExisting(trackId)
-      FocusTrackService->>FocusTrackRepository: GetById(trackId)
-      FocusTrackRepository-->>FocusTrackService: FocusTrack
-      opt value is missing
-        FocusTrackService-->>AdminFocusTracksController: throw NotFoundException (404)
-      end
-    FocusTrackService->>FocusTrackService: Validate(request)
-      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt string.IsNullOrWhiteSpace(request.Artist) || request.Artist.Trim().Length > M...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt string.IsNullOrEmpty(url) || url.Length > MaxUrlLength || !Uri.TryCreate(url,...
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-      opt request.DurationSeconds <= 0
-        FocusTrackService-->>AdminFocusTracksController: throw UserFriendlyException (400)
-      end
-    FocusTrackService->>UnitOfWork: SaveChanges()
-  FocusTrackService-->>AdminFocusTracksController: FocusTrackDto
-  AdminFocusTracksController-->>UI: 200 OK (FocusTrackDto)
-  UI-->>Admin: Show result
-```
-
-Figure 3.136.2 Sequence Diagram
-
-### 3.136.3 Class Specification
-
-#### 3.136.3.a AdminFocusTracksController
-
-Table 3.136.3.a: AdminFocusTracksController Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `UpdateTrack(Guid trackId, FocusTrackRequestDto request) : FocusTrackDto` | `PUT /api/admin/focus-tracks/{trackId}`. Edits a focus track or switches it on or off. Requires the Admin role. |
-
-#### 3.136.3.b FocusTrackService
-
-Table 3.136.3.b: FocusTrackService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `UpdateTrack(Guid trackId, FocusTrackRequestDto request) : FocusTrackDto` | Edits a focus track or switches it on or off. |
-| 2 | `private GetExisting(Guid trackId) : FocusTrack` | Loads the focus track or raises NotFoundException. |
-| 3 | `private Validate(FocusTrackRequestDto request)` | Checks title and artist (required, max length), FileUrl (valid http or https URL) and duration (greater than 0). |
-| 4 | `private Apply(FocusTrack track, FocusTrackRequestDto request)` | Copies title, artist, URL, duration and the active flag onto the track. |
-| 5 | `private ToDto(FocusTrack track) : FocusTrackDto` | Maps the entity to the DTO returned by the API. |
-
-#### 3.136.3.c FocusTrackRepository
-
-Table 3.136.3.c: FocusTrackRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetById(Guid trackId) : FocusTrack` | Finds the FocusTrack by id; null when none. |
-
-#### 3.136.3.d UnitOfWork
-
-Table 3.136.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-### 3.136.4 Methods Used
-
-Table 3.136.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | AdminFocusTracksController.UpdateTrack | IFocusTrackService.UpdateTrack | FocusTrackService |
-| 2 | FocusTrackService.GetExisting | IFocusTrackRepository.GetById | FocusTrackRepository |
-| 3 | FocusTrackService.UpdateTrack | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: FocusTrack.
-
----
-
-## 3.137 Admin: Search Audit Log
+## 3.127 Admin: Search Audit Log
 
 Searches the admin action log by admin, target, action and time (end after start) with paging.
 
 - **Endpoint:** `GET /api/admin/audit-logs`  
 - **Access:** Admin role
 
-### 3.137.1 Class Diagram
+### 3.127.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26020,9 +24308,9 @@ classDiagram
   AdminAuditLogRepository ..> AdminActionLog
 ```
 
-Figure 3.137.1 Class Diagram
+Figure 3.127.1 Class Diagram
 
-### 3.137.2 Sequence Diagram
+### 3.127.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -26045,38 +24333,38 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.137.2 Sequence Diagram
+Figure 3.127.2 Sequence Diagram
 
-### 3.137.3 Class Specification
+### 3.127.3 Class Specification
 
-#### 3.137.3.a AdminAuditLogsController
+#### 3.127.3.a AdminAuditLogsController
 
-Table 3.137.3.a: AdminAuditLogsController Description Table
+Table 3.127.3.a: AdminAuditLogsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(Guid adminId, string targetType, Guid targetId, string action, DateTimeOffset from, DateTimeOffset to, int page, int pageSize) : <>` | `GET /api/admin/audit-logs`. Searches the admin action log by admin, target, action and time (end after start) with paging. Requires the Admin role. |
 
-#### 3.137.3.b AdminAuditLogService
+#### 3.127.3.b AdminAuditLogService
 
-Table 3.137.3.b: AdminAuditLogService Description Table
+Table 3.127.3.b: AdminAuditLogService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(Guid adminId, string targetType, Guid targetId, string action, DateTimeOffset from, DateTimeOffset to, int page, int pageSize) : <>` | Searches the admin action log by admin, target, action and time (end after start) with paging. |
 | 2 | `private ParseJson(string json) : JsonElement` | Parses the stored old/new values JSON; data that is not valid JSON is returned as a plain string. |
 
-#### 3.137.3.c AdminAuditLogRepository
+#### 3.127.3.c AdminAuditLogRepository
 
-Table 3.137.3.c: AdminAuditLogRepository Description Table
+Table 3.127.3.c: AdminAuditLogRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(Guid adminId, string targetType, Guid targetId, string action, DateTime from, DateTime to, int page, int pageSize) : Tuple` | Pages through AdminActionLog rows filtered by admin, target type, target id, action and time. |
 
-### 3.137.4 Methods Used
+### 3.127.4 Methods Used
 
-Table 3.137.4: Methods used by this function
+Table 3.127.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -26087,14 +24375,14 @@ Entities used: AdminActionLog.
 
 ---
 
-## 3.138 Admin: Resync Task Statuses
+## 3.128 Admin: Resync Task Statuses
 
 Derives the status of unfinished tasks and milestones again from the real data. With dryRun it only reports the differences; a real run saves them and writes an audit row.
 
 - **Endpoint:** `POST /api/admin/status-resync`  
 - **Access:** Admin role
 
-### 3.138.1 Class Diagram
+### 3.128.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26236,9 +24524,9 @@ classDiagram
   Task "1" --> "0..*" ScheduleSlot
 ```
 
-Figure 3.138.1 Class Diagram
+Figure 3.128.1 Class Diagram
 
-### 3.138.2 Sequence Diagram
+### 3.128.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -26287,21 +24575,21 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.138.2 Sequence Diagram
+Figure 3.128.2 Sequence Diagram
 
-### 3.138.3 Class Specification
+### 3.128.3 Class Specification
 
-#### 3.138.3.a AdminStatusResyncController
+#### 3.128.3.a AdminStatusResyncController
 
-Table 3.138.3.a: AdminStatusResyncController Description Table
+Table 3.128.3.a: AdminStatusResyncController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Run(bool dryRun) : StatusResyncReportDto` | `POST /api/admin/status-resync`. Derives the status of unfinished tasks and milestones again from the real data. With dryRun it only reports the differences; a real run saves them and writes an audit row. Requires the Admin role. |
 
-#### 3.138.3.b StatusResyncService
+#### 3.128.3.b StatusResyncService
 
-Table 3.138.3.b: StatusResyncService Description Table
+Table 3.128.3.b: StatusResyncService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -26311,9 +24599,9 @@ Table 3.138.3.b: StatusResyncService Description Table
 | 4 | `private Add(StatusResyncReportDto report, StatusResyncChangeDto change)` | Adds a change to the report (the list is capped and marked as truncated). |
 | 5 | `private WriteAuditLog(StatusResyncReportDto report)` | A real run writes one summary AdminActionLog row (Task, Milestone and slots are not audited automatically) with the admin id and reason. |
 
-#### 3.138.3.c TaskProgressService
+#### 3.128.3.c TaskProgressService
 
-Table 3.138.3.c: TaskProgressService Description Table
+Table 3.128.3.c: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -26326,33 +24614,33 @@ Table 3.138.3.c: TaskProgressService Description Table
 | 7 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 8 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.138.3.d AppDbContext
+#### 3.128.3.d AppDbContext
 
-Table 3.138.3.d: AppDbContext Description Table
+Table 3.128.3.d: AppDbContext Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
 
-#### 3.138.3.e ScheduleJobService
+#### 3.128.3.e ScheduleJobService
 
-Table 3.138.3.e: ScheduleJobService Description Table
+Table 3.128.3.e: ScheduleJobService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
 
-#### 3.138.3.f AiServiceClient
+#### 3.128.3.f AiServiceClient
 
-Table 3.138.3.f: AiServiceClient Description Table
+Table 3.128.3.f: AiServiceClient Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `RecordTaskCompletion(Guid taskId) : AiLearningResponseDto` | Calls the AI service `POST /learning/task-completed` so that it learns the real duration of the finished task. A failure is only logged and never blocks the caller. |
 
-### 3.138.4 Methods Used
+### 3.128.4 Methods Used
 
-Table 3.138.4: Methods used by this function
+Table 3.128.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -26369,13 +24657,15114 @@ Entities used: ScheduleChangeLog, Milestone, ScheduleSlot, Task, AdminActionLog.
 
 ---
 
+# Group: Groups and Members
+
+## 3.129 View My Groups
+
+Lists the groups the signed-in user belongs to, with the user's role and the member count of each. Archived groups are listed only when includeArchived is true.
+
+- **Endpoint:** `GET /api/groups`  
+- **Access:** Signed-in user
+
+### 3.129.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetMyGroups(bool includeArchived) GroupDto[]
+  }
+  class IGroupService {
+    <<interface>>
+    +GetMyGroups(Guid userId, bool includeArchived) GroupDto[]
+  }
+  class GroupService {
+    +GetMyGroups(Guid userId, bool includeArchived) GroupDto[]
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetGroupsOfUser(Guid userId, bool includeArchived) GroupSummaryRow[]
+  }
+  class GroupRepository {
+    +GetGroupsOfUser(Guid userId, bool includeArchived) GroupSummaryRow[]
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupRepository <|.. GroupRepository : implements
+```
+
+Figure 3.129.1 Class Diagram
+
+### 3.129.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupRepository
+  User->>UI: View My Groups
+  UI->>GroupsController: GET /api/groups
+  GroupsController->>GroupService: GetMyGroups(userId, includeArchived)
+    GroupService->>GroupRepository: GetGroupsOfUser(userId, includeArchived)
+    GroupRepository-->>GroupService: GroupSummaryRow list
+  GroupService-->>GroupsController: GroupDto list
+  GroupsController-->>UI: 200 OK (GroupDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.129.2 Sequence Diagram
+
+### 3.129.3 Class Specification
+
+#### 3.129.3.a GroupsController
+
+Table 3.129.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyGroups(bool includeArchived) : GroupDto[]` | `GET /api/groups`. Lists the groups the signed-in user belongs to, with the user's role and the member count of each. Archived groups are listed only when includeArchived is true. Requires a signed-in user. |
+
+#### 3.129.3.b GroupService
+
+Table 3.129.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyGroups(Guid userId, bool includeArchived) : GroupDto[]` | Lists the groups the signed-in user belongs to, with the user's role and the member count of each. Archived groups are listed only when includeArchived is true. |
+| 2 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.129.3.c GroupRepository
+
+Table 3.129.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupsOfUser(Guid userId, bool includeArchived) : GroupSummaryRow[]` | Reads the GroupSummaryRow list matching (userId, includeArchived); returns nothing or an empty list when there is no match. |
+
+### 3.129.4 Methods Used
+
+Table 3.129.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetMyGroups | IGroupService.GetMyGroups | GroupService |
+| 2 | GroupService.GetMyGroups | IGroupRepository.GetGroupsOfUser | GroupRepository |
+
+---
+
+## 3.130 Create Group
+
+Validates the name (required, at most 200 characters), the description and the dates (the deadline is not before the start date), creates the group, makes the creator its Leader and writes the first activity row.
+
+- **Endpoint:** `POST /api/groups`  
+- **Access:** Signed-in user
+
+### 3.130.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +CreateGroup(GroupRequestDto request) GroupDto
+  }
+  class IGroupService {
+    <<interface>>
+    +CreateGroup(Guid userId, GroupRequestDto request) GroupDto
+  }
+  class GroupService {
+    +CreateGroup(Guid userId, GroupRequestDto request) GroupDto
+    -ValidateRequest(GroupRequestDto request) void
+    -ApplyRequest(WorkGroup group, GroupRequestDto request) void
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupRepository {
+    <<interface>>
+    +AddGroup(WorkGroup group) void
+    +AddMember(GroupMember member) void
+  }
+  class GroupRepository {
+    +AddGroup(WorkGroup group) void
+    +AddMember(GroupMember member) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  IGroupService <|.. GroupService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupService ..> WorkGroup
+  GroupService ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupRepository ..> GroupMember
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.130.1 Class Diagram
+
+### 3.130.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  User->>UI: Create Group
+  UI->>GroupsController: POST /api/groups
+  GroupsController->>GroupService: CreateGroup(userId, request)
+    GroupService->>GroupService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > MaxNa...
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      opt request.Description is ( Length: > MaxDescriptionLength )
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      opt request.StartDate is ( ) start && request.Deadline is ( ) deadline && deadlin...
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+    GroupService->>GroupRepository: AddGroup(group)
+    GroupService->>GroupRepository: AddMember(member)
+    GroupService->>GroupWorkRepository: AddActivity(log)
+    GroupService->>UnitOfWork: SaveChanges()
+  GroupService-->>GroupsController: GroupDto
+  GroupsController-->>UI: 201 Created (GroupDto)
+  UI-->>User: Show result
+```
+
+Figure 3.130.2 Sequence Diagram
+
+### 3.130.3 Class Specification
+
+#### 3.130.3.a GroupsController
+
+Table 3.130.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateGroup(GroupRequestDto request) : GroupDto` | `POST /api/groups`. Validates the name (required, at most 200 characters), the description and the dates (the deadline is not before the start date), creates the group, makes the creator its Leader and writes the first activity row. Requires a signed-in user. |
+
+#### 3.130.3.b GroupService
+
+Table 3.130.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateGroup(Guid userId, GroupRequestDto request) : GroupDto` | Validates the name (required, at most 200 characters), the description and the dates (the deadline is not before the start date), creates the group, makes the creator its Leader and writes the first activity row. |
+| 2 | `private ValidateRequest(GroupRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 3 | `private ApplyRequest(WorkGroup group, GroupRequestDto request)` | Copies the validated request values onto the entity. |
+| 4 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.130.3.c GroupRepository
+
+Table 3.130.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddGroup(WorkGroup group)` | Adds a new WorkGroup to the context; it is written when the unit of work is saved. |
+| 2 | `AddMember(GroupMember member)` | Adds a new GroupMember to the context; it is written when the unit of work is saved. |
+
+#### 3.130.3.d GroupWorkRepository
+
+Table 3.130.3.d: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.130.3.e UnitOfWork
+
+Table 3.130.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.130.4 Methods Used
+
+Table 3.130.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.CreateGroup | IGroupService.CreateGroup | GroupService |
+| 2 | GroupService.CreateGroup | IGroupRepository.AddGroup | GroupRepository |
+| 3 | GroupService.CreateGroup | IGroupRepository.AddMember | GroupRepository |
+| 4 | GroupService.CreateGroup | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 5 | GroupService.CreateGroup | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: WorkGroup, GroupMember, GroupActivityLog.
+
+---
+
+## 3.131 View Group Detail
+
+Returns one group with the caller's role and the member count. A user who is not a member receives 404, so the existence of the group is not revealed.
+
+- **Endpoint:** `GET /api/groups/{groupId}`  
+- **Access:** Signed-in user
+
+### 3.131.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetGroup(Guid groupId) GroupDto
+  }
+  class IGroupService {
+    <<interface>>
+    +GetGroup(Guid userId, Guid groupId) GroupDto
+  }
+  class GroupService {
+    +GetGroup(Guid userId, Guid groupId) GroupDto
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+```
+
+Figure 3.131.1 Class Diagram
+
+### 3.131.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Detail
+  UI->>GroupsController: GET /api/groups/(groupId)
+  GroupsController->>GroupService: GetGroup(userId, groupId)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupRepository: CountMembers(groupId)
+    GroupRepository-->>GroupService: int
+  GroupService-->>GroupsController: GroupDto
+  GroupsController-->>UI: 200 OK (GroupDto)
+  UI-->>User: Show result
+```
+
+Figure 3.131.2 Sequence Diagram
+
+### 3.131.3 Class Specification
+
+#### 3.131.3.a GroupsController
+
+Table 3.131.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroup(Guid groupId) : GroupDto` | `GET /api/groups/{groupId}`. Returns one group with the caller's role and the member count. A user who is not a member receives 404, so the existence of the group is not revealed. Requires a signed-in user. |
+
+#### 3.131.3.b GroupService
+
+Table 3.131.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroup(Guid userId, Guid groupId) : GroupDto` | Returns one group with the caller's role and the member count. A user who is not a member receives 404, so the existence of the group is not revealed. |
+| 2 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.131.3.c GroupAccessService
+
+Table 3.131.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.131.3.d GroupRepository
+
+Table 3.131.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+### 3.131.4 Methods Used
+
+Table 3.131.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetGroup | IGroupService.GetGroup | GroupService |
+| 2 | GroupService.GetGroup | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.GetGroup | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup.
+
+---
+
+## 3.132 Update Group
+
+Leader only, and only while the group is active. Validates the request and updates the name, description and dates; the change is written to the activity log.
+
+- **Endpoint:** `PUT /api/groups/{groupId}`  
+- **Access:** Signed-in user
+
+### 3.132.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +UpdateGroup(Guid groupId, GroupRequestDto request) GroupDto
+  }
+  class IGroupService {
+    <<interface>>
+    +UpdateGroup(Guid userId, Guid groupId, GroupRequestDto request) GroupDto
+  }
+  class GroupService {
+    +UpdateGroup(Guid userId, Guid groupId, GroupRequestDto request) GroupDto
+    -ValidateRequest(GroupRequestDto request) void
+    -ApplyRequest(WorkGroup group, GroupRequestDto request) void
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.132.1 Class Diagram
+
+### 3.132.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Update Group
+  UI->>GroupsController: PUT /api/groups/(groupId)
+  GroupsController->>GroupService: UpdateGroup(userId, groupId, request)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > MaxNa...
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      opt request.Description is ( Length: > MaxDescriptionLength )
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      opt request.StartDate is ( ) start && request.Deadline is ( ) deadline && deadlin...
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+    GroupService->>GroupWorkRepository: AddActivity(log)
+    GroupService->>UnitOfWork: SaveChanges()
+    GroupService->>GroupRepository: CountMembers(groupId)
+    GroupRepository-->>GroupService: int
+  GroupService-->>GroupsController: GroupDto
+  GroupsController-->>UI: 200 OK (GroupDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.132.2 Sequence Diagram
+
+### 3.132.3 Class Specification
+
+#### 3.132.3.a GroupsController
+
+Table 3.132.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateGroup(Guid groupId, GroupRequestDto request) : GroupDto` | `PUT /api/groups/{groupId}`. Leader only, and only while the group is active. Validates the request and updates the name, description and dates; the change is written to the activity log. Requires a signed-in user. |
+
+#### 3.132.3.b GroupService
+
+Table 3.132.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateGroup(Guid userId, Guid groupId, GroupRequestDto request) : GroupDto` | Leader only, and only while the group is active. Validates the request and updates the name, description and dates; the change is written to the activity log. |
+| 2 | `private ValidateRequest(GroupRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 3 | `private ApplyRequest(WorkGroup group, GroupRequestDto request)` | Copies the validated request values onto the entity. |
+| 4 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.132.3.c GroupAccessService
+
+Table 3.132.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.132.3.d GroupRepository
+
+Table 3.132.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+#### 3.132.3.e GroupWorkRepository
+
+Table 3.132.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.132.3.f UnitOfWork
+
+Table 3.132.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.132.4 Methods Used
+
+Table 3.132.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.UpdateGroup | IGroupService.UpdateGroup | GroupService |
+| 2 | GroupService.UpdateGroup | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.UpdateGroup | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 6 | GroupService.UpdateGroup | IUnitOfWork.SaveChanges | UnitOfWork |
+| 7 | GroupService.UpdateGroup | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.133 Archive Group
+
+Leader only. Moves the group to the Archived status: it becomes read-only (no new work, members or focus sessions) but nothing is deleted. The change is written to the activity log.
+
+- **Endpoint:** `POST /api/groups/{groupId}/archive`  
+- **Access:** Signed-in user
+
+### 3.133.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +ArchiveGroup(Guid groupId) GroupDto
+  }
+  class IGroupService {
+    <<interface>>
+    +ArchiveGroup(Guid userId, Guid groupId) GroupDto
+  }
+  class GroupService {
+    +ArchiveGroup(Guid userId, Guid groupId) GroupDto
+    -SetStatus(Guid userId, Guid groupId, string newStatus) GroupDto
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.133.1 Class Diagram
+
+### 3.133.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Archive Group
+  UI->>GroupsController: POST /api/groups/(groupId)/archive
+  GroupsController->>GroupService: ArchiveGroup(userId, groupId)
+    GroupService->>GroupService: SetStatus(userId, groupId, newStatus)
+      GroupService->>GroupAccessService: GetAccess(groupId, userId)
+        GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+        GroupRepository-->>GroupAccessService: GroupMember
+        GroupAccessService->>GroupRepository: GetGroup(groupId)
+        GroupRepository-->>GroupAccessService: WorkGroup
+        opt member == null || group == null
+          GroupAccessService-->>GroupService: throw NotFoundException (404)
+        end
+      GroupAccessService-->>GroupService: GroupAccess
+      opt access.Group.Status == newStatus
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      GroupService->>GroupWorkRepository: AddActivity(log)
+      GroupService->>UnitOfWork: SaveChanges()
+      GroupService->>GroupRepository: CountMembers(groupId)
+      GroupRepository-->>GroupService: int
+  GroupService-->>GroupsController: GroupDto
+  GroupsController-->>UI: 200 OK (GroupDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.133.2 Sequence Diagram
+
+### 3.133.3 Class Specification
+
+#### 3.133.3.a GroupsController
+
+Table 3.133.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ArchiveGroup(Guid groupId) : GroupDto` | `POST /api/groups/{groupId}/archive`. Leader only. Moves the group to the Archived status: it becomes read-only (no new work, members or focus sessions) but nothing is deleted. The change is written to the activity log. Requires a signed-in user. |
+
+#### 3.133.3.b GroupService
+
+Table 3.133.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ArchiveGroup(Guid userId, Guid groupId) : GroupDto` | Leader only. Moves the group to the Archived status: it becomes read-only (no new work, members or focus sessions) but nothing is deleted. The change is written to the activity log. |
+| 2 | `private SetStatus(Guid userId, Guid groupId, string newStatus) : GroupDto` | Shared by Archive and Restore: requires the Leader, refuses a no-op change, sets the group Status to Archived or Active and writes the activity row. |
+| 3 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.133.3.c GroupAccessService
+
+Table 3.133.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.133.3.d GroupRepository
+
+Table 3.133.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+#### 3.133.3.e GroupWorkRepository
+
+Table 3.133.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.133.3.f UnitOfWork
+
+Table 3.133.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.133.4 Methods Used
+
+Table 3.133.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.ArchiveGroup | IGroupService.ArchiveGroup | GroupService |
+| 2 | GroupService.SetStatus | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.SetStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 6 | GroupService.SetStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 7 | GroupService.SetStatus | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.134 Restore Group
+
+Leader only. Moves an archived group back to Active. A group that is already active is refused.
+
+- **Endpoint:** `POST /api/groups/{groupId}/restore`  
+- **Access:** Signed-in user
+
+### 3.134.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +RestoreGroup(Guid groupId) GroupDto
+  }
+  class IGroupService {
+    <<interface>>
+    +RestoreGroup(Guid userId, Guid groupId) GroupDto
+  }
+  class GroupService {
+    +RestoreGroup(Guid userId, Guid groupId) GroupDto
+    -SetStatus(Guid userId, Guid groupId, string newStatus) GroupDto
+    -ToDto(WorkGroup group, string myRole, int memberCount) GroupDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountMembers(Guid groupId) int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.134.1 Class Diagram
+
+### 3.134.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Restore Group
+  UI->>GroupsController: POST /api/groups/(groupId)/restore
+  GroupsController->>GroupService: RestoreGroup(userId, groupId)
+    GroupService->>GroupService: SetStatus(userId, groupId, newStatus)
+      GroupService->>GroupAccessService: GetAccess(groupId, userId)
+        GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+        GroupRepository-->>GroupAccessService: GroupMember
+        GroupAccessService->>GroupRepository: GetGroup(groupId)
+        GroupRepository-->>GroupAccessService: WorkGroup
+        opt member == null || group == null
+          GroupAccessService-->>GroupService: throw NotFoundException (404)
+        end
+      GroupAccessService-->>GroupService: GroupAccess
+      opt access.Group.Status == newStatus
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      GroupService->>GroupWorkRepository: AddActivity(log)
+      GroupService->>UnitOfWork: SaveChanges()
+      GroupService->>GroupRepository: CountMembers(groupId)
+      GroupRepository-->>GroupService: int
+  GroupService-->>GroupsController: GroupDto
+  GroupsController-->>UI: 200 OK (GroupDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.134.2 Sequence Diagram
+
+### 3.134.3 Class Specification
+
+#### 3.134.3.a GroupsController
+
+Table 3.134.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RestoreGroup(Guid groupId) : GroupDto` | `POST /api/groups/{groupId}/restore`. Leader only. Moves an archived group back to Active. A group that is already active is refused. Requires a signed-in user. |
+
+#### 3.134.3.b GroupService
+
+Table 3.134.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RestoreGroup(Guid userId, Guid groupId) : GroupDto` | Leader only. Moves an archived group back to Active. A group that is already active is refused. |
+| 2 | `private SetStatus(Guid userId, Guid groupId, string newStatus) : GroupDto` | Shared by Archive and Restore: requires the Leader, refuses a no-op change, sets the group Status to Archived or Active and writes the activity row. |
+| 3 | `private ToDto(WorkGroup group, string myRole, int memberCount) : GroupDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.134.3.c GroupAccessService
+
+Table 3.134.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.134.3.d GroupRepository
+
+Table 3.134.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+#### 3.134.3.e GroupWorkRepository
+
+Table 3.134.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.134.3.f UnitOfWork
+
+Table 3.134.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.134.4 Methods Used
+
+Table 3.134.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.RestoreGroup | IGroupService.RestoreGroup | GroupService |
+| 2 | GroupService.SetStatus | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.SetStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 6 | GroupService.SetStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 7 | GroupService.SetStatus | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.135 View Group Members
+
+Lists the members of a group with their role and the time they joined. Any member (including a Viewer) may call it.
+
+- **Endpoint:** `GET /api/groups/{groupId}/members`  
+- **Access:** Signed-in user
+
+### 3.135.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupService {
+    <<interface>>
+    +GetMembers(Guid userId, Guid groupId) GroupMemberDto[]
+  }
+  class GroupService {
+    +GetMembers(Guid userId, Guid groupId) GroupMemberDto[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+```
+
+Figure 3.135.1 Class Diagram
+
+### 3.135.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Members
+  UI->>GroupsController: GET /api/groups/(groupId)/members
+  GroupsController->>GroupService: GetMembers(userId, groupId)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupRepository: GetMembers(groupId)
+    GroupRepository-->>GroupService: GroupMemberDto list
+  GroupService-->>GroupsController: GroupMemberDto list
+  GroupsController-->>UI: 200 OK (GroupMemberDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.135.2 Sequence Diagram
+
+### 3.135.3 Class Specification
+
+#### 3.135.3.a GroupsController
+
+Table 3.135.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMembers(Guid groupId) : GroupMemberDto[]` | `GET /api/groups/{groupId}/members`. Lists the members of a group with their role and the time they joined. Any member (including a Viewer) may call it. Requires a signed-in user. |
+
+#### 3.135.3.b GroupService
+
+Table 3.135.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMembers(Guid userId, Guid groupId) : GroupMemberDto[]` | Lists the members of a group with their role and the time they joined. Any member (including a Viewer) may call it. |
+
+#### 3.135.3.c GroupAccessService
+
+Table 3.135.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.135.3.d GroupRepository
+
+Table 3.135.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.135.4 Methods Used
+
+Table 3.135.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetMembers | IGroupService.GetMembers | GroupService |
+| 2 | GroupService.GetMembers | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.GetMembers | IGroupRepository.GetMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup.
+
+---
+
+## 3.136 Change Member Role
+
+Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned).
+
+- **Endpoint:** `PUT /api/groups/{groupId}/members/{userId}`  
+- **Access:** Signed-in user
+
+### 3.136.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +ChangeMemberRole(Guid groupId, Guid userId, GroupMemberRoleRequestDto request) GroupMemberDto
+  }
+  class IGroupService {
+    <<interface>>
+    +ChangeMemberRole(Guid userId, Guid groupId, Guid memberUserId, GroupMemberRoleRequestDto request) GroupMemberDto
+  }
+  class GroupService {
+    +ChangeMemberRole(Guid userId, Guid groupId, Guid memberUserId, GroupMemberRoleRequestDto request) GroupMemberDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.136.1 Class Diagram
+
+### 3.136.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Change Member Role
+  UI->>GroupsController: PUT /api/groups/(groupId)/members/(userId)
+  GroupsController->>GroupService: ChangeMemberRole(userId, groupId, memberUserId, request)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    opt !GroupRoles.IsValid(request.Role)
+      GroupService-->>GroupsController: throw UserFriendlyException (400)
+    end
+    GroupService->>GroupRepository: GetMember(groupId, userId)
+    GroupRepository-->>GroupService: GroupMember
+    opt value is missing
+      GroupService-->>GroupsController: throw NotFoundException (404)
+    end
+    opt oldRole != request.Role
+      GroupService->>GroupRepository: CountLeaders(groupId)
+      GroupRepository-->>GroupService: int
+      opt oldRole == GroupRoles.Leader && groups.CountLeaders(groupId) <= 1
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      opt request.Role == GroupRoles.Viewer
+        GroupService->>GroupRepository: ClearAssignments(groupId, userId)
+        GroupRepository-->>GroupService: int
+      end
+      GroupService->>GroupWorkRepository: AddActivity(log)
+      GroupService->>UnitOfWork: SaveChanges()
+    end
+    GroupService->>GroupRepository: GetMembers(groupId)
+    GroupRepository-->>GroupService: GroupMemberDto list
+  GroupService-->>GroupsController: GroupMemberDto
+  GroupsController-->>UI: 200 OK (GroupMemberDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.136.2 Sequence Diagram
+
+### 3.136.3 Class Specification
+
+#### 3.136.3.a GroupsController
+
+Table 3.136.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeMemberRole(Guid groupId, Guid userId, GroupMemberRoleRequestDto request) : GroupMemberDto` | `PUT /api/groups/{groupId}/members/{userId}`. Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned). Requires a signed-in user. |
+
+#### 3.136.3.b GroupService
+
+Table 3.136.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeMemberRole(Guid userId, Guid groupId, Guid memberUserId, GroupMemberRoleRequestDto request) : GroupMemberDto` | Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned). |
+
+#### 3.136.3.c GroupAccessService
+
+Table 3.136.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.136.3.d GroupRepository
+
+Table 3.136.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountLeaders(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+| 4 | `ClearAssignments(Guid groupId, Guid userId) : int` | Sets the assignee of every task and sub-task of the group that belongs to the user to null (unassigned) and returns how many rows were changed. |
+| 5 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.136.3.e GroupWorkRepository
+
+Table 3.136.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.136.3.f UnitOfWork
+
+Table 3.136.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.136.4 Methods Used
+
+Table 3.136.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.ChangeMemberRole | IGroupService.ChangeMemberRole | GroupService |
+| 2 | GroupService.ChangeMemberRole | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.ChangeMemberRole | IGroupRepository.GetMember | GroupRepository |
+| 6 | GroupService.ChangeMemberRole | IGroupRepository.CountLeaders | GroupRepository |
+| 7 | GroupService.ChangeMemberRole | IGroupRepository.ClearAssignments | GroupRepository |
+| 8 | GroupService.ChangeMemberRole | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupService.ChangeMemberRole | IUnitOfWork.SaveChanges | UnitOfWork |
+| 10 | GroupService.ChangeMemberRole | IGroupRepository.GetMembers | GroupRepository |
+
+Entities used: GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.137 Remove Member
+
+Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped.
+
+- **Endpoint:** `DELETE /api/groups/{groupId}/members/{userId}`  
+- **Access:** Signed-in user
+
+### 3.137.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +RemoveMember(Guid groupId, Guid userId) IActionResult
+  }
+  class IGroupService {
+    <<interface>>
+    +RemoveMember(Guid userId, Guid groupId, Guid memberUserId) void
+  }
+  class GroupService {
+    +RemoveMember(Guid userId, Guid groupId, Guid memberUserId) void
+    -RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +RemoveMember(GroupMember member) void
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +RemoveMember(GroupMember member) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.137.1 Class Diagram
+
+### 3.137.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Remove Member
+  UI->>GroupsController: DELETE /api/groups/(groupId)/members/(userId)
+  GroupsController->>GroupService: RemoveMember(userId, groupId, memberUserId)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupService: RemoveCore(groupId, actorId, memberUserId, action)
+      GroupService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupService: GroupMember
+      opt value is missing
+        GroupService-->>GroupsController: throw NotFoundException (404)
+      end
+      GroupService->>GroupRepository: CountLeaders(groupId)
+      GroupRepository-->>GroupService: int
+      opt member.Role == GroupRoles.Leader && groups.CountLeaders(groupId) <= 1
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      GroupService->>GroupRepository: ClearAssignments(groupId, userId)
+      GroupRepository-->>GroupService: int
+      GroupService->>GroupWorkRepository: GetRunningFocusSession(userId)
+      GroupWorkRepository-->>GroupService: GroupFocusSession
+      GroupService->>GroupRepository: RemoveMember(member)
+      GroupService->>GroupWorkRepository: AddActivity(log)
+      GroupService->>UnitOfWork: SaveChanges()
+  GroupsController-->>UI: 204 No Content
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.137.2 Sequence Diagram
+
+### 3.137.3 Class Specification
+
+#### 3.137.3.a GroupsController
+
+Table 3.137.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RemoveMember(Guid groupId, Guid userId) : IActionResult` | `DELETE /api/groups/{groupId}/members/{userId}`. Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped. Requires a signed-in user. |
+
+#### 3.137.3.b GroupService
+
+Table 3.137.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RemoveMember(Guid userId, Guid groupId, Guid memberUserId)` | Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped. |
+| 2 | `private RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action)` | Shared by removing a member and by leaving a group: refuses to remove the last Leader, clears the member's assigned work, stops the member's running focus session of this group, removes the membership and writes the activity row. |
+
+#### 3.137.3.c GroupAccessService
+
+Table 3.137.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.137.3.d GroupRepository
+
+Table 3.137.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountLeaders(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+| 4 | `ClearAssignments(Guid groupId, Guid userId) : int` | Sets the assignee of every task and sub-task of the group that belongs to the user to null (unassigned) and returns how many rows were changed. |
+| 5 | `RemoveMember(GroupMember member)` | Marks the GroupMember for deletion; it is removed when the unit of work is saved. |
+
+#### 3.137.3.e GroupWorkRepository
+
+Table 3.137.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.137.3.f UnitOfWork
+
+Table 3.137.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.137.4 Methods Used
+
+Table 3.137.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.RemoveMember | IGroupService.RemoveMember | GroupService |
+| 2 | GroupService.RemoveMember | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.RemoveCore | IGroupRepository.GetMember | GroupRepository |
+| 6 | GroupService.RemoveCore | IGroupRepository.CountLeaders | GroupRepository |
+| 7 | GroupService.RemoveCore | IGroupRepository.ClearAssignments | GroupRepository |
+| 8 | GroupService.RemoveCore | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 9 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
+| 10 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMember, WorkGroup, GroupFocusSession, GroupActivityLog.
+
+---
+
+## 3.138 Leave Group
+
+Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped.
+
+- **Endpoint:** `POST /api/groups/{groupId}/leave`  
+- **Access:** Signed-in user
+
+### 3.138.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +LeaveGroup(Guid groupId) IActionResult
+  }
+  class IGroupService {
+    <<interface>>
+    +LeaveGroup(Guid userId, Guid groupId) void
+  }
+  class GroupService {
+    +LeaveGroup(Guid userId, Guid groupId) void
+    -RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +RemoveMember(GroupMember member) void
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +CountLeaders(Guid groupId) int
+    +ClearAssignments(Guid groupId, Guid userId) int
+    +RemoveMember(GroupMember member) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> IUnitOfWork : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.138.1 Class Diagram
+
+### 3.138.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  User->>UI: Leave Group
+  UI->>GroupsController: POST /api/groups/(groupId)/leave
+  GroupsController->>GroupService: LeaveGroup(userId, groupId)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupService: RemoveCore(groupId, actorId, memberUserId, action)
+      GroupService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupService: GroupMember
+      opt value is missing
+        GroupService-->>GroupsController: throw NotFoundException (404)
+      end
+      GroupService->>GroupRepository: CountLeaders(groupId)
+      GroupRepository-->>GroupService: int
+      opt member.Role == GroupRoles.Leader && groups.CountLeaders(groupId) <= 1
+        GroupService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      GroupService->>GroupRepository: ClearAssignments(groupId, userId)
+      GroupRepository-->>GroupService: int
+      GroupService->>GroupWorkRepository: GetRunningFocusSession(userId)
+      GroupWorkRepository-->>GroupService: GroupFocusSession
+      GroupService->>GroupRepository: RemoveMember(member)
+      GroupService->>GroupWorkRepository: AddActivity(log)
+      GroupService->>UnitOfWork: SaveChanges()
+  GroupsController-->>UI: 204 No Content
+  UI-->>User: Show result
+```
+
+Figure 3.138.2 Sequence Diagram
+
+### 3.138.3 Class Specification
+
+#### 3.138.3.a GroupsController
+
+Table 3.138.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `LeaveGroup(Guid groupId) : IActionResult` | `POST /api/groups/{groupId}/leave`. Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped. Requires a signed-in user. |
+
+#### 3.138.3.b GroupService
+
+Table 3.138.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `LeaveGroup(Guid userId, Guid groupId)` | Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped. |
+| 2 | `private RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action)` | Shared by removing a member and by leaving a group: refuses to remove the last Leader, clears the member's assigned work, stops the member's running focus session of this group, removes the membership and writes the activity row. |
+
+#### 3.138.3.c GroupAccessService
+
+Table 3.138.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.138.3.d GroupRepository
+
+Table 3.138.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `CountLeaders(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+| 4 | `ClearAssignments(Guid groupId, Guid userId) : int` | Sets the assignee of every task and sub-task of the group that belongs to the user to null (unassigned) and returns how many rows were changed. |
+| 5 | `RemoveMember(GroupMember member)` | Marks the GroupMember for deletion; it is removed when the unit of work is saved. |
+
+#### 3.138.3.e GroupWorkRepository
+
+Table 3.138.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.138.3.f UnitOfWork
+
+Table 3.138.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.138.4 Methods Used
+
+Table 3.138.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.LeaveGroup | IGroupService.LeaveGroup | GroupService |
+| 2 | GroupService.LeaveGroup | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.RemoveCore | IGroupRepository.GetMember | GroupRepository |
+| 6 | GroupService.RemoveCore | IGroupRepository.CountLeaders | GroupRepository |
+| 7 | GroupService.RemoveCore | IGroupRepository.ClearAssignments | GroupRepository |
+| 8 | GroupService.RemoveCore | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 9 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
+| 10 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMember, WorkGroup, GroupFocusSession, GroupActivityLog.
+
+---
+
+# Group: Invitations
+
+## 3.139 Invite Member by E-mail
+
+Leader only. Creates a pending invitation for an e-mail address and role. The one-time token is returned once and only its hash is stored. A member, or an address that already has a pending invitation, is refused; an expired pending invitation is marked Expired first and then replaced. The invitee is notified when they already have an account. No e-mail message is sent.
+
+- **Endpoint:** `POST /api/groups/{groupId}/invitations`  
+- **Access:** Signed-in user
+
+### 3.139.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +CreateInvitation(Guid groupId, GroupInvitationRequestDto request) GroupInvitationCreatedDto
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +CreateInvitation(Guid userId, Guid groupId, GroupInvitationRequestDto request) GroupInvitationCreatedDto
+  }
+  class GroupInvitationService {
+    +CreateInvitation(Guid userId, Guid groupId, GroupInvitationRequestDto request) GroupInvitationCreatedDto
+    -NormalizeEmail(string value) string
+    -GenerateToken() string
+    -Hash(string token) string
+    -ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) T
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetPendingInvitation(Guid groupId, string email) GroupInvitation
+    +AddInvitation(GroupInvitation invitation) void
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetPendingInvitation(Guid groupId, string email) GroupInvitation
+    +AddInvitation(GroupInvitation invitation) void
+  }
+  class IUserRepository {
+    <<interface>>
+    +GetByEmail(string email) User
+    +GetById(Guid userId) User
+  }
+  class AuthRepository {
+    +GetByEmail(string email) User
+    +GetById(Guid userId) User
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupInvitationService ..> IUserRepository : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  GroupInvitationService ..> IUnitOfWork : uses
+  GroupInvitationService ..> IGroupWorkRepository : uses
+  GroupInvitationService ..> IGroupNotifier : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUserRepository <|.. AuthRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupInvitationService ..> GroupInvitation
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupRepository ..> GroupInvitation
+  AuthRepository ..> User
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupInvitation
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupInvitation "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.139.1 Class Diagram
+
+### 3.139.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupInvitationService
+  participant GroupAccessService
+  participant GroupRepository
+  participant AuthRepository
+  participant UnitOfWork
+  participant GroupWorkRepository
+  participant GroupNotifier
+  Group Leader->>UI: Invite Member by E-mail
+  UI->>GroupsController: POST /api/groups/(groupId)/invitations
+  GroupsController->>GroupInvitationService: CreateInvitation(userId, groupId, request)
+    GroupInvitationService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupInvitationService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupInvitationService: GroupAccess
+    GroupInvitationService->>GroupInvitationService: NormalizeEmail(value)
+      opt email.Length == 0 || email.Length > MaxEmailLength || !email.Contains('@') ||...
+        GroupInvitationService-->>GroupsController: throw UserFriendlyException (400)
+      end
+    opt !GroupRoles.IsValid(role)
+      GroupInvitationService-->>GroupsController: throw UserFriendlyException (400)
+    end
+    GroupInvitationService->>AuthRepository: GetByEmail(email)
+    AuthRepository-->>GroupInvitationService: User
+    GroupInvitationService->>GroupRepository: GetMember(groupId, userId)
+    GroupRepository-->>GroupInvitationService: GroupMember
+    opt invitee != null && groups.GetMember(groupId, invitee.Id) != null
+      GroupInvitationService-->>GroupsController: throw UserFriendlyException (400)
+    end
+    GroupInvitationService->>GroupRepository: GetPendingInvitation(groupId, email)
+    GroupRepository-->>GroupInvitationService: GroupInvitation
+    opt pending != null
+      opt pending.ExpiresAt > now
+        GroupInvitationService-->>GroupsController: throw UserFriendlyException (400)
+      end
+      GroupInvitationService->>UnitOfWork: SaveChanges()
+    end
+    GroupInvitationService->>GroupRepository: AddInvitation(invitation)
+    GroupInvitationService->>GroupWorkRepository: AddActivity(log)
+    GroupInvitationService->>UnitOfWork: SaveChanges()
+    GroupInvitationService->>AuthRepository: GetById(userId)
+    AuthRepository-->>GroupInvitationService: User
+    opt invitee != null
+      GroupInvitationService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    end
+  GroupInvitationService-->>GroupsController: GroupInvitationCreatedDto
+  GroupsController-->>UI: 201 Created (GroupInvitationCreatedDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.139.2 Sequence Diagram
+
+### 3.139.3 Class Specification
+
+#### 3.139.3.a GroupsController
+
+Table 3.139.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateInvitation(Guid groupId, GroupInvitationRequestDto request) : GroupInvitationCreatedDto` | `POST /api/groups/{groupId}/invitations`. Leader only. Creates a pending invitation for an e-mail address and role. The one-time token is returned once and only its hash is stored. A member, or an address that already has a pending invitation, is refused; an expired pending invitation is marked Expired first and then replaced. The invitee is notified when they already have an account. No e-mail message is sent. Requires a signed-in user. |
+
+#### 3.139.3.b GroupInvitationService
+
+Table 3.139.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateInvitation(Guid userId, Guid groupId, GroupInvitationRequestDto request) : GroupInvitationCreatedDto` | Leader only. Creates a pending invitation for an e-mail address and role. The one-time token is returned once and only its hash is stored. A member, or an address that already has a pending invitation, is refused; an expired pending invitation is marked Expired first and then replaced. The invitee is notified when they already have an account. No e-mail message is sent. |
+| 2 | `private NormalizeEmail(string value) : string` | Trims and lower-cases the e-mail and checks that it is present, not too long, contains @ and has no spaces; otherwise UserFriendlyException. |
+| 3 | `private GenerateToken() : string` | Creates a random 32-byte token encoded as URL-safe base64. Only its SHA-256 hash is stored. |
+| 4 | `private Hash(string token) : string` | Computes the lower-case hexadecimal SHA-256 hash of an invitation token. |
+| 5 | `private ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) : T` | Maps the entity to the DTO returned by the API. |
+
+#### 3.139.3.c GroupAccessService
+
+Table 3.139.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.139.3.d GroupRepository
+
+Table 3.139.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetPendingInvitation(Guid groupId, string email) : GroupInvitation` | Reads the GroupInvitation matching (groupId, email); returns nothing or an empty list when there is no match. |
+| 4 | `AddInvitation(GroupInvitation invitation)` | Adds a new GroupInvitation to the context; it is written when the unit of work is saved. |
+
+#### 3.139.3.e AuthRepository
+
+Table 3.139.3.e: AuthRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByEmail(string email) : User` | Finds the User with the given e-mail (includes soft-deleted users); null when none. |
+| 2 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
+
+#### 3.139.3.f UnitOfWork
+
+Table 3.139.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.139.3.g GroupWorkRepository
+
+Table 3.139.3.g: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.139.3.h GroupNotifier
+
+Table 3.139.3.h: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.139.4 Methods Used
+
+Table 3.139.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.CreateInvitation | IGroupInvitationService.CreateInvitation | GroupInvitationService |
+| 2 | GroupInvitationService.CreateInvitation | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupInvitationService.CreateInvitation | IUserRepository.GetByEmail | AuthRepository |
+| 6 | GroupInvitationService.CreateInvitation | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupInvitationService.CreateInvitation | IGroupRepository.GetPendingInvitation | GroupRepository |
+| 8 | GroupInvitationService.CreateInvitation | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | GroupInvitationService.CreateInvitation | IGroupRepository.AddInvitation | GroupRepository |
+| 10 | GroupInvitationService.CreateInvitation | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupInvitationService.CreateInvitation | IUserRepository.GetById | AuthRepository |
+| 12 | GroupInvitationService.CreateInvitation | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupInvitation, GroupMember, WorkGroup, User, GroupActivityLog.
+
+---
+
+## 3.140 View Group Invitations
+
+Leader only. Lists the invitations of the group with their status; a pending invitation that is past its expiry is shown as Expired.
+
+- **Endpoint:** `GET /api/groups/{groupId}/invitations`  
+- **Access:** Signed-in user
+
+### 3.140.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetInvitations(Guid groupId) GroupInvitationDto[]
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +GetInvitationsOfGroup(Guid userId, Guid groupId) GroupInvitationDto[]
+  }
+  class GroupInvitationService {
+    +GetInvitationsOfGroup(Guid userId, Guid groupId) GroupInvitationDto[]
+    -ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) T
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetInvitationsOfGroup(Guid groupId) GroupInvitation[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetInvitationsOfGroup(Guid groupId) GroupInvitation[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  GroupsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupRepository ..> GroupInvitation
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupInvitation
+```
+
+Figure 3.140.1 Class Diagram
+
+### 3.140.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupInvitationService
+  participant GroupAccessService
+  participant GroupRepository
+  Group Leader->>UI: View Group Invitations
+  UI->>GroupsController: GET /api/groups/(groupId)/invitations
+  GroupsController->>GroupInvitationService: GetInvitationsOfGroup(userId, groupId)
+    GroupInvitationService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupInvitationService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupInvitationService: GroupAccess
+    GroupInvitationService->>GroupRepository: GetInvitationsOfGroup(groupId)
+    GroupRepository-->>GroupInvitationService: GroupInvitation list
+  GroupInvitationService-->>GroupsController: GroupInvitationDto list
+  GroupsController-->>UI: 200 OK (GroupInvitationDto list)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.140.2 Sequence Diagram
+
+### 3.140.3 Class Specification
+
+#### 3.140.3.a GroupsController
+
+Table 3.140.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetInvitations(Guid groupId) : GroupInvitationDto[]` | `GET /api/groups/{groupId}/invitations`. Leader only. Lists the invitations of the group with their status; a pending invitation that is past its expiry is shown as Expired. Requires a signed-in user. |
+
+#### 3.140.3.b GroupInvitationService
+
+Table 3.140.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetInvitationsOfGroup(Guid userId, Guid groupId) : GroupInvitationDto[]` | Leader only. Lists the invitations of the group with their status; a pending invitation that is past its expiry is shown as Expired. |
+| 2 | `private ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) : T` | Maps the entity to the DTO returned by the API. |
+
+#### 3.140.3.c GroupAccessService
+
+Table 3.140.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.140.3.d GroupRepository
+
+Table 3.140.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetInvitationsOfGroup(Guid groupId) : GroupInvitation[]` | Reads the GroupInvitation list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.140.4 Methods Used
+
+Table 3.140.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetInvitations | IGroupInvitationService.GetInvitationsOfGroup | GroupInvitationService |
+| 2 | GroupInvitationService.GetInvitationsOfGroup | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupInvitationService.GetInvitationsOfGroup | IGroupRepository.GetInvitationsOfGroup | GroupRepository |
+
+Entities used: GroupMember, WorkGroup, GroupInvitation.
+
+---
+
+## 3.141 Revoke Invitation
+
+Leader only. Cancels a pending invitation so that it can no longer be accepted.
+
+- **Endpoint:** `DELETE /api/groups/{groupId}/invitations/{invitationId}`  
+- **Access:** Signed-in user
+
+### 3.141.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +RevokeInvitation(Guid groupId, Guid invitationId) IActionResult
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +RevokeInvitation(Guid userId, Guid groupId, Guid invitationId) void
+  }
+  class GroupInvitationService {
+    +RevokeInvitation(Guid userId, Guid groupId, Guid invitationId) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetInvitation(Guid invitationId) GroupInvitation
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetInvitation(Guid invitationId) GroupInvitation
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  GroupInvitationService ..> IGroupWorkRepository : uses
+  GroupInvitationService ..> IUnitOfWork : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupRepository ..> GroupInvitation
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupInvitation
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.141.1 Class Diagram
+
+### 3.141.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupsController
+  participant GroupInvitationService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Revoke Invitation
+  UI->>GroupsController: DELETE /api/groups/(groupId)/invitations/(invitationId)
+  GroupsController->>GroupInvitationService: RevokeInvitation(userId, groupId, invitationId)
+    GroupInvitationService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupInvitationService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupInvitationService: GroupAccess
+    GroupInvitationService->>GroupRepository: GetInvitation(invitationId)
+    GroupRepository-->>GroupInvitationService: GroupInvitation
+    opt invitation == null || invitation.GroupId != groupId
+      GroupInvitationService-->>GroupsController: throw NotFoundException (404)
+    end
+    opt invitation.Status != GroupInvitationStatuses.Pending
+      GroupInvitationService-->>GroupsController: throw UserFriendlyException (400)
+    end
+    GroupInvitationService->>GroupWorkRepository: AddActivity(log)
+    GroupInvitationService->>UnitOfWork: SaveChanges()
+  GroupsController-->>UI: 204 No Content
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.141.2 Sequence Diagram
+
+### 3.141.3 Class Specification
+
+#### 3.141.3.a GroupsController
+
+Table 3.141.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RevokeInvitation(Guid groupId, Guid invitationId) : IActionResult` | `DELETE /api/groups/{groupId}/invitations/{invitationId}`. Leader only. Cancels a pending invitation so that it can no longer be accepted. Requires a signed-in user. |
+
+#### 3.141.3.b GroupInvitationService
+
+Table 3.141.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RevokeInvitation(Guid userId, Guid groupId, Guid invitationId)` | Leader only. Cancels a pending invitation so that it can no longer be accepted. |
+
+#### 3.141.3.c GroupAccessService
+
+Table 3.141.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.141.3.d GroupRepository
+
+Table 3.141.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetInvitation(Guid invitationId) : GroupInvitation` | Reads the GroupInvitation matching (invitationId); returns nothing or an empty list when there is no match. |
+
+#### 3.141.3.e GroupWorkRepository
+
+Table 3.141.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.141.3.f UnitOfWork
+
+Table 3.141.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.141.4 Methods Used
+
+Table 3.141.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.RevokeInvitation | IGroupInvitationService.RevokeInvitation | GroupInvitationService |
+| 2 | GroupInvitationService.RevokeInvitation | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupInvitationService.RevokeInvitation | IGroupRepository.GetInvitation | GroupRepository |
+| 6 | GroupInvitationService.RevokeInvitation | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 7 | GroupInvitationService.RevokeInvitation | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMember, WorkGroup, GroupInvitation, GroupActivityLog.
+
+---
+
+## 3.142 View Invitations Sent to Me
+
+Lists the pending, not yet expired invitations addressed to the e-mail of the signed-in user, so that the user can accept them in the web without opening a mailbox.
+
+- **Endpoint:** `GET /api/group-invitations`  
+- **Access:** Signed-in user
+
+### 3.142.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupInvitationsController {
+    +GetMyInvitations() GroupInvitationDto[]
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +GetMyInvitations(Guid userId) GroupInvitationDto[]
+  }
+  class GroupInvitationService {
+    +GetMyInvitations(Guid userId) GroupInvitationDto[]
+    -GetUser(Guid userId) User
+    -ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) T
+  }
+  class IUserRepository {
+    <<interface>>
+    +GetById(Guid userId) User
+  }
+  class AuthRepository {
+    +GetById(Guid userId) User
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetPendingInvitationsForEmail(string email, DateTime nowUtc) GroupInvitation[]
+  }
+  class GroupRepository {
+    +GetPendingInvitationsForEmail(string email, DateTime nowUtc) GroupInvitation[]
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  GroupInvitationsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IUserRepository : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IUserRepository <|.. AuthRepository : implements
+  IGroupRepository <|.. GroupRepository : implements
+  AuthRepository ..> User
+  GroupRepository ..> GroupInvitation
+  GroupInvitation "*" --> "1" User
+```
+
+Figure 3.142.1 Class Diagram
+
+### 3.142.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupInvitationsController
+  participant GroupInvitationService
+  participant AuthRepository
+  participant GroupRepository
+  User->>UI: View Invitations Sent to Me
+  UI->>GroupInvitationsController: GET /api/group-invitations
+  GroupInvitationsController->>GroupInvitationService: GetMyInvitations(userId)
+    GroupInvitationService->>GroupInvitationService: GetUser(userId)
+      GroupInvitationService->>AuthRepository: GetById(userId)
+      AuthRepository-->>GroupInvitationService: User
+      opt user == null || user.DeletedAt != null
+        GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+      end
+    GroupInvitationService->>GroupRepository: GetPendingInvitationsForEmail(email, nowUtc)
+    GroupRepository-->>GroupInvitationService: GroupInvitation list
+  GroupInvitationService-->>GroupInvitationsController: GroupInvitationDto list
+  GroupInvitationsController-->>UI: 200 OK (GroupInvitationDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.142.2 Sequence Diagram
+
+### 3.142.3 Class Specification
+
+#### 3.142.3.a GroupInvitationsController
+
+Table 3.142.3.a: GroupInvitationsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyInvitations() : GroupInvitationDto[]` | `GET /api/group-invitations`. Lists the pending, not yet expired invitations addressed to the e-mail of the signed-in user, so that the user can accept them in the web without opening a mailbox. Requires a signed-in user. |
+
+#### 3.142.3.b GroupInvitationService
+
+Table 3.142.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyInvitations(Guid userId) : GroupInvitationDto[]` | Lists the pending, not yet expired invitations addressed to the e-mail of the signed-in user, so that the user can accept them in the web without opening a mailbox. |
+| 2 | `private GetUser(Guid userId) : User` | Loads the signed-in user; a missing or soft-deleted user is reported as not found. |
+| 3 | `private ToDto(GroupInvitation invitation, string groupName, string invitedByName, DateTime now) : T` | Maps the entity to the DTO returned by the API. |
+
+#### 3.142.3.c AuthRepository
+
+Table 3.142.3.c: AuthRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
+
+#### 3.142.3.d GroupRepository
+
+Table 3.142.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetPendingInvitationsForEmail(string email, DateTime nowUtc) : GroupInvitation[]` | Reads the GroupInvitation list matching (email, nowUtc); returns nothing or an empty list when there is no match. |
+
+### 3.142.4 Methods Used
+
+Table 3.142.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupInvitationsController.GetMyInvitations | IGroupInvitationService.GetMyInvitations | GroupInvitationService |
+| 2 | GroupInvitationService.GetUser | IUserRepository.GetById | AuthRepository |
+| 3 | GroupInvitationService.GetMyInvitations | IGroupRepository.GetPendingInvitationsForEmail | GroupRepository |
+
+Entities used: User, GroupInvitation.
+
+---
+
+## 3.143 Accept Invitation
+
+The invitee accepts an invitation addressed to their e-mail. Expired, revoked or already answered invitations and archived groups are refused. The user becomes a member with the invited role and the join is written to the activity log.
+
+- **Endpoint:** `POST /api/group-invitations/{invitationId}/accept`  
+- **Access:** Signed-in user
+
+### 3.143.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupInvitationsController {
+    +Accept(Guid invitationId) GroupDto
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +AcceptInvitation(Guid userId, Guid invitationId) GroupDto
+  }
+  class GroupInvitationService {
+    +AcceptInvitation(Guid userId, Guid invitationId) GroupDto
+    -AcceptCore(Guid userId, GroupInvitation invitation) GroupDto
+    -GetUser(Guid userId) User
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetInvitation(Guid invitationId) GroupInvitation
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +AddMember(GroupMember member) void
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetInvitation(Guid invitationId) GroupInvitation
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +AddMember(GroupMember member) void
+    +CountMembers(Guid groupId) int
+  }
+  class IUserRepository {
+    <<interface>>
+    +GetById(Guid userId) User
+  }
+  class AuthRepository {
+    +GetById(Guid userId) User
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupInvitationsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  GroupInvitationService ..> IUserRepository : uses
+  GroupInvitationService ..> IUnitOfWork : uses
+  GroupInvitationService ..> IGroupWorkRepository : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUserRepository <|.. AuthRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupInvitation
+  GroupRepository ..> GroupMember
+  GroupInvitationService ..> GroupMember
+  AuthRepository ..> User
+  GroupWorkRepository ..> GroupActivityLog
+  GroupInvitation "*" --> "1" User
+  GroupMember "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.143.1 Class Diagram
+
+### 3.143.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupInvitationsController
+  participant GroupInvitationService
+  participant GroupRepository
+  participant AuthRepository
+  participant UnitOfWork
+  participant GroupWorkRepository
+  User->>UI: Accept Invitation
+  UI->>GroupInvitationsController: POST /api/group-invitations/(invitationId)/accept
+  GroupInvitationsController->>GroupInvitationService: AcceptInvitation(userId, invitationId)
+    GroupInvitationService->>GroupRepository: GetInvitation(invitationId)
+    GroupRepository-->>GroupInvitationService: GroupInvitation
+    opt value is missing
+      GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+    end
+    GroupInvitationService->>GroupInvitationService: AcceptCore(userId, invitation)
+      GroupInvitationService->>GroupInvitationService: GetUser(userId)
+        GroupInvitationService->>AuthRepository: GetById(userId)
+        AuthRepository-->>GroupInvitationService: User
+        opt user == null || user.DeletedAt != null
+          GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+        end
+      opt invitation.Email != user.Email.ToLowerInvariant()
+        GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+      end
+      opt invitation.Status != GroupInvitationStatuses.Pending
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      opt invitation.ExpiresAt <= now
+        GroupInvitationService->>UnitOfWork: SaveChanges()
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      opt invitation.Group.Status == GroupStatuses.Archived
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      GroupInvitationService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupInvitationService: GroupMember
+      opt groups.GetMember(invitation.GroupId, userId) != null
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      GroupInvitationService->>GroupRepository: AddMember(member)
+      GroupInvitationService->>GroupWorkRepository: AddActivity(log)
+      GroupInvitationService->>UnitOfWork: SaveChanges()
+      GroupInvitationService->>GroupRepository: CountMembers(groupId)
+      GroupRepository-->>GroupInvitationService: int
+  GroupInvitationService-->>GroupInvitationsController: GroupDto
+  GroupInvitationsController-->>UI: 200 OK (GroupDto)
+  UI-->>User: Show result
+```
+
+Figure 3.143.2 Sequence Diagram
+
+### 3.143.3 Class Specification
+
+#### 3.143.3.a GroupInvitationsController
+
+Table 3.143.3.a: GroupInvitationsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Accept(Guid invitationId) : GroupDto` | `POST /api/group-invitations/{invitationId}/accept`. The invitee accepts an invitation addressed to their e-mail. Expired, revoked or already answered invitations and archived groups are refused. The user becomes a member with the invited role and the join is written to the activity log. Requires a signed-in user. |
+
+#### 3.143.3.b GroupInvitationService
+
+Table 3.143.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AcceptInvitation(Guid userId, Guid invitationId) : GroupDto` | The invitee accepts an invitation addressed to their e-mail. Expired, revoked or already answered invitations and archived groups are refused. The user becomes a member with the invited role and the join is written to the activity log. |
+| 2 | `private AcceptCore(Guid userId, GroupInvitation invitation) : GroupDto` | Shared by accepting by id and by token: the e-mail of the user must match the invitation (otherwise 404), the invitation must still be Pending and not expired, the group must be active and the user not yet a member. Then the member is added with the invited role, the invitation becomes Accepted and the join is logged. |
+| 3 | `private GetUser(Guid userId) : User` | Loads the signed-in user; a missing or soft-deleted user is reported as not found. |
+
+#### 3.143.3.c GroupRepository
+
+Table 3.143.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetInvitation(Guid invitationId) : GroupInvitation` | Reads the GroupInvitation matching (invitationId); returns nothing or an empty list when there is no match. |
+| 2 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 3 | `AddMember(GroupMember member)` | Adds a new GroupMember to the context; it is written when the unit of work is saved. |
+| 4 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+#### 3.143.3.d AuthRepository
+
+Table 3.143.3.d: AuthRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
+
+#### 3.143.3.e UnitOfWork
+
+Table 3.143.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.143.3.f GroupWorkRepository
+
+Table 3.143.3.f: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+### 3.143.4 Methods Used
+
+Table 3.143.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupInvitationsController.Accept | IGroupInvitationService.AcceptInvitation | GroupInvitationService |
+| 2 | GroupInvitationService.AcceptInvitation | IGroupRepository.GetInvitation | GroupRepository |
+| 3 | GroupInvitationService.GetUser | IUserRepository.GetById | AuthRepository |
+| 4 | GroupInvitationService.AcceptCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | GroupInvitationService.AcceptCore | IGroupRepository.GetMember | GroupRepository |
+| 6 | GroupInvitationService.AcceptCore | IGroupRepository.AddMember | GroupRepository |
+| 7 | GroupInvitationService.AcceptCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupInvitationService.AcceptCore | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupInvitation, GroupMember, User, GroupActivityLog.
+
+---
+
+## 3.144 Accept Invitation by Token
+
+Accepts an invitation using the one-time token shared by the Leader. The token is hashed and looked up; the e-mail of the signed-in user must match the invitation.
+
+- **Endpoint:** `POST /api/group-invitations/accept-by-token`  
+- **Access:** Signed-in user
+
+### 3.144.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupInvitationsController {
+    +AcceptByToken(GroupInvitationTokenRequestDto request) GroupDto
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +AcceptInvitationByToken(Guid userId, string token) GroupDto
+  }
+  class GroupInvitationService {
+    +AcceptInvitationByToken(Guid userId, string token) GroupDto
+    -Hash(string token) string
+    -AcceptCore(Guid userId, GroupInvitation invitation) GroupDto
+    -GetUser(Guid userId) User
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetInvitationByTokenHash(string tokenHash) GroupInvitation
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +AddMember(GroupMember member) void
+    +CountMembers(Guid groupId) int
+  }
+  class GroupRepository {
+    +GetInvitationByTokenHash(string tokenHash) GroupInvitation
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +AddMember(GroupMember member) void
+    +CountMembers(Guid groupId) int
+  }
+  class IUserRepository {
+    <<interface>>
+    +GetById(Guid userId) User
+  }
+  class AuthRepository {
+    +GetById(Guid userId) User
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupInvitationsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  GroupInvitationService ..> IUserRepository : uses
+  GroupInvitationService ..> IUnitOfWork : uses
+  GroupInvitationService ..> IGroupWorkRepository : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUserRepository <|.. AuthRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupInvitation
+  GroupRepository ..> GroupMember
+  GroupInvitationService ..> GroupMember
+  AuthRepository ..> User
+  GroupWorkRepository ..> GroupActivityLog
+  GroupInvitation "*" --> "1" User
+  GroupMember "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.144.1 Class Diagram
+
+### 3.144.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupInvitationsController
+  participant GroupInvitationService
+  participant GroupRepository
+  participant AuthRepository
+  participant UnitOfWork
+  participant GroupWorkRepository
+  User->>UI: Accept Invitation by Token
+  UI->>GroupInvitationsController: POST /api/group-invitations/accept-by-token
+  GroupInvitationsController->>GroupInvitationService: AcceptInvitationByToken(userId, token)
+    opt string.IsNullOrWhiteSpace(token)
+      GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+    end
+    GroupInvitationService->>GroupRepository: GetInvitationByTokenHash(tokenHash)
+    GroupRepository-->>GroupInvitationService: GroupInvitation
+    opt value is missing
+      GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+    end
+    GroupInvitationService->>GroupInvitationService: AcceptCore(userId, invitation)
+      GroupInvitationService->>GroupInvitationService: GetUser(userId)
+        GroupInvitationService->>AuthRepository: GetById(userId)
+        AuthRepository-->>GroupInvitationService: User
+        opt user == null || user.DeletedAt != null
+          GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+        end
+      opt invitation.Email != user.Email.ToLowerInvariant()
+        GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+      end
+      opt invitation.Status != GroupInvitationStatuses.Pending
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      opt invitation.ExpiresAt <= now
+        GroupInvitationService->>UnitOfWork: SaveChanges()
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      opt invitation.Group.Status == GroupStatuses.Archived
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      GroupInvitationService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupInvitationService: GroupMember
+      opt groups.GetMember(invitation.GroupId, userId) != null
+        GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+      end
+      GroupInvitationService->>GroupRepository: AddMember(member)
+      GroupInvitationService->>GroupWorkRepository: AddActivity(log)
+      GroupInvitationService->>UnitOfWork: SaveChanges()
+      GroupInvitationService->>GroupRepository: CountMembers(groupId)
+      GroupRepository-->>GroupInvitationService: int
+  GroupInvitationService-->>GroupInvitationsController: GroupDto
+  GroupInvitationsController-->>UI: 200 OK (GroupDto)
+  UI-->>User: Show result
+```
+
+Figure 3.144.2 Sequence Diagram
+
+### 3.144.3 Class Specification
+
+#### 3.144.3.a GroupInvitationsController
+
+Table 3.144.3.a: GroupInvitationsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AcceptByToken(GroupInvitationTokenRequestDto request) : GroupDto` | `POST /api/group-invitations/accept-by-token`. Accepts an invitation using the one-time token shared by the Leader. The token is hashed and looked up; the e-mail of the signed-in user must match the invitation. Requires a signed-in user. |
+
+#### 3.144.3.b GroupInvitationService
+
+Table 3.144.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AcceptInvitationByToken(Guid userId, string token) : GroupDto` | Accepts an invitation using the one-time token shared by the Leader. The token is hashed and looked up; the e-mail of the signed-in user must match the invitation. |
+| 2 | `private Hash(string token) : string` | Computes the lower-case hexadecimal SHA-256 hash of an invitation token. |
+| 3 | `private AcceptCore(Guid userId, GroupInvitation invitation) : GroupDto` | Shared by accepting by id and by token: the e-mail of the user must match the invitation (otherwise 404), the invitation must still be Pending and not expired, the group must be active and the user not yet a member. Then the member is added with the invited role, the invitation becomes Accepted and the join is logged. |
+| 4 | `private GetUser(Guid userId) : User` | Loads the signed-in user; a missing or soft-deleted user is reported as not found. |
+
+#### 3.144.3.c GroupRepository
+
+Table 3.144.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetInvitationByTokenHash(string tokenHash) : GroupInvitation` | Reads the GroupInvitation matching (tokenHash); returns nothing or an empty list when there is no match. |
+| 2 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 3 | `AddMember(GroupMember member)` | Adds a new GroupMember to the context; it is written when the unit of work is saved. |
+| 4 | `CountMembers(Guid groupId) : int` | Counts the rows for (groupId) and returns the number. |
+
+#### 3.144.3.d AuthRepository
+
+Table 3.144.3.d: AuthRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
+
+#### 3.144.3.e UnitOfWork
+
+Table 3.144.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.144.3.f GroupWorkRepository
+
+Table 3.144.3.f: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+### 3.144.4 Methods Used
+
+Table 3.144.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupInvitationsController.AcceptByToken | IGroupInvitationService.AcceptInvitationByToken | GroupInvitationService |
+| 2 | GroupInvitationService.AcceptInvitationByToken | IGroupRepository.GetInvitationByTokenHash | GroupRepository |
+| 3 | GroupInvitationService.GetUser | IUserRepository.GetById | AuthRepository |
+| 4 | GroupInvitationService.AcceptCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | GroupInvitationService.AcceptCore | IGroupRepository.GetMember | GroupRepository |
+| 6 | GroupInvitationService.AcceptCore | IGroupRepository.AddMember | GroupRepository |
+| 7 | GroupInvitationService.AcceptCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupInvitationService.AcceptCore | IGroupRepository.CountMembers | GroupRepository |
+
+Entities used: GroupInvitation, GroupMember, User, GroupActivityLog.
+
+---
+
+## 3.145 Decline Invitation
+
+The invitee declines a pending invitation addressed to their e-mail.
+
+- **Endpoint:** `POST /api/group-invitations/{invitationId}/decline`  
+- **Access:** Signed-in user
+
+### 3.145.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupInvitationsController {
+    +Decline(Guid invitationId) IActionResult
+  }
+  class IGroupInvitationService {
+    <<interface>>
+    +DeclineInvitation(Guid userId, Guid invitationId) void
+  }
+  class GroupInvitationService {
+    +DeclineInvitation(Guid userId, Guid invitationId) void
+    -GetUser(Guid userId) User
+  }
+  class IUserRepository {
+    <<interface>>
+    +GetById(Guid userId) User
+  }
+  class AuthRepository {
+    +GetById(Guid userId) User
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetInvitation(Guid invitationId) GroupInvitation
+  }
+  class GroupRepository {
+    +GetInvitation(Guid invitationId) GroupInvitation
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupInvitation {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Email
+    -string Role
+    -string TokenHash
+    -Guid InvitedById
+    -string Status
+    -DateTime CreatedAt
+    -DateTime ExpiresAt
+    -DateTime RespondedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupInvitationsController ..> IGroupInvitationService : uses
+  GroupInvitationService ..> IUserRepository : uses
+  GroupInvitationService ..> IGroupRepository : uses
+  GroupInvitationService ..> IGroupWorkRepository : uses
+  GroupInvitationService ..> IUnitOfWork : uses
+  IGroupInvitationService <|.. GroupInvitationService : implements
+  IUserRepository <|.. AuthRepository : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  AuthRepository ..> User
+  GroupRepository ..> GroupInvitation
+  GroupWorkRepository ..> GroupActivityLog
+  GroupInvitation "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.145.1 Class Diagram
+
+### 3.145.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupInvitationsController
+  participant GroupInvitationService
+  participant AuthRepository
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  User->>UI: Decline Invitation
+  UI->>GroupInvitationsController: POST /api/group-invitations/(invitationId)/decline
+  GroupInvitationsController->>GroupInvitationService: DeclineInvitation(userId, invitationId)
+    GroupInvitationService->>GroupInvitationService: GetUser(userId)
+      GroupInvitationService->>AuthRepository: GetById(userId)
+      AuthRepository-->>GroupInvitationService: User
+      opt user == null || user.DeletedAt != null
+        GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+      end
+    GroupInvitationService->>GroupRepository: GetInvitation(invitationId)
+    GroupRepository-->>GroupInvitationService: GroupInvitation
+    opt invitation == null || invitation.Email != user.Email.ToLowerInvariant()
+      GroupInvitationService-->>GroupInvitationsController: throw NotFoundException (404)
+    end
+    opt invitation.Status != GroupInvitationStatuses.Pending
+      GroupInvitationService-->>GroupInvitationsController: throw UserFriendlyException (400)
+    end
+    GroupInvitationService->>GroupWorkRepository: AddActivity(log)
+    GroupInvitationService->>UnitOfWork: SaveChanges()
+  GroupInvitationsController-->>UI: 204 No Content
+  UI-->>User: Show result
+```
+
+Figure 3.145.2 Sequence Diagram
+
+### 3.145.3 Class Specification
+
+#### 3.145.3.a GroupInvitationsController
+
+Table 3.145.3.a: GroupInvitationsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Decline(Guid invitationId) : IActionResult` | `POST /api/group-invitations/{invitationId}/decline`. The invitee declines a pending invitation addressed to their e-mail. Requires a signed-in user. |
+
+#### 3.145.3.b GroupInvitationService
+
+Table 3.145.3.b: GroupInvitationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeclineInvitation(Guid userId, Guid invitationId)` | The invitee declines a pending invitation addressed to their e-mail. |
+| 2 | `private GetUser(Guid userId) : User` | Loads the signed-in user; a missing or soft-deleted user is reported as not found. |
+
+#### 3.145.3.c AuthRepository
+
+Table 3.145.3.c: AuthRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetById(Guid userId) : User` | Finds the User by id; null when none. |
+
+#### 3.145.3.d GroupRepository
+
+Table 3.145.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetInvitation(Guid invitationId) : GroupInvitation` | Reads the GroupInvitation matching (invitationId); returns nothing or an empty list when there is no match. |
+
+#### 3.145.3.e GroupWorkRepository
+
+Table 3.145.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.145.3.f UnitOfWork
+
+Table 3.145.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.145.4 Methods Used
+
+Table 3.145.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupInvitationsController.Decline | IGroupInvitationService.DeclineInvitation | GroupInvitationService |
+| 2 | GroupInvitationService.GetUser | IUserRepository.GetById | AuthRepository |
+| 3 | GroupInvitationService.DeclineInvitation | IGroupRepository.GetInvitation | GroupRepository |
+| 4 | GroupInvitationService.DeclineInvitation | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 5 | GroupInvitationService.DeclineInvitation | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: User, GroupInvitation, GroupActivityLog.
+
+---
+
+# Group: Milestones
+
+## 3.146 View Group Milestones
+
+Lists the milestones (phases) of a group in order, with how many tasks each has and how many are done. Any member may call it.
+
+- **Endpoint:** `GET /api/groups/{groupId}/milestones`  
+- **Access:** Signed-in user
+
+### 3.146.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetMilestones(Guid groupId) GroupMilestoneDto[]
+  }
+  class IGroupMilestoneService {
+    <<interface>>
+    +GetMilestones(Guid userId, Guid groupId) GroupMilestoneDto[]
+  }
+  class GroupMilestoneService {
+    +GetMilestones(Guid userId, Guid groupId) GroupMilestoneDto[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetMilestones(Guid groupId) GroupMilestone[]
+  }
+  class GroupWorkRepository {
+    +GetMilestones(Guid groupId) GroupMilestone[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  GroupWorkController ..> IGroupMilestoneService : uses
+  GroupMilestoneService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupMilestoneService ..> IGroupWorkRepository : uses
+  IGroupMilestoneService <|.. GroupMilestoneService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupMilestone
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+```
+
+Figure 3.146.1 Class Diagram
+
+### 3.146.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupMilestoneService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  User->>UI: View Group Milestones
+  UI->>GroupWorkController: GET /api/groups/(groupId)/milestones
+  GroupWorkController->>GroupMilestoneService: GetMilestones(userId, groupId)
+    GroupMilestoneService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupMilestoneService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupMilestoneService: GroupAccess
+    GroupMilestoneService->>GroupWorkRepository: GetMilestones(groupId)
+    GroupWorkRepository-->>GroupMilestoneService: GroupMilestone list
+  GroupMilestoneService-->>GroupWorkController: GroupMilestoneDto list
+  GroupWorkController-->>UI: 200 OK (GroupMilestoneDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.146.2 Sequence Diagram
+
+### 3.146.3 Class Specification
+
+#### 3.146.3.a GroupWorkController
+
+Table 3.146.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestones(Guid groupId) : GroupMilestoneDto[]` | `GET /api/groups/{groupId}/milestones`. Lists the milestones (phases) of a group in order, with how many tasks each has and how many are done. Any member may call it. Requires a signed-in user. |
+
+#### 3.146.3.b GroupMilestoneService
+
+Table 3.146.3.b: GroupMilestoneService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestones(Guid userId, Guid groupId) : GroupMilestoneDto[]` | Lists the milestones (phases) of a group in order, with how many tasks each has and how many are done. Any member may call it. |
+
+#### 3.146.3.c GroupAccessService
+
+Table 3.146.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.146.3.d GroupRepository
+
+Table 3.146.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.146.3.e GroupWorkRepository
+
+Table 3.146.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestones(Guid groupId) : GroupMilestone[]` | Reads the GroupMilestone list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.146.4 Methods Used
+
+Table 3.146.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetMilestones | IGroupMilestoneService.GetMilestones | GroupMilestoneService |
+| 2 | GroupMilestoneService.GetMilestones | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupMilestoneService.GetMilestones | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
+
+Entities used: GroupMember, WorkGroup, GroupMilestone.
+
+---
+
+## 3.147 Create Group Milestone
+
+Leader only, active group only. Validates the name and the unique order number and creates a milestone in the Planned status.
+
+- **Endpoint:** `POST /api/groups/{groupId}/milestones`  
+- **Access:** Signed-in user
+
+### 3.147.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +CreateMilestone(Guid groupId, GroupMilestoneRequestDto request) GroupMilestoneDto
+  }
+  class IGroupMilestoneService {
+    <<interface>>
+    +CreateMilestone(Guid userId, Guid groupId, GroupMilestoneRequestDto request) GroupMilestoneDto
+  }
+  class GroupMilestoneService {
+    +CreateMilestone(Guid userId, Guid groupId, GroupMilestoneRequestDto request) GroupMilestoneDto
+    -ValidateRequest(GroupMilestoneRequestDto request) void
+    -EnsureOrderIndexFree(Guid groupId, int orderIndex, Guid excludeId) void
+    -ToDto(GroupMilestone milestone) GroupMilestoneDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) bool
+    +AddMilestone(GroupMilestone milestone) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) bool
+    +AddMilestone(GroupMilestone milestone) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupMilestoneService : uses
+  GroupMilestoneService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupMilestoneService ..> IGroupWorkRepository : uses
+  GroupMilestoneService ..> IUnitOfWork : uses
+  IGroupMilestoneService <|.. GroupMilestoneService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupMilestoneService ..> GroupMilestone
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.147.1 Class Diagram
+
+### 3.147.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupMilestoneService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  Group Leader->>UI: Create Group Milestone
+  UI->>GroupWorkController: POST /api/groups/(groupId)/milestones
+  GroupWorkController->>GroupMilestoneService: CreateMilestone(userId, groupId, request)
+    GroupMilestoneService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupMilestoneService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupMilestoneService: GroupAccess
+    GroupMilestoneService->>GroupMilestoneService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > MaxNa...
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.OrderIndex < 1
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt !string.IsNullOrWhiteSpace(request.Status) && !GroupWorkStatuses.IsMilestoneS...
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupMilestoneService->>GroupMilestoneService: EnsureOrderIndexFree(groupId, orderIndex, excludeId)
+      GroupMilestoneService->>GroupWorkRepository: MilestoneOrderIndexTaken(groupId, orderIndex, excludeId)
+      GroupWorkRepository-->>GroupMilestoneService: bool
+      opt work.MilestoneOrderIndexTaken(groupId, orderIndex, excludeId)
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupMilestoneService->>GroupWorkRepository: AddMilestone(milestone)
+    GroupMilestoneService->>GroupWorkRepository: AddActivity(log)
+    GroupMilestoneService->>UnitOfWork: SaveChanges()
+  GroupMilestoneService-->>GroupWorkController: GroupMilestoneDto
+  GroupWorkController-->>UI: 201 Created (GroupMilestoneDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.147.2 Sequence Diagram
+
+### 3.147.3 Class Specification
+
+#### 3.147.3.a GroupWorkController
+
+Table 3.147.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateMilestone(Guid groupId, GroupMilestoneRequestDto request) : GroupMilestoneDto` | `POST /api/groups/{groupId}/milestones`. Leader only, active group only. Validates the name and the unique order number and creates a milestone in the Planned status. Requires a signed-in user. |
+
+#### 3.147.3.b GroupMilestoneService
+
+Table 3.147.3.b: GroupMilestoneService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateMilestone(Guid userId, Guid groupId, GroupMilestoneRequestDto request) : GroupMilestoneDto` | Leader only, active group only. Validates the name and the unique order number and creates a milestone in the Planned status. |
+| 2 | `private ValidateRequest(GroupMilestoneRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 3 | `private EnsureOrderIndexFree(Guid groupId, int orderIndex, Guid excludeId)` | Checks that no other milestone of the group already uses the order number; otherwise UserFriendlyException. |
+| 4 | `private ToDto(GroupMilestone milestone) : GroupMilestoneDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.147.3.c GroupAccessService
+
+Table 3.147.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.147.3.d GroupRepository
+
+Table 3.147.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.147.3.e GroupWorkRepository
+
+Table 3.147.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) : bool` | Checks whether milestone order index taken holds for (groupId, orderIndex, excludeId) and returns true or false. |
+| 2 | `AddMilestone(GroupMilestone milestone)` | Adds a new GroupMilestone to the context; it is written when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.147.3.f UnitOfWork
+
+Table 3.147.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.147.4 Methods Used
+
+Table 3.147.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.CreateMilestone | IGroupMilestoneService.CreateMilestone | GroupMilestoneService |
+| 2 | GroupMilestoneService.CreateMilestone | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupMilestoneService.EnsureOrderIndexFree | IGroupWorkRepository.MilestoneOrderIndexTaken | GroupWorkRepository |
+| 6 | GroupMilestoneService.CreateMilestone | IGroupWorkRepository.AddMilestone | GroupWorkRepository |
+| 7 | GroupMilestoneService.CreateMilestone | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupMilestoneService.CreateMilestone | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMilestone, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.148 View Group Milestone Detail
+
+Returns one milestone of a group the caller belongs to.
+
+- **Endpoint:** `GET /api/group-milestones/{milestoneId}`  
+- **Access:** Signed-in user
+
+### 3.148.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetMilestone(Guid milestoneId) GroupMilestoneDto
+  }
+  class IGroupMilestoneService {
+    <<interface>>
+    +GetMilestone(Guid userId, Guid milestoneId) GroupMilestoneDto
+  }
+  class GroupMilestoneService {
+    +GetMilestone(Guid userId, Guid milestoneId) GroupMilestoneDto
+    -GetMilestoneOrThrow(Guid milestoneId) GroupMilestone
+    -ToDto(GroupMilestone milestone) GroupMilestoneDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetMilestone(Guid milestoneId) GroupMilestone
+  }
+  class GroupWorkRepository {
+    +GetMilestone(Guid milestoneId) GroupMilestone
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupMilestoneService : uses
+  GroupMilestoneService ..> IGroupWorkRepository : uses
+  GroupMilestoneService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupMilestoneService <|.. GroupMilestoneService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupMilestone
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+```
+
+Figure 3.148.1 Class Diagram
+
+### 3.148.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupMilestoneService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Milestone Detail
+  UI->>GroupWorkController: GET /api/group-milestones/(milestoneId)
+  GroupWorkController->>GroupMilestoneService: GetMilestone(userId, milestoneId)
+    GroupMilestoneService->>GroupMilestoneService: GetMilestoneOrThrow(milestoneId)
+      GroupMilestoneService->>GroupWorkRepository: GetMilestone(milestoneId)
+      GroupWorkRepository-->>GroupMilestoneService: GroupMilestone
+      opt value is missing
+        GroupMilestoneService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupMilestoneService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupMilestoneService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupMilestoneService: GroupAccess
+  GroupMilestoneService-->>GroupWorkController: GroupMilestoneDto
+  GroupWorkController-->>UI: 200 OK (GroupMilestoneDto)
+  UI-->>User: Show result
+```
+
+Figure 3.148.2 Sequence Diagram
+
+### 3.148.3 Class Specification
+
+#### 3.148.3.a GroupWorkController
+
+Table 3.148.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid milestoneId) : GroupMilestoneDto` | `GET /api/group-milestones/{milestoneId}`. Returns one milestone of a group the caller belongs to. Requires a signed-in user. |
+
+#### 3.148.3.b GroupMilestoneService
+
+Table 3.148.3.b: GroupMilestoneService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid userId, Guid milestoneId) : GroupMilestoneDto` | Returns one milestone of a group the caller belongs to. |
+| 2 | `private GetMilestoneOrThrow(Guid milestoneId) : GroupMilestone` | Loads a milestone or raises 404. |
+| 3 | `private ToDto(GroupMilestone milestone) : GroupMilestoneDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.148.3.c GroupWorkRepository
+
+Table 3.148.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+
+#### 3.148.3.d GroupAccessService
+
+Table 3.148.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.148.3.e GroupRepository
+
+Table 3.148.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.148.4 Methods Used
+
+Table 3.148.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetMilestone | IGroupMilestoneService.GetMilestone | GroupMilestoneService |
+| 2 | GroupMilestoneService.GetMilestoneOrThrow | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 3 | GroupMilestoneService.GetMilestone | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+
+Entities used: GroupMilestone, GroupMember, WorkGroup.
+
+---
+
+## 3.149 Update Group Milestone
+
+Leader only. Updates a milestone and its status. Marking it Delivered while tasks are still open answers 409 with the list of open tasks, unless the caller confirms with confirmOpenTasks. Every change is written to the activity log.
+
+- **Endpoint:** `PUT /api/group-milestones/{milestoneId}`  
+- **Access:** Signed-in user
+
+### 3.149.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +UpdateMilestone(Guid milestoneId, GroupMilestoneRequestDto request) GroupMilestoneDto
+  }
+  class IGroupMilestoneService {
+    <<interface>>
+    +UpdateMilestone(Guid userId, Guid milestoneId, GroupMilestoneRequestDto request) GroupMilestoneDto
+  }
+  class GroupMilestoneService {
+    +UpdateMilestone(Guid userId, Guid milestoneId, GroupMilestoneRequestDto request) GroupMilestoneDto
+    -GetMilestoneOrThrow(Guid milestoneId) GroupMilestone
+    -ValidateRequest(GroupMilestoneRequestDto request) void
+    -EnsureOrderIndexFree(Guid groupId, int orderIndex, Guid excludeId) void
+    -ToDto(GroupMilestone milestone) GroupMilestoneDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) bool
+    +GetOpenTasks(Guid milestoneId) GroupOpenTaskDto[]
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) bool
+    +GetOpenTasks(Guid milestoneId) GroupOpenTaskDto[]
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupMilestoneService : uses
+  GroupMilestoneService ..> IGroupWorkRepository : uses
+  GroupMilestoneService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupMilestoneService ..> IUnitOfWork : uses
+  IGroupMilestoneService <|.. GroupMilestoneService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.149.1 Class Diagram
+
+### 3.149.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupMilestoneService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  Group Leader->>UI: Update Group Milestone
+  UI->>GroupWorkController: PUT /api/group-milestones/(milestoneId)
+  GroupWorkController->>GroupMilestoneService: UpdateMilestone(userId, milestoneId, request)
+    GroupMilestoneService->>GroupMilestoneService: GetMilestoneOrThrow(milestoneId)
+      GroupMilestoneService->>GroupWorkRepository: GetMilestone(milestoneId)
+      GroupWorkRepository-->>GroupMilestoneService: GroupMilestone
+      opt value is missing
+        GroupMilestoneService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupMilestoneService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupMilestoneService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupMilestoneService: GroupAccess
+    GroupMilestoneService->>GroupMilestoneService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > MaxNa...
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.OrderIndex < 1
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt !string.IsNullOrWhiteSpace(request.Status) && !GroupWorkStatuses.IsMilestoneS...
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupMilestoneService->>GroupMilestoneService: EnsureOrderIndexFree(groupId, orderIndex, excludeId)
+      GroupMilestoneService->>GroupWorkRepository: MilestoneOrderIndexTaken(groupId, orderIndex, excludeId)
+      GroupWorkRepository-->>GroupMilestoneService: bool
+      opt work.MilestoneOrderIndexTaken(groupId, orderIndex, excludeId)
+        GroupMilestoneService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    opt newStatus == GroupWorkStatuses.Delivered && oldStatus != GroupWorkStatuses.De...
+      GroupMilestoneService->>GroupWorkRepository: GetOpenTasks(milestoneId)
+      GroupWorkRepository-->>GroupMilestoneService: GroupOpenTaskDto list
+      opt open.Count > 0
+        GroupMilestoneService-->>GroupWorkController: throw MilestoneOpenTasksException (409)
+      end
+    end
+    GroupMilestoneService->>GroupWorkRepository: AddActivity(log)
+    GroupMilestoneService->>UnitOfWork: SaveChanges()
+  GroupMilestoneService-->>GroupWorkController: GroupMilestoneDto
+  GroupWorkController-->>UI: 200 OK (GroupMilestoneDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.149.2 Sequence Diagram
+
+### 3.149.3 Class Specification
+
+#### 3.149.3.a GroupWorkController
+
+Table 3.149.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateMilestone(Guid milestoneId, GroupMilestoneRequestDto request) : GroupMilestoneDto` | `PUT /api/group-milestones/{milestoneId}`. Leader only. Updates a milestone and its status. Marking it Delivered while tasks are still open answers 409 with the list of open tasks, unless the caller confirms with confirmOpenTasks. Every change is written to the activity log. Requires a signed-in user. |
+
+#### 3.149.3.b GroupMilestoneService
+
+Table 3.149.3.b: GroupMilestoneService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateMilestone(Guid userId, Guid milestoneId, GroupMilestoneRequestDto request) : GroupMilestoneDto` | Leader only. Updates a milestone and its status. Marking it Delivered while tasks are still open answers 409 with the list of open tasks, unless the caller confirms with confirmOpenTasks. Every change is written to the activity log. |
+| 2 | `private GetMilestoneOrThrow(Guid milestoneId) : GroupMilestone` | Loads a milestone or raises 404. |
+| 3 | `private ValidateRequest(GroupMilestoneRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private EnsureOrderIndexFree(Guid groupId, int orderIndex, Guid excludeId)` | Checks that no other milestone of the group already uses the order number; otherwise UserFriendlyException. |
+| 5 | `private ToDto(GroupMilestone milestone) : GroupMilestoneDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.149.3.c GroupWorkRepository
+
+Table 3.149.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 2 | `MilestoneOrderIndexTaken(Guid groupId, int orderIndex, Guid excludeId) : bool` | Checks whether milestone order index taken holds for (groupId, orderIndex, excludeId) and returns true or false. |
+| 3 | `GetOpenTasks(Guid milestoneId) : GroupOpenTaskDto[]` | Reads the GroupOpenTaskDto list matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.149.3.d GroupAccessService
+
+Table 3.149.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.149.3.e GroupRepository
+
+Table 3.149.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.149.3.f UnitOfWork
+
+Table 3.149.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.149.4 Methods Used
+
+Table 3.149.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.UpdateMilestone | IGroupMilestoneService.UpdateMilestone | GroupMilestoneService |
+| 2 | GroupMilestoneService.GetMilestoneOrThrow | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 3 | GroupMilestoneService.UpdateMilestone | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupMilestoneService.EnsureOrderIndexFree | IGroupWorkRepository.MilestoneOrderIndexTaken | GroupWorkRepository |
+| 7 | GroupMilestoneService.UpdateMilestone | IGroupWorkRepository.GetOpenTasks | GroupWorkRepository |
+| 8 | GroupMilestoneService.UpdateMilestone | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupMilestoneService.UpdateMilestone | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMilestone, GroupMember, WorkGroup, SubTask, GroupActivityLog.
+
+---
+
+## 3.150 Delete Group Milestone
+
+Leader only. Deletes a milestone; its tasks are kept and become tasks without a milestone.
+
+- **Endpoint:** `DELETE /api/group-milestones/{milestoneId}`  
+- **Access:** Signed-in user
+
+### 3.150.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +DeleteMilestone(Guid milestoneId) IActionResult
+  }
+  class IGroupMilestoneService {
+    <<interface>>
+    +DeleteMilestone(Guid userId, Guid milestoneId) void
+  }
+  class GroupMilestoneService {
+    +DeleteMilestone(Guid userId, Guid milestoneId) void
+    -GetMilestoneOrThrow(Guid milestoneId) GroupMilestone
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +RemoveMilestone(GroupMilestone milestone) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +RemoveMilestone(GroupMilestone milestone) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupMilestoneService : uses
+  GroupMilestoneService ..> IGroupWorkRepository : uses
+  GroupMilestoneService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupMilestoneService ..> IUnitOfWork : uses
+  IGroupMilestoneService <|.. GroupMilestoneService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.150.1 Class Diagram
+
+### 3.150.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupMilestoneService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  Group Leader->>UI: Delete Group Milestone
+  UI->>GroupWorkController: DELETE /api/group-milestones/(milestoneId)
+  GroupWorkController->>GroupMilestoneService: DeleteMilestone(userId, milestoneId)
+    GroupMilestoneService->>GroupMilestoneService: GetMilestoneOrThrow(milestoneId)
+      GroupMilestoneService->>GroupWorkRepository: GetMilestone(milestoneId)
+      GroupWorkRepository-->>GroupMilestoneService: GroupMilestone
+      opt value is missing
+        GroupMilestoneService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupMilestoneService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupMilestoneService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupMilestoneService: GroupAccess
+    GroupMilestoneService->>GroupWorkRepository: RemoveMilestone(milestone)
+    GroupMilestoneService->>GroupWorkRepository: AddActivity(log)
+    GroupMilestoneService->>UnitOfWork: SaveChanges()
+  GroupWorkController-->>UI: 204 No Content
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.150.2 Sequence Diagram
+
+### 3.150.3 Class Specification
+
+#### 3.150.3.a GroupWorkController
+
+Table 3.150.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteMilestone(Guid milestoneId) : IActionResult` | `DELETE /api/group-milestones/{milestoneId}`. Leader only. Deletes a milestone; its tasks are kept and become tasks without a milestone. Requires a signed-in user. |
+
+#### 3.150.3.b GroupMilestoneService
+
+Table 3.150.3.b: GroupMilestoneService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteMilestone(Guid userId, Guid milestoneId)` | Leader only. Deletes a milestone; its tasks are kept and become tasks without a milestone. |
+| 2 | `private GetMilestoneOrThrow(Guid milestoneId) : GroupMilestone` | Loads a milestone or raises 404. |
+
+#### 3.150.3.c GroupWorkRepository
+
+Table 3.150.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 2 | `RemoveMilestone(GroupMilestone milestone)` | Marks the GroupMilestone for deletion; it is removed when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.150.3.d GroupAccessService
+
+Table 3.150.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.150.3.e GroupRepository
+
+Table 3.150.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.150.3.f UnitOfWork
+
+Table 3.150.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.150.4 Methods Used
+
+Table 3.150.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.DeleteMilestone | IGroupMilestoneService.DeleteMilestone | GroupMilestoneService |
+| 2 | GroupMilestoneService.GetMilestoneOrThrow | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 3 | GroupMilestoneService.DeleteMilestone | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupMilestoneService.DeleteMilestone | IGroupWorkRepository.RemoveMilestone | GroupWorkRepository |
+| 7 | GroupMilestoneService.DeleteMilestone | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupMilestoneService.DeleteMilestone | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupMilestone, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+# Group: Tasks and Sub-tasks
+
+## 3.151 View Group Tasks
+
+Lists the tasks of a group with their sub-tasks, optionally filtered by status, assignee or milestone. Any member may call it.
+
+- **Endpoint:** `GET /api/groups/{groupId}/tasks`  
+- **Access:** Signed-in user
+
+### 3.151.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetTasks(Guid groupId, string status, Guid assigneeId, Guid milestoneId) GroupTaskDto[]
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +GetTasks(Guid userId, Guid groupId, string status, Guid assigneeId, Guid milestoneId) GroupTaskDto[]
+  }
+  class GroupTaskService {
+    +GetTasks(Guid userId, Guid groupId, string status, Guid assigneeId, Guid milestoneId) GroupTaskDto[]
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTasks(Guid groupId, string status, Guid assigneeId, Guid milestoneId) GroupTask[]
+  }
+  class GroupWorkRepository {
+    +GetTasks(Guid groupId, string status, Guid assigneeId, Guid milestoneId) GroupTask[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+```
+
+Figure 3.151.1 Class Diagram
+
+### 3.151.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  User->>UI: View Group Tasks
+  UI->>GroupWorkController: GET /api/groups/(groupId)/tasks
+  GroupWorkController->>GroupTaskService: GetTasks(userId, groupId, status, assigneeId, milestoneId)
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    opt !string.IsNullOrWhiteSpace(status) && !GroupWorkStatuses.IsTaskStatus(status)
+      GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    GroupTaskService->>GroupWorkRepository: GetTasks(groupId, status, assigneeId, milestoneId)
+    GroupWorkRepository-->>GroupTaskService: GroupTask list
+  GroupTaskService-->>GroupWorkController: GroupTaskDto list
+  GroupWorkController-->>UI: 200 OK (GroupTaskDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.151.2 Sequence Diagram
+
+### 3.151.3 Class Specification
+
+#### 3.151.3.a GroupWorkController
+
+Table 3.151.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasks(Guid groupId, string status, Guid assigneeId, Guid milestoneId) : GroupTaskDto[]` | `GET /api/groups/{groupId}/tasks`. Lists the tasks of a group with their sub-tasks, optionally filtered by status, assignee or milestone. Any member may call it. Requires a signed-in user. |
+
+#### 3.151.3.b GroupTaskService
+
+Table 3.151.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasks(Guid userId, Guid groupId, string status, Guid assigneeId, Guid milestoneId) : GroupTaskDto[]` | Lists the tasks of a group with their sub-tasks, optionally filtered by status, assignee or milestone. Any member may call it. |
+| 2 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.151.3.c GroupAccessService
+
+Table 3.151.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.151.3.d GroupRepository
+
+Table 3.151.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.151.3.e GroupWorkRepository
+
+Table 3.151.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasks(Guid groupId, string status, Guid assigneeId, Guid milestoneId) : GroupTask[]` | Reads the GroupTask list matching (groupId, status, assigneeId, milestoneId); returns nothing or an empty list when there is no match. |
+
+### 3.151.4 Methods Used
+
+Table 3.151.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetTasks | IGroupTaskService.GetTasks | GroupTaskService |
+| 2 | GroupTaskService.GetTasks | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupTaskService.GetTasks | IGroupWorkRepository.GetTasks | GroupWorkRepository |
+
+Entities used: GroupMember, WorkGroup, GroupTask, SubTask.
+
+---
+
+## 3.152 Create Group Task
+
+Leader only, active group only. Validates title, description, priority, estimate, fixed time and deadline, the milestone and the assignee (a member who is not a Viewer). When the task has a fixed time and an assignee, the assignee's calendar is checked and a busy assignee answers 409 unless the Leader confirms with confirmConflicts. The assignee is notified.
+
+- **Endpoint:** `POST /api/groups/{groupId}/tasks`  
+- **Access:** Signed-in user
+
+### 3.152.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +CreateTask(Guid groupId, GroupTaskRequestDto request) GroupTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +CreateTask(Guid userId, Guid groupId, GroupTaskRequestDto request) GroupTaskDto
+  }
+  class GroupTaskService {
+    +CreateTask(Guid userId, Guid groupId, GroupTaskRequestDto request) GroupTaskDto
+    -ValidateRequest(GroupTaskRequestDto request) void
+    -ValidateMilestone(Guid groupId, Guid milestoneId, string taskStatus) void
+    -EnsureAssignable(Guid groupId, Guid assigneeId) void
+    -ToStorage(DateTimeOffset value) DateTime
+    -ApplyRequest(GroupTask task, GroupTaskRequestDto request) void
+    -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
+    -Ids(Guid id) Guid[]
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+    -NameOf(Dictionary~Guid,string~ names, Guid id) string
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddTask(GroupTask task) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddTask(GroupTask task) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAvailabilityService {
+    <<interface>>
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+  }
+  class GroupAvailabilityService {
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+    +Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) GroupAssigneeAvailabilityDto
+    -Period(DateTime start, DateTime end, string source) GroupBusyPeriodDto
+  }
+  class ICalendarRepository {
+    <<interface>>
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class CalendarRepository {
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GoogleCalendarEvent {
+    <<Entity>>
+    -Guid Id
+    -Guid GoogleConnectionId
+    -string GoogleEventId
+    -string Title
+    -DateTime StartTime
+    -DateTime EndTime
+    -bool IsAllDay
+    -bool IsCreatedByMetanoia
+    -string Etag
+    -bool IsCancelled
+    -DateTime UpdatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupAvailabilityService : uses
+  GroupAvailabilityService ..> ICalendarRepository : uses
+  GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAvailabilityService <|.. GroupAvailabilityService : implements
+  ICalendarRepository <|.. CalendarRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupTaskService ..> GroupTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  CalendarRepository ..> ScheduleSlot
+  CalendarRepository ..> GoogleCalendarEvent
+  CalendarRepository ..> User
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupMilestone "1" --> "0..*" GroupTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.152.1 Class Diagram
+
+### 3.152.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant GroupAvailabilityService
+  participant CalendarRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Create Group Task
+  UI->>GroupWorkController: POST /api/groups/(groupId)/tasks
+  GroupWorkController->>GroupTaskService: CreateTask(userId, groupId, request)
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.Description is ( Length: > MaxDescriptionLength )
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt !string.IsNullOrWhiteSpace(request.Priority) && !GroupPriorities.IsValid(requ...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.EstimatedMinutes is <= 0
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt (request.FixedStart == null) != (request.FixedEnd == null)
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.FixedStart is ( ) fixedStart && request.FixedEnd is ( ) fixedEnd && f...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupTaskService: ValidateMilestone(groupId, milestoneId, taskStatus)
+      GroupTaskService->>GroupWorkRepository: GetMilestone(milestoneId)
+      GroupWorkRepository-->>GroupTaskService: GroupMilestone
+      opt milestone == null || milestone.GroupId != groupId
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt (taskStatus == null || !GroupRules.IsClosed(taskStatus)) && milestone.Status...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupTaskService: EnsureAssignable(groupId, assigneeId)
+      GroupTaskService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupTaskService: GroupMember
+      opt member == null
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt member.Role == GroupRoles.Viewer
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    opt request.AssigneeId is ( ) newAssignee
+      GroupTaskService->>GroupAvailabilityService: EnsureAvailable(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes,...
+        GroupAvailabilityService->>GroupAvailabilityService: Check(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes, excludeTas...
+          opt fixedStartUtc is ( ) start && fixedEndUtc is ( ) end
+            GroupAvailabilityService->>CalendarRepository: GetSlots(userId, from, to, includeCancelled)
+            CalendarRepository-->>GroupAvailabilityService: CalendarSlotRow list
+            GroupAvailabilityService->>CalendarRepository: GetGoogleEvents(userId, from, to)
+            CalendarRepository-->>GroupAvailabilityService: GoogleCalendarEvent list
+            GroupAvailabilityService->>GroupWorkRepository: GetFixedTasksOverlapping(userId, startUtc, endUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: GroupTask list
+          end
+          opt deadlineUtc is ( ) deadline && estimatedMinutes is ( ) estimate
+            GroupAvailabilityService->>GroupWorkRepository: SumOpenEstimatedMinutes(userId, fromUtc, toUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: int
+            GroupAvailabilityService->>CalendarRepository: GetWorkingHours(userId)
+            CalendarRepository-->>GroupAvailabilityService: CalendarWorkingHours
+          end
+        GroupAvailabilityService-->>GroupTaskService: throw GroupAssigneeBusyException
+    end
+    GroupTaskService->>GroupWorkRepository: AddTask(task)
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
+      GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+      GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+  GroupTaskService-->>GroupWorkController: GroupTaskDto
+  GroupWorkController-->>UI: 201 Created (GroupTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.152.2 Sequence Diagram
+
+### 3.152.3 Class Specification
+
+#### 3.152.3.a GroupWorkController
+
+Table 3.152.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateTask(Guid groupId, GroupTaskRequestDto request) : GroupTaskDto` | `POST /api/groups/{groupId}/tasks`. Leader only, active group only. Validates title, description, priority, estimate, fixed time and deadline, the milestone and the assignee (a member who is not a Viewer). When the task has a fixed time and an assignee, the assignee's calendar is checked and a busy assignee answers 409 unless the Leader confirms with confirmConflicts. The assignee is notified. Requires a signed-in user. |
+
+#### 3.152.3.b GroupTaskService
+
+Table 3.152.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateTask(Guid userId, Guid groupId, GroupTaskRequestDto request) : GroupTaskDto` | Leader only, active group only. Validates title, description, priority, estimate, fixed time and deadline, the milestone and the assignee (a member who is not a Viewer). When the task has a fixed time and an assignee, the assignee's calendar is checked and a busy assignee answers 409 unless the Leader confirms with confirmConflicts. The assignee is notified. |
+| 2 | `private ValidateRequest(GroupTaskRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 3 | `private ValidateMilestone(Guid groupId, Guid milestoneId, string taskStatus)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
+| 5 | `private ToStorage(DateTimeOffset value) : DateTime` | Converts a request time to the UTC value that is stored in the database. |
+| 6 | `private ApplyRequest(GroupTask task, GroupTaskRequestDto request)` | Copies the validated request values onto the entity. |
+| 7 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+| 8 | `private Ids(Guid id) : Guid[]` | Turns an optional id into a list of zero or one id. |
+| 9 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+| 10 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
+
+#### 3.152.3.c GroupAccessService
+
+Table 3.152.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.152.3.d GroupRepository
+
+Table 3.152.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.152.3.e GroupWorkRepository
+
+Table 3.152.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
+| 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
+| 4 | `AddTask(GroupTask task)` | Adds a new GroupTask to the context; it is written when the unit of work is saved. |
+| 5 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 6 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.152.3.f GroupAvailabilityService
+
+Table 3.152.3.f: GroupAvailabilityService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm)` | Returns at once when the Leader already confirmed. Otherwise runs the availability check and, when the assignee is busy or overloaded, raises GroupAssigneeBusyException (HTTP 409 GROUP_ASSIGNEE_BUSY) with the busy periods and the workload so that the Leader can confirm with confirmConflicts. |
+| 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
+| 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
+
+#### 3.152.3.g CalendarRepository
+
+Table 3.152.3.g: CalendarRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) : CalendarSlotRow[]` | Returns the user's schedule slots (with task and project names) that overlap [from, to), ordered by start time; cancelled slots only on request. |
+| 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
+| 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
+
+#### 3.152.3.h UnitOfWork
+
+Table 3.152.3.h: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.152.3.i GroupNotifier
+
+Table 3.152.3.i: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.152.4 Methods Used
+
+Table 3.152.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.CreateTask | IGroupTaskService.CreateTask | GroupTaskService |
+| 2 | GroupTaskService.CreateTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupTaskService.ValidateMilestone | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 6 | GroupTaskService.EnsureAssignable | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupTaskService.CreateTask | IGroupAvailabilityService.EnsureAvailable | GroupAvailabilityService |
+| 8 | GroupAvailabilityService.Check | ICalendarRepository.GetSlots | CalendarRepository |
+| 9 | GroupAvailabilityService.Check | ICalendarRepository.GetGoogleEvents | CalendarRepository |
+| 10 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
+| 11 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
+| 12 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
+| 13 | GroupTaskService.CreateTask | IGroupWorkRepository.AddTask | GroupWorkRepository |
+| 14 | GroupTaskService.CreateTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 15 | GroupTaskService.CreateTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 17 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+| 18 | GroupTaskService.CreateTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupTask, GroupMember, WorkGroup, GroupMilestone, ScheduleSlot, GoogleCalendarEvent, User, GroupActivityLog.
+
+---
+
+## 3.153 View Group Task Detail
+
+Returns one task with its sub-tasks, the assignee and the time spent by each person.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}`  
+- **Access:** Signed-in user
+
+### 3.153.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetTask(Guid taskId) GroupTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +GetTask(Guid userId, Guid taskId) GroupTaskDto
+  }
+  class GroupTaskService {
+    +GetTask(Guid userId, Guid taskId) GroupTaskDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+```
+
+Figure 3.153.1 Class Diagram
+
+### 3.153.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Task Detail
+  UI->>GroupWorkController: GET /api/group-tasks/(taskId)
+  GroupWorkController->>GroupTaskService: GetTask(userId, taskId)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+  GroupTaskService-->>GroupWorkController: GroupTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupTaskDto)
+  UI-->>User: Show result
+```
+
+Figure 3.153.2 Sequence Diagram
+
+### 3.153.3 Class Specification
+
+#### 3.153.3.a GroupWorkController
+
+Table 3.153.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTaskDto` | `GET /api/group-tasks/{taskId}`. Returns one task with its sub-tasks, the assignee and the time spent by each person. Requires a signed-in user. |
+
+#### 3.153.3.b GroupTaskService
+
+Table 3.153.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid userId, Guid taskId) : GroupTaskDto` | Returns one task with its sub-tasks, the assignee and the time spent by each person. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.153.3.c GroupWorkRepository
+
+Table 3.153.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.153.3.d GroupAccessService
+
+Table 3.153.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.153.3.e GroupRepository
+
+Table 3.153.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.153.4 Methods Used
+
+Table 3.153.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetTask | IGroupTaskService.GetTask | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.GetTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup.
+
+---
+
+## 3.154 Update Group Task
+
+Leader only. Validates and updates the task. Changing the fixed time or deadline of an unfinished task that has an assignee repeats the availability check (409 until confirmed).
+
+- **Endpoint:** `PUT /api/group-tasks/{taskId}`  
+- **Access:** Signed-in user
+
+### 3.154.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +UpdateTask(Guid taskId, GroupTaskRequestDto request) GroupTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +UpdateTask(Guid userId, Guid taskId, GroupTaskRequestDto request) GroupTaskDto
+  }
+  class GroupTaskService {
+    +UpdateTask(Guid userId, Guid taskId, GroupTaskRequestDto request) GroupTaskDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -ValidateRequest(GroupTaskRequestDto request) void
+    -ValidateMilestone(Guid groupId, Guid milestoneId, string taskStatus) void
+    -ToStorage(DateTimeOffset value) DateTime
+    -ApplyRequest(GroupTask task, GroupTaskRequestDto request) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupAvailabilityService {
+    <<interface>>
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+  }
+  class GroupAvailabilityService {
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+    +Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) GroupAssigneeAvailabilityDto
+    -Period(DateTime start, DateTime end, string source) GroupBusyPeriodDto
+  }
+  class ICalendarRepository {
+    <<interface>>
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class CalendarRepository {
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GoogleCalendarEvent {
+    <<Entity>>
+    -Guid Id
+    -Guid GoogleConnectionId
+    -string GoogleEventId
+    -string Title
+    -DateTime StartTime
+    -DateTime EndTime
+    -bool IsAllDay
+    -bool IsCreatedByMetanoia
+    -string Etag
+    -bool IsCancelled
+    -DateTime UpdatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupAvailabilityService : uses
+  GroupAvailabilityService ..> ICalendarRepository : uses
+  GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupAvailabilityService <|.. GroupAvailabilityService : implements
+  ICalendarRepository <|.. CalendarRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  CalendarRepository ..> ScheduleSlot
+  CalendarRepository ..> GoogleCalendarEvent
+  CalendarRepository ..> User
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupMilestone "1" --> "0..*" GroupTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.154.1 Class Diagram
+
+### 3.154.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupAvailabilityService
+  participant CalendarRepository
+  participant UnitOfWork
+  Group Leader->>UI: Update Group Task
+  UI->>GroupWorkController: PUT /api/group-tasks/(taskId)
+  GroupWorkController->>GroupTaskService: UpdateTask(userId, taskId, request)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: ValidateRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.Description is ( Length: > MaxDescriptionLength )
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt !string.IsNullOrWhiteSpace(request.Priority) && !GroupPriorities.IsValid(requ...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.EstimatedMinutes is <= 0
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt (request.FixedStart == null) != (request.FixedEnd == null)
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.FixedStart is ( ) fixedStart && request.FixedEnd is ( ) fixedEnd && f...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    opt request.MilestoneId != task.MilestoneId
+      GroupTaskService->>GroupTaskService: ValidateMilestone(groupId, milestoneId, taskStatus)
+        GroupTaskService->>GroupWorkRepository: GetMilestone(milestoneId)
+        GroupWorkRepository-->>GroupTaskService: GroupMilestone
+        opt milestone == null || milestone.GroupId != groupId
+          GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+        end
+        opt (taskStatus == null || !GroupRules.IsClosed(taskStatus)) && milestone.Status...
+          GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+        end
+    end
+    opt timingChanged && task.AssigneeId is ( ) currentAssignee && !GroupRules.IsClos...
+      GroupTaskService->>GroupAvailabilityService: EnsureAvailable(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes,...
+        GroupAvailabilityService->>GroupAvailabilityService: Check(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes, excludeTas...
+          opt fixedStartUtc is ( ) start && fixedEndUtc is ( ) end
+            GroupAvailabilityService->>CalendarRepository: GetSlots(userId, from, to, includeCancelled)
+            CalendarRepository-->>GroupAvailabilityService: CalendarSlotRow list
+            GroupAvailabilityService->>CalendarRepository: GetGoogleEvents(userId, from, to)
+            CalendarRepository-->>GroupAvailabilityService: GoogleCalendarEvent list
+            GroupAvailabilityService->>GroupWorkRepository: GetFixedTasksOverlapping(userId, startUtc, endUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: GroupTask list
+          end
+          opt deadlineUtc is ( ) deadline && estimatedMinutes is ( ) estimate
+            GroupAvailabilityService->>GroupWorkRepository: SumOpenEstimatedMinutes(userId, fromUtc, toUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: int
+            GroupAvailabilityService->>CalendarRepository: GetWorkingHours(userId)
+            CalendarRepository-->>GroupAvailabilityService: CalendarWorkingHours
+          end
+        GroupAvailabilityService-->>GroupTaskService: throw GroupAssigneeBusyException
+    end
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+  GroupTaskService-->>GroupWorkController: GroupTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.154.2 Sequence Diagram
+
+### 3.154.3 Class Specification
+
+#### 3.154.3.a GroupWorkController
+
+Table 3.154.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateTask(Guid taskId, GroupTaskRequestDto request) : GroupTaskDto` | `PUT /api/group-tasks/{taskId}`. Leader only. Validates and updates the task. Changing the fixed time or deadline of an unfinished task that has an assignee repeats the availability check (409 until confirmed). Requires a signed-in user. |
+
+#### 3.154.3.b GroupTaskService
+
+Table 3.154.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateTask(Guid userId, Guid taskId, GroupTaskRequestDto request) : GroupTaskDto` | Leader only. Validates and updates the task. Changing the fixed time or deadline of an unfinished task that has an assignee repeats the availability check (409 until confirmed). |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private ValidateRequest(GroupTaskRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private ValidateMilestone(Guid groupId, Guid milestoneId, string taskStatus)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 5 | `private ToStorage(DateTimeOffset value) : DateTime` | Converts a request time to the UTC value that is stored in the database. |
+| 6 | `private ApplyRequest(GroupTask task, GroupTaskRequestDto request)` | Copies the validated request values onto the entity. |
+| 7 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.154.3.c GroupWorkRepository
+
+Table 3.154.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 3 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
+| 4 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
+| 5 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.154.3.d GroupAccessService
+
+Table 3.154.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.154.3.e GroupRepository
+
+Table 3.154.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.154.3.f GroupAvailabilityService
+
+Table 3.154.3.f: GroupAvailabilityService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm)` | Returns at once when the Leader already confirmed. Otherwise runs the availability check and, when the assignee is busy or overloaded, raises GroupAssigneeBusyException (HTTP 409 GROUP_ASSIGNEE_BUSY) with the busy periods and the workload so that the Leader can confirm with confirmConflicts. |
+| 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
+| 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
+
+#### 3.154.3.g CalendarRepository
+
+Table 3.154.3.g: CalendarRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) : CalendarSlotRow[]` | Returns the user's schedule slots (with task and project names) that overlap [from, to), ordered by start time; cancelled slots only on request. |
+| 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
+| 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
+
+#### 3.154.3.h UnitOfWork
+
+Table 3.154.3.h: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.154.4 Methods Used
+
+Table 3.154.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.UpdateTask | IGroupTaskService.UpdateTask | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.UpdateTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.ValidateMilestone | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 7 | GroupTaskService.UpdateTask | IGroupAvailabilityService.EnsureAvailable | GroupAvailabilityService |
+| 8 | GroupAvailabilityService.Check | ICalendarRepository.GetSlots | CalendarRepository |
+| 9 | GroupAvailabilityService.Check | ICalendarRepository.GetGoogleEvents | CalendarRepository |
+| 10 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
+| 11 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
+| 12 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
+| 13 | GroupTaskService.UpdateTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 14 | GroupTaskService.UpdateTask | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupMilestone, ScheduleSlot, GoogleCalendarEvent, User, GroupActivityLog.
+
+---
+
+## 3.155 Delete Group Task
+
+Leader only. Deletes a task together with its sub-tasks and comments.
+
+- **Endpoint:** `DELETE /api/group-tasks/{taskId}`  
+- **Access:** Signed-in user
+
+### 3.155.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +DeleteTask(Guid taskId) IActionResult
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +DeleteTask(Guid userId, Guid taskId) void
+  }
+  class GroupTaskService {
+    +DeleteTask(Guid userId, Guid taskId) void
+    -GetTaskOrThrow(Guid taskId) GroupTask
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +RemoveTask(GroupTask task) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +RemoveTask(GroupTask task) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.155.1 Class Diagram
+
+### 3.155.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  Group Leader->>UI: Delete Group Task
+  UI->>GroupWorkController: DELETE /api/group-tasks/(taskId)
+  GroupWorkController->>GroupTaskService: DeleteTask(userId, taskId)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupWorkRepository: RemoveTask(task)
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+  GroupWorkController-->>UI: 204 No Content
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.155.2 Sequence Diagram
+
+### 3.155.3 Class Specification
+
+#### 3.155.3.a GroupWorkController
+
+Table 3.155.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteTask(Guid taskId) : IActionResult` | `DELETE /api/group-tasks/{taskId}`. Leader only. Deletes a task together with its sub-tasks and comments. Requires a signed-in user. |
+
+#### 3.155.3.b GroupTaskService
+
+Table 3.155.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteTask(Guid userId, Guid taskId)` | Leader only. Deletes a task together with its sub-tasks and comments. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+
+#### 3.155.3.c GroupWorkRepository
+
+Table 3.155.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `RemoveTask(GroupTask task)` | Marks the GroupTask for deletion; it is removed when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.155.3.d GroupAccessService
+
+Table 3.155.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.155.3.e GroupRepository
+
+Table 3.155.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.155.3.f UnitOfWork
+
+Table 3.155.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.155.4 Methods Used
+
+Table 3.155.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.DeleteTask | IGroupTaskService.DeleteTask | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.DeleteTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.DeleteTask | IGroupWorkRepository.RemoveTask | GroupWorkRepository |
+| 7 | GroupTaskService.DeleteTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupTaskService.DeleteTask | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.156 Change Group Task Status
+
+A Leader may change any task; a Member only a task assigned to them that has no sub-tasks (otherwise the status is derived from the sub-tasks). The change must follow the allowed transitions between ToDo, InProgress, Done and Skipped. Closing a task by hand marks its unfinished sub-tasks Skipped, the milestone is started when needed, the change is logged and the assignee is notified when someone else made it.
+
+- **Endpoint:** `PUT /api/group-tasks/{taskId}/status`  
+- **Access:** Signed-in user
+
+### 3.156.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +ChangeTaskStatus(Guid taskId, GroupTaskStatusRequestDto request) GroupTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +ChangeTaskStatus(Guid userId, Guid taskId, GroupTaskStatusRequestDto request) GroupTaskDto
+  }
+  class GroupTaskService {
+    +ChangeTaskStatus(Guid userId, Guid taskId, GroupTaskStatusRequestDto request) GroupTaskDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+    -NotifyStatusChanged(GroupAccess access, Guid assigneeId, string what, string oldStatus, string newStatus, Guid taskId) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTaskProgress {
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupMilestone "1" --> "0..*" GroupTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.156.1 Class Diagram
+
+### 3.156.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupTaskProgress
+  participant UnitOfWork
+  participant GroupNotifier
+  User->>UI: Change Group Task Status
+  UI->>GroupWorkController: PUT /api/group-tasks/(taskId)/status
+  GroupWorkController->>GroupTaskService: ChangeTaskStatus(userId, taskId, request)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    opt !GroupWorkStatuses.IsTaskStatus(request.Status)
+      GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    opt !access.IsLeader && (task.AssigneeId != userId || task.SubTasks.Count > 0)
+      GroupTaskService-->>GroupWorkController: throw GroupForbiddenException
+    end
+    opt oldStatus != newStatus
+      GroupTaskService->>GroupTaskService: StartMilestoneIfNeeded(task, actorId)
+        GroupTaskService->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+          GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+          GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+          opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+            GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+          end
+      GroupTaskService->>GroupWorkRepository: AddActivity(log)
+      GroupTaskService->>UnitOfWork: SaveChanges()
+      GroupTaskService->>GroupTaskService: NotifyStatusChanged(access, assigneeId, what, oldStatus, newStatus, taskId)
+        GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+        GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+        GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    end
+  GroupTaskService-->>GroupWorkController: GroupTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupTaskDto)
+  UI-->>User: Show result
+```
+
+Figure 3.156.2 Sequence Diagram
+
+### 3.156.3 Class Specification
+
+#### 3.156.3.a GroupWorkController
+
+Table 3.156.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeTaskStatus(Guid taskId, GroupTaskStatusRequestDto request) : GroupTaskDto` | `PUT /api/group-tasks/{taskId}/status`. A Leader may change any task; a Member only a task assigned to them that has no sub-tasks (otherwise the status is derived from the sub-tasks). The change must follow the allowed transitions between ToDo, InProgress, Done and Skipped. Closing a task by hand marks its unfinished sub-tasks Skipped, the milestone is started when needed, the change is logged and the assignee is notified when someone else made it. Requires a signed-in user. |
+
+#### 3.156.3.b GroupTaskService
+
+Table 3.156.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeTaskStatus(Guid userId, Guid taskId, GroupTaskStatusRequestDto request) : GroupTaskDto` | A Leader may change any task; a Member only a task assigned to them that has no sub-tasks (otherwise the status is derived from the sub-tasks). The change must follow the allowed transitions between ToDo, InProgress, Done and Skipped. Closing a task by hand marks its unfinished sub-tasks Skipped, the milestone is started when needed, the change is logged and the assignee is notified when someone else made it. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Delegates to GroupTaskProgress: a Planned milestone becomes InProgress when one of its tasks starts or finishes. |
+| 4 | `private NotifyStatusChanged(GroupAccess access, Guid assigneeId, string what, string oldStatus, string newStatus, Guid taskId)` | Notifies the assignee when someone else changed the status of their task or sub-task (skipped when the assignee is the caller). |
+| 5 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.156.3.c GroupWorkRepository
+
+Table 3.156.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 4 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.156.3.d GroupAccessService
+
+Table 3.156.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.156.3.e GroupRepository
+
+Table 3.156.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.156.3.f GroupTaskProgress
+
+Table 3.156.3.f: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.156.3.g UnitOfWork
+
+Table 3.156.3.g: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.156.3.h GroupNotifier
+
+Table 3.156.3.h: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.156.4 Methods Used
+
+Table 3.156.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.ChangeTaskStatus | IGroupTaskService.ChangeTaskStatus | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.ChangeTaskStatus | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.StartMilestoneIfNeeded | GroupTaskProgress.StartMilestoneIfNeeded |  |
+| 7 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 8 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupTaskService.ChangeTaskStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 10 | GroupTaskService.ChangeTaskStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 11 | GroupTaskService.NotifyStatusChanged | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 12 | GroupTaskService.NotifyStatusChanged | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupMilestone, GroupActivityLog, User.
+
+---
+
+## 3.157 Assign Group Task
+
+Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified.
+
+- **Endpoint:** `PUT /api/group-tasks/{taskId}/assignee`  
+- **Access:** Signed-in user
+
+### 3.157.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +AssignTask(Guid taskId, GroupAssigneeRequestDto request) GroupTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +AssignTask(Guid userId, Guid taskId, GroupAssigneeRequestDto request) GroupTaskDto
+  }
+  class GroupTaskService {
+    +AssignTask(Guid userId, Guid taskId, GroupAssigneeRequestDto request) GroupTaskDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -EnsureAssignable(Guid groupId, Guid assigneeId) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+    -NameOf(Dictionary~Guid,string~ names, Guid id) string
+    -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupAvailabilityService {
+    <<interface>>
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+  }
+  class GroupAvailabilityService {
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+    +Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) GroupAssigneeAvailabilityDto
+    -Period(DateTime start, DateTime end, string source) GroupBusyPeriodDto
+  }
+  class ICalendarRepository {
+    <<interface>>
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class CalendarRepository {
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GoogleCalendarEvent {
+    <<Entity>>
+    -Guid Id
+    -Guid GoogleConnectionId
+    -string GoogleEventId
+    -string Title
+    -DateTime StartTime
+    -DateTime EndTime
+    -bool IsAllDay
+    -bool IsCreatedByMetanoia
+    -string Etag
+    -bool IsCancelled
+    -DateTime UpdatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupAvailabilityService : uses
+  GroupAvailabilityService ..> ICalendarRepository : uses
+  GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupAvailabilityService <|.. GroupAvailabilityService : implements
+  ICalendarRepository <|.. CalendarRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> User
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  CalendarRepository ..> ScheduleSlot
+  CalendarRepository ..> GoogleCalendarEvent
+  CalendarRepository ..> User
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.157.1 Class Diagram
+
+### 3.157.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupAvailabilityService
+  participant CalendarRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Assign Group Task
+  UI->>GroupWorkController: PUT /api/group-tasks/(taskId)/assignee
+  GroupWorkController->>GroupTaskService: AssignTask(userId, taskId, request)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: EnsureAssignable(groupId, assigneeId)
+      GroupTaskService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupTaskService: GroupMember
+      opt member == null
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt member.Role == GroupRoles.Viewer
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    opt request.AssigneeId is ( ) newAssignee && !GroupRules.IsClosed(task.Status)
+      GroupTaskService->>GroupAvailabilityService: EnsureAvailable(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes,...
+        GroupAvailabilityService->>GroupAvailabilityService: Check(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes, excludeTas...
+          opt fixedStartUtc is ( ) start && fixedEndUtc is ( ) end
+            GroupAvailabilityService->>CalendarRepository: GetSlots(userId, from, to, includeCancelled)
+            CalendarRepository-->>GroupAvailabilityService: CalendarSlotRow list
+            GroupAvailabilityService->>CalendarRepository: GetGoogleEvents(userId, from, to)
+            CalendarRepository-->>GroupAvailabilityService: GoogleCalendarEvent list
+            GroupAvailabilityService->>GroupWorkRepository: GetFixedTasksOverlapping(userId, startUtc, endUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: GroupTask list
+          end
+          opt deadlineUtc is ( ) deadline && estimatedMinutes is ( ) estimate
+            GroupAvailabilityService->>GroupWorkRepository: SumOpenEstimatedMinutes(userId, fromUtc, toUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: int
+            GroupAvailabilityService->>CalendarRepository: GetWorkingHours(userId)
+            CalendarRepository-->>GroupAvailabilityService: CalendarWorkingHours
+          end
+        GroupAvailabilityService-->>GroupTaskService: throw GroupAssigneeBusyException
+    end
+    GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
+      GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+      GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+  GroupTaskService-->>GroupWorkController: GroupTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.157.2 Sequence Diagram
+
+### 3.157.3 Class Specification
+
+#### 3.157.3.a GroupWorkController
+
+Table 3.157.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AssignTask(Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | `PUT /api/group-tasks/{taskId}/assignee`. Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. Requires a signed-in user. |
+
+#### 3.157.3.b GroupTaskService
+
+Table 3.157.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AssignTask(Guid userId, Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
+| 4 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+| 5 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
+| 6 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+
+#### 3.157.3.c GroupWorkRepository
+
+Table 3.157.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
+| 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
+| 4 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+| 5 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.157.3.d GroupAccessService
+
+Table 3.157.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.157.3.e GroupRepository
+
+Table 3.157.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.157.3.f GroupAvailabilityService
+
+Table 3.157.3.f: GroupAvailabilityService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm)` | Returns at once when the Leader already confirmed. Otherwise runs the availability check and, when the assignee is busy or overloaded, raises GroupAssigneeBusyException (HTTP 409 GROUP_ASSIGNEE_BUSY) with the busy periods and the workload so that the Leader can confirm with confirmConflicts. |
+| 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
+| 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
+
+#### 3.157.3.g CalendarRepository
+
+Table 3.157.3.g: CalendarRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) : CalendarSlotRow[]` | Returns the user's schedule slots (with task and project names) that overlap [from, to), ordered by start time; cancelled slots only on request. |
+| 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
+| 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
+
+#### 3.157.3.h UnitOfWork
+
+Table 3.157.3.h: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.157.3.i GroupNotifier
+
+Table 3.157.3.i: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.157.4 Methods Used
+
+Table 3.157.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.AssignTask | IGroupTaskService.AssignTask | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.AssignTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.EnsureAssignable | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupTaskService.AssignTask | IGroupAvailabilityService.EnsureAvailable | GroupAvailabilityService |
+| 8 | GroupAvailabilityService.Check | ICalendarRepository.GetSlots | CalendarRepository |
+| 9 | GroupAvailabilityService.Check | ICalendarRepository.GetGoogleEvents | CalendarRepository |
+| 10 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
+| 11 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
+| 12 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
+| 13 | GroupTaskService.AssignTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 14 | GroupTaskService.AssignTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 15 | GroupTaskService.AssignTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 17 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleCalendarEvent, User, GroupActivityLog.
+
+---
+
+## 3.158 View Group Sub-tasks
+
+Lists the sub-tasks of a task in order.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/subtasks`  
+- **Access:** Signed-in user
+
+### 3.158.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetSubTasks(Guid taskId) GroupSubTaskDto[]
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +GetSubTasks(Guid userId, Guid taskId) GroupSubTaskDto[]
+  }
+  class GroupTaskService {
+    +GetSubTasks(Guid userId, Guid taskId) GroupSubTaskDto[]
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+    -NameOf(Dictionary~Guid,string~ names, Guid id) string
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+```
+
+Figure 3.158.1 Class Diagram
+
+### 3.158.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Sub-tasks
+  UI->>GroupWorkController: GET /api/group-tasks/(taskId)/subtasks
+  GroupWorkController->>GroupTaskService: GetSubTasks(userId, taskId)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto list
+  GroupWorkController-->>UI: 200 OK (GroupSubTaskDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.158.2 Sequence Diagram
+
+### 3.158.3 Class Specification
+
+#### 3.158.3.a GroupWorkController
+
+Table 3.158.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTasks(Guid taskId) : GroupSubTaskDto[]` | `GET /api/group-tasks/{taskId}/subtasks`. Lists the sub-tasks of a task in order. Requires a signed-in user. |
+
+#### 3.158.3.b GroupTaskService
+
+Table 3.158.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTasks(Guid userId, Guid taskId) : GroupSubTaskDto[]` | Lists the sub-tasks of a task in order. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+| 4 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
+
+#### 3.158.3.c GroupWorkRepository
+
+Table 3.158.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.158.3.d GroupAccessService
+
+Table 3.158.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.158.3.e GroupRepository
+
+Table 3.158.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.158.4 Methods Used
+
+Table 3.158.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetSubTasks | IGroupTaskService.GetSubTasks | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.GetSubTasks | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.GetSubTasks | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, User.
+
+---
+
+## 3.159 Create Group Sub-task
+
+Leader only. Validates title, estimate and the unique order number (the next free number is used when none is given), creates the sub-task and derives the status of the task again.
+
+- **Endpoint:** `POST /api/group-tasks/{taskId}/subtasks`  
+- **Access:** Signed-in user
+
+### 3.159.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +CreateSubTask(Guid taskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +CreateSubTask(Guid userId, Guid taskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+  }
+  class GroupTaskService {
+    +CreateSubTask(Guid userId, Guid taskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -ValidateSubTaskRequest(GroupSubTaskRequestDto request) void
+    -EnsureAssignable(Guid groupId, Guid assigneeId) void
+    -RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) void
+    -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
+    -Ids(Guid id) Guid[]
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+    -NameOf(Dictionary~Guid,string~ names, Guid id) string
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +NextSubTaskOrderIndex(Guid taskId) int
+    +SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) bool
+    +AddSubTask(GroupSubTask subTask) void
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +NextSubTaskOrderIndex(Guid taskId) int
+    +SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) bool
+    +AddSubTask(GroupSubTask subTask) void
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTaskProgress {
+    +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupTaskService ..> GroupSubTask
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupSubTask
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupMilestone "1" --> "0..*" GroupTask
+  GroupSubTask "*" --> "1" User
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.159.1 Class Diagram
+
+### 3.159.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupTaskProgress
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Create Group Sub-task
+  UI->>GroupWorkController: POST /api/group-tasks/(taskId)/subtasks
+  GroupWorkController->>GroupTaskService: CreateSubTask(userId, taskId, request)
+    GroupTaskService->>GroupTaskService: GetTaskOrThrow(taskId)
+      GroupTaskService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupTaskService: GroupTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: ValidateSubTaskRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.EstimatedMinutes is <= 0
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.OrderIndex is < 1
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupTaskService: EnsureAssignable(groupId, assigneeId)
+      GroupTaskService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupTaskService: GroupMember
+      opt member == null
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt member.Role == GroupRoles.Viewer
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupWorkRepository: NextSubTaskOrderIndex(taskId)
+    GroupWorkRepository-->>GroupTaskService: int
+    GroupTaskService->>GroupWorkRepository: SubTaskOrderIndexTaken(taskId, orderIndex, excludeId)
+    GroupWorkRepository-->>GroupTaskService: bool
+    opt work.SubTaskOrderIndexTaken(taskId, orderIndex, Guid.Empty)
+      GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    GroupTaskService->>GroupWorkRepository: AddSubTask(subTask)
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>GroupTaskService: RefreshTask(task, subTasks, actorId)
+      GroupTaskService->>GroupTaskProgress: RefreshTask(task, subTasks, actorId)
+        opt result.StatusChanged
+          GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+          GroupTaskProgress->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+            GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+            GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+            opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+              GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+            end
+        end
+      GroupTaskProgress-->>GroupTaskService: bool
+    GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
+      GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+      GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto
+  GroupWorkController-->>UI: 201 Created (GroupSubTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.159.2 Sequence Diagram
+
+### 3.159.3 Class Specification
+
+#### 3.159.3.a GroupWorkController
+
+Table 3.159.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateSubTask(Guid taskId, GroupSubTaskRequestDto request) : GroupSubTaskDto` | `POST /api/group-tasks/{taskId}/subtasks`. Leader only. Validates title, estimate and the unique order number (the next free number is used when none is given), creates the sub-task and derives the status of the task again. Requires a signed-in user. |
+
+#### 3.159.3.b GroupTaskService
+
+Table 3.159.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateSubTask(Guid userId, Guid taskId, GroupSubTaskRequestDto request) : GroupSubTaskDto` | Leader only. Validates title, estimate and the unique order number (the next free number is used when none is given), creates the sub-task and derives the status of the task again. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
+| 3 | `private ValidateSubTaskRequest(GroupSubTaskRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
+| 5 | `private RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId)` | Delegates to GroupTaskProgress: derives the status of the parent task again from its sub-tasks. |
+| 6 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+| 7 | `private Ids(Guid id) : Guid[]` | Turns an optional id into a list of zero or one id. |
+| 8 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+| 9 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
+
+#### 3.159.3.c GroupWorkRepository
+
+Table 3.159.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `NextSubTaskOrderIndex(Guid taskId) : int` | Returns the highest order number of the task's sub-tasks plus one (1 when there are none). |
+| 3 | `SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) : bool` | Checks whether sub task order index taken holds for (taskId, orderIndex, excludeId) and returns true or false. |
+| 4 | `AddSubTask(GroupSubTask subTask)` | Adds a new GroupSubTask to the context; it is written when the unit of work is saved. |
+| 5 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 6 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 7 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.159.3.d GroupAccessService
+
+Table 3.159.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.159.3.e GroupRepository
+
+Table 3.159.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.159.3.f GroupTaskProgress
+
+Table 3.159.3.f: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
+| 2 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.159.3.g UnitOfWork
+
+Table 3.159.3.g: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.159.3.h GroupNotifier
+
+Table 3.159.3.h: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.159.4 Methods Used
+
+Table 3.159.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.CreateSubTask | IGroupTaskService.CreateSubTask | GroupTaskService |
+| 2 | GroupTaskService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupTaskService.CreateSubTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.EnsureAssignable | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupTaskService.CreateSubTask | IGroupWorkRepository.NextSubTaskOrderIndex | GroupWorkRepository |
+| 8 | GroupTaskService.CreateSubTask | IGroupWorkRepository.SubTaskOrderIndexTaken | GroupWorkRepository |
+| 9 | GroupTaskService.CreateSubTask | IGroupWorkRepository.AddSubTask | GroupWorkRepository |
+| 10 | GroupTaskService.CreateSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupTaskService.RefreshTask | GroupTaskProgress.RefreshTask |  |
+| 12 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 14 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 15 | GroupTaskService.CreateSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 17 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+| 18 | GroupTaskService.CreateSubTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupSubTask, GroupTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone, User.
+
+---
+
+## 3.160 View Group Sub-task Detail
+
+Returns one sub-task of a group the caller belongs to.
+
+- **Endpoint:** `GET /api/group-subtasks/{subTaskId}`  
+- **Access:** Signed-in user
+
+### 3.160.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetSubTask(Guid subTaskId) GroupSubTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +GetSubTask(Guid userId, Guid subTaskId) GroupSubTaskDto
+  }
+  class GroupTaskService {
+    +GetSubTask(Guid userId, Guid subTaskId) GroupSubTaskDto
+    -GetSubTaskOrThrow(Guid subTaskId) GroupSubTask
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetSubTask(Guid subTaskId) GroupSubTask
+  }
+  class GroupWorkRepository {
+    +GetSubTask(Guid subTaskId) GroupSubTask
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+```
+
+Figure 3.160.1 Class Diagram
+
+### 3.160.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Group Sub-task Detail
+  UI->>GroupWorkController: GET /api/group-subtasks/(subTaskId)
+  GroupWorkController->>GroupTaskService: GetSubTask(userId, subTaskId)
+    GroupTaskService->>GroupTaskService: GetSubTaskOrThrow(subTaskId)
+      GroupTaskService->>GroupWorkRepository: GetSubTask(subTaskId)
+      GroupWorkRepository-->>GroupTaskService: GroupSubTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupSubTaskDto)
+  UI-->>User: Show result
+```
+
+Figure 3.160.2 Sequence Diagram
+
+### 3.160.3 Class Specification
+
+#### 3.160.3.a GroupWorkController
+
+Table 3.160.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTaskDto` | `GET /api/group-subtasks/{subTaskId}`. Returns one sub-task of a group the caller belongs to. Requires a signed-in user. |
+
+#### 3.160.3.b GroupTaskService
+
+Table 3.160.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid userId, Guid subTaskId) : GroupSubTaskDto` | Returns one sub-task of a group the caller belongs to. |
+| 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
+| 3 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.160.3.c GroupWorkRepository
+
+Table 3.160.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
+
+#### 3.160.3.d GroupAccessService
+
+Table 3.160.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.160.3.e GroupRepository
+
+Table 3.160.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.160.4 Methods Used
+
+Table 3.160.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetSubTask | IGroupTaskService.GetSubTask | GroupTaskService |
+| 2 | GroupTaskService.GetSubTaskOrThrow | IGroupWorkRepository.GetSubTask | GroupWorkRepository |
+| 3 | GroupTaskService.GetSubTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup.
+
+---
+
+## 3.161 Update Group Sub-task
+
+Leader only. Validates and updates a sub-task, then derives the status of the task again.
+
+- **Endpoint:** `PUT /api/group-subtasks/{subTaskId}`  
+- **Access:** Signed-in user
+
+### 3.161.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +UpdateSubTask(Guid subTaskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +UpdateSubTask(Guid userId, Guid subTaskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+  }
+  class GroupTaskService {
+    +UpdateSubTask(Guid userId, Guid subTaskId, GroupSubTaskRequestDto request) GroupSubTaskDto
+    -GetSubTaskOrThrow(Guid subTaskId) GroupSubTask
+    -ValidateSubTaskRequest(GroupSubTaskRequestDto request) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) bool
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) bool
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.161.1 Class Diagram
+
+### 3.161.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  Group Leader->>UI: Update Group Sub-task
+  UI->>GroupWorkController: PUT /api/group-subtasks/(subTaskId)
+  GroupWorkController->>GroupTaskService: UpdateSubTask(userId, subTaskId, request)
+    GroupTaskService->>GroupTaskService: GetSubTaskOrThrow(subTaskId)
+      GroupTaskService->>GroupWorkRepository: GetSubTask(subTaskId)
+      GroupWorkRepository-->>GroupTaskService: GroupSubTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: ValidateSubTaskRequest(request)
+      opt string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > Max...
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.EstimatedMinutes is <= 0
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt request.OrderIndex is < 1
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupWorkRepository: SubTaskOrderIndexTaken(taskId, orderIndex, excludeId)
+    GroupWorkRepository-->>GroupTaskService: bool
+    opt orderIndex != subTask.OrderIndex && work.SubTaskOrderIndexTaken(subTask.Group...
+      GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupSubTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.161.2 Sequence Diagram
+
+### 3.161.3 Class Specification
+
+#### 3.161.3.a GroupWorkController
+
+Table 3.161.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateSubTask(Guid subTaskId, GroupSubTaskRequestDto request) : GroupSubTaskDto` | `PUT /api/group-subtasks/{subTaskId}`. Leader only. Validates and updates a sub-task, then derives the status of the task again. Requires a signed-in user. |
+
+#### 3.161.3.b GroupTaskService
+
+Table 3.161.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateSubTask(Guid userId, Guid subTaskId, GroupSubTaskRequestDto request) : GroupSubTaskDto` | Leader only. Validates and updates a sub-task, then derives the status of the task again. |
+| 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
+| 3 | `private ValidateSubTaskRequest(GroupSubTaskRequestDto request)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.161.3.c GroupWorkRepository
+
+Table 3.161.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
+| 2 | `SubTaskOrderIndexTaken(Guid taskId, int orderIndex, Guid excludeId) : bool` | Checks whether sub task order index taken holds for (taskId, orderIndex, excludeId) and returns true or false. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.161.3.d GroupAccessService
+
+Table 3.161.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.161.3.e GroupRepository
+
+Table 3.161.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.161.3.f UnitOfWork
+
+Table 3.161.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.161.4 Methods Used
+
+Table 3.161.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.UpdateSubTask | IGroupTaskService.UpdateSubTask | GroupTaskService |
+| 2 | GroupTaskService.GetSubTaskOrThrow | IGroupWorkRepository.GetSubTask | GroupWorkRepository |
+| 3 | GroupTaskService.UpdateSubTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.UpdateSubTask | IGroupWorkRepository.SubTaskOrderIndexTaken | GroupWorkRepository |
+| 7 | GroupTaskService.UpdateSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupTaskService.UpdateSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.162 Delete Group Sub-task
+
+Leader only. Deletes a sub-task and derives the status of the task again.
+
+- **Endpoint:** `DELETE /api/group-subtasks/{subTaskId}`  
+- **Access:** Signed-in user
+
+### 3.162.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +DeleteSubTask(Guid subTaskId) IActionResult
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +DeleteSubTask(Guid userId, Guid subTaskId) void
+  }
+  class GroupTaskService {
+    +DeleteSubTask(Guid userId, Guid subTaskId) void
+    -GetSubTaskOrThrow(Guid subTaskId) GroupSubTask
+    -RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +RemoveSubTask(GroupSubTask subTask) void
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+  }
+  class GroupWorkRepository {
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +RemoveSubTask(GroupSubTask subTask) void
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTaskProgress {
+    +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> GroupMilestone
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.162.1 Class Diagram
+
+### 3.162.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupTaskProgress
+  participant UnitOfWork
+  Group Leader->>UI: Delete Group Sub-task
+  UI->>GroupWorkController: DELETE /api/group-subtasks/(subTaskId)
+  GroupWorkController->>GroupTaskService: DeleteSubTask(userId, subTaskId)
+    GroupTaskService->>GroupTaskService: GetSubTaskOrThrow(subTaskId)
+      GroupTaskService->>GroupWorkRepository: GetSubTask(subTaskId)
+      GroupWorkRepository-->>GroupTaskService: GroupSubTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupWorkRepository: RemoveSubTask(subTask)
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>GroupTaskService: RefreshTask(task, subTasks, actorId)
+      GroupTaskService->>GroupTaskProgress: RefreshTask(task, subTasks, actorId)
+        opt result.StatusChanged
+          GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+          GroupTaskProgress->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+            GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+            GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+            opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+              GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+            end
+        end
+      GroupTaskProgress-->>GroupTaskService: bool
+    GroupTaskService->>UnitOfWork: SaveChanges()
+  GroupWorkController-->>UI: 204 No Content
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.162.2 Sequence Diagram
+
+### 3.162.3 Class Specification
+
+#### 3.162.3.a GroupWorkController
+
+Table 3.162.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteSubTask(Guid subTaskId) : IActionResult` | `DELETE /api/group-subtasks/{subTaskId}`. Leader only. Deletes a sub-task and derives the status of the task again. Requires a signed-in user. |
+
+#### 3.162.3.b GroupTaskService
+
+Table 3.162.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteSubTask(Guid userId, Guid subTaskId)` | Leader only. Deletes a sub-task and derives the status of the task again. |
+| 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
+| 3 | `private RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId)` | Delegates to GroupTaskProgress: derives the status of the parent task again from its sub-tasks. |
+
+#### 3.162.3.c GroupWorkRepository
+
+Table 3.162.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
+| 2 | `RemoveSubTask(GroupSubTask subTask)` | Marks the GroupSubTask for deletion; it is removed when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 4 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+
+#### 3.162.3.d GroupAccessService
+
+Table 3.162.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.162.3.e GroupRepository
+
+Table 3.162.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.162.3.f GroupTaskProgress
+
+Table 3.162.3.f: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
+| 2 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.162.3.g UnitOfWork
+
+Table 3.162.3.g: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.162.4 Methods Used
+
+Table 3.162.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.DeleteSubTask | IGroupTaskService.DeleteSubTask | GroupTaskService |
+| 2 | GroupTaskService.GetSubTaskOrThrow | IGroupWorkRepository.GetSubTask | GroupWorkRepository |
+| 3 | GroupTaskService.DeleteSubTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.DeleteSubTask | IGroupWorkRepository.RemoveSubTask | GroupWorkRepository |
+| 7 | GroupTaskService.DeleteSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupTaskService.RefreshTask | GroupTaskProgress.RefreshTask |  |
+| 9 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 10 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 12 | GroupTaskService.DeleteSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone.
+
+---
+
+## 3.163 Change Group Sub-task Status
+
+Only the person a sub-task is assigned to (or a Leader) changes its status. The status of the parent task is derived again from all its sub-tasks, the milestone is refreshed and the change is logged.
+
+- **Endpoint:** `PUT /api/group-subtasks/{subTaskId}/status`  
+- **Access:** Signed-in user
+
+### 3.163.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +ChangeSubTaskStatus(Guid subTaskId, GroupTaskStatusRequestDto request) GroupSubTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +ChangeSubTaskStatus(Guid userId, Guid subTaskId, GroupTaskStatusRequestDto request) GroupSubTaskDto
+  }
+  class GroupTaskService {
+    +ChangeSubTaskStatus(Guid userId, Guid subTaskId, GroupTaskStatusRequestDto request) GroupSubTaskDto
+    -GetSubTaskOrThrow(Guid subTaskId) GroupSubTask
+    -RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) void
+    -NotifyStatusChanged(GroupAccess access, Guid assigneeId, string what, string oldStatus, string newStatus, Guid taskId) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTaskProgress {
+    +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupSubTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.163.1 Class Diagram
+
+### 3.163.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupTaskProgress
+  participant UnitOfWork
+  participant GroupNotifier
+  User->>UI: Change Group Sub-task Status
+  UI->>GroupWorkController: PUT /api/group-subtasks/(subTaskId)/status
+  GroupWorkController->>GroupTaskService: ChangeSubTaskStatus(userId, subTaskId, request)
+    GroupTaskService->>GroupTaskService: GetSubTaskOrThrow(subTaskId)
+      GroupTaskService->>GroupWorkRepository: GetSubTask(subTaskId)
+      GroupWorkRepository-->>GroupTaskService: GroupSubTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    opt !GroupWorkStatuses.IsTaskStatus(request.Status)
+      GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    opt !access.IsLeader && !mine
+      GroupTaskService-->>GroupWorkController: throw GroupForbiddenException
+    end
+    opt oldStatus != newStatus
+      GroupTaskService->>GroupWorkRepository: AddActivity(log)
+      GroupTaskService->>GroupTaskService: RefreshTask(task, subTasks, actorId)
+        GroupTaskService->>GroupTaskProgress: RefreshTask(task, subTasks, actorId)
+          opt result.StatusChanged
+            GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+            GroupTaskProgress->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+              GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+              GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+              opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+                GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+              end
+          end
+        GroupTaskProgress-->>GroupTaskService: bool
+      GroupTaskService->>UnitOfWork: SaveChanges()
+      GroupTaskService->>GroupTaskService: NotifyStatusChanged(access, assigneeId, what, oldStatus, newStatus, taskId)
+        GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+        GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+        GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    end
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupSubTaskDto)
+  UI-->>User: Show result
+```
+
+Figure 3.163.2 Sequence Diagram
+
+### 3.163.3 Class Specification
+
+#### 3.163.3.a GroupWorkController
+
+Table 3.163.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeSubTaskStatus(Guid subTaskId, GroupTaskStatusRequestDto request) : GroupSubTaskDto` | `PUT /api/group-subtasks/{subTaskId}/status`. Only the person a sub-task is assigned to (or a Leader) changes its status. The status of the parent task is derived again from all its sub-tasks, the milestone is refreshed and the change is logged. Requires a signed-in user. |
+
+#### 3.163.3.b GroupTaskService
+
+Table 3.163.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ChangeSubTaskStatus(Guid userId, Guid subTaskId, GroupTaskStatusRequestDto request) : GroupSubTaskDto` | Only the person a sub-task is assigned to (or a Leader) changes its status. The status of the parent task is derived again from all its sub-tasks, the milestone is refreshed and the change is logged. |
+| 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
+| 3 | `private RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId)` | Delegates to GroupTaskProgress: derives the status of the parent task again from its sub-tasks. |
+| 4 | `private NotifyStatusChanged(GroupAccess access, Guid assigneeId, string what, string oldStatus, string newStatus, Guid taskId)` | Notifies the assignee when someone else changed the status of their task or sub-task (skipped when the assignee is the caller). |
+| 5 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.163.3.c GroupWorkRepository
+
+Table 3.163.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 3 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 4 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.163.3.d GroupAccessService
+
+Table 3.163.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.163.3.e GroupRepository
+
+Table 3.163.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.163.3.f GroupTaskProgress
+
+Table 3.163.3.f: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
+| 2 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.163.3.g UnitOfWork
+
+Table 3.163.3.g: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.163.3.h GroupNotifier
+
+Table 3.163.3.h: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.163.4 Methods Used
+
+Table 3.163.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.ChangeSubTaskStatus | IGroupTaskService.ChangeSubTaskStatus | GroupTaskService |
+| 2 | GroupTaskService.GetSubTaskOrThrow | IGroupWorkRepository.GetSubTask | GroupWorkRepository |
+| 3 | GroupTaskService.ChangeSubTaskStatus | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.ChangeSubTaskStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 7 | GroupTaskService.RefreshTask | GroupTaskProgress.RefreshTask |  |
+| 8 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 10 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupTaskService.ChangeSubTaskStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 12 | GroupTaskService.NotifyStatusChanged | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 13 | GroupTaskService.NotifyStatusChanged | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone, User.
+
+---
+
+## 3.164 Assign Group Sub-task
+
+Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee.
+
+- **Endpoint:** `PUT /api/group-subtasks/{subTaskId}/assignee`  
+- **Access:** Signed-in user
+
+### 3.164.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +AssignSubTask(Guid subTaskId, GroupAssigneeRequestDto request) GroupSubTaskDto
+  }
+  class IGroupTaskService {
+    <<interface>>
+    +AssignSubTask(Guid userId, Guid subTaskId, GroupAssigneeRequestDto request) GroupSubTaskDto
+  }
+  class GroupTaskService {
+    +AssignSubTask(Guid userId, Guid subTaskId, GroupAssigneeRequestDto request) GroupSubTaskDto
+    -GetSubTaskOrThrow(Guid subTaskId) GroupSubTask
+    -EnsureAssignable(Guid groupId, Guid assigneeId) void
+    -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
+    -NameOf(Dictionary~Guid,string~ names, Guid id) string
+    -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetSubTask(Guid subTaskId) GroupSubTask
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupTaskService : uses
+  GroupTaskService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> IGroupRepository : uses
+  GroupTaskService ..> IUnitOfWork : uses
+  GroupTaskService ..> IGroupNotifier : uses
+  IGroupTaskService <|.. GroupTaskService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupSubTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> User
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupSubTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.164.1 Class Diagram
+
+### 3.164.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupTaskService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Assign Group Sub-task
+  UI->>GroupWorkController: PUT /api/group-subtasks/(subTaskId)/assignee
+  GroupWorkController->>GroupTaskService: AssignSubTask(userId, subTaskId, request)
+    GroupTaskService->>GroupTaskService: GetSubTaskOrThrow(subTaskId)
+      GroupTaskService->>GroupWorkRepository: GetSubTask(subTaskId)
+      GroupWorkRepository-->>GroupTaskService: GroupSubTask
+      opt value is missing
+        GroupTaskService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupTaskService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupTaskService: EnsureAssignable(groupId, assigneeId)
+      GroupTaskService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupTaskService: GroupMember
+      opt member == null
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt member.Role == GroupRoles.Viewer
+        GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+    GroupTaskService->>GroupWorkRepository: AddActivity(log)
+    GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
+      GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
+      GroupTaskService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+  GroupTaskService-->>GroupWorkController: GroupSubTaskDto
+  GroupWorkController-->>UI: 200 OK (GroupSubTaskDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.164.2 Sequence Diagram
+
+### 3.164.3 Class Specification
+
+#### 3.164.3.a GroupWorkController
+
+Table 3.164.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AssignSubTask(Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | `PUT /api/group-subtasks/{subTaskId}/assignee`. Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. Requires a signed-in user. |
+
+#### 3.164.3.b GroupTaskService
+
+Table 3.164.3.b: GroupTaskService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AssignSubTask(Guid userId, Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. |
+| 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
+| 3 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
+| 4 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
+| 5 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
+| 6 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+
+#### 3.164.3.c GroupWorkRepository
+
+Table 3.164.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.164.3.d GroupAccessService
+
+Table 3.164.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.164.3.e GroupRepository
+
+Table 3.164.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.164.3.f UnitOfWork
+
+Table 3.164.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.164.3.g GroupNotifier
+
+Table 3.164.3.g: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.164.4 Methods Used
+
+Table 3.164.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.AssignSubTask | IGroupTaskService.AssignSubTask | GroupTaskService |
+| 2 | GroupTaskService.GetSubTaskOrThrow | IGroupWorkRepository.GetSubTask | GroupWorkRepository |
+| 3 | GroupTaskService.AssignSubTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupTaskService.EnsureAssignable | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupTaskService.AssignSubTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 8 | GroupTaskService.AssignSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupTaskService.AssignSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 10 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 11 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, User, GroupActivityLog.
+
+---
+
+## 3.165 View My Group Work
+
+Lists the tasks and sub-tasks assigned to the signed-in user across all active groups, with the group name.
+
+- **Endpoint:** `GET /api/my-group-tasks`  
+- **Access:** Signed-in user
+
+### 3.165.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetMyGroupTasks() MyGroupWorkDto
+  }
+  class IGroupProgressService {
+    <<interface>>
+    +GetMyWork(Guid userId) MyGroupWorkDto
+  }
+  class GroupProgressService {
+    +GetMyWork(Guid userId) MyGroupWorkDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTasksAssignedTo(Guid userId) GroupTask[]
+    +GetSubTasksAssignedTo(Guid userId) GroupSubTask[]
+  }
+  class GroupWorkRepository {
+    +GetTasksAssignedTo(Guid userId) GroupTask[]
+    +GetSubTasksAssignedTo(Guid userId) GroupSubTask[]
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  GroupWorkController ..> IGroupProgressService : uses
+  GroupProgressService ..> IGroupWorkRepository : uses
+  IGroupProgressService <|.. GroupProgressService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> GroupSubTask
+  GroupTask "1" --> "0..*" GroupSubTask
+```
+
+Figure 3.165.1 Class Diagram
+
+### 3.165.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupProgressService
+  participant GroupWorkRepository
+  User->>UI: View My Group Work
+  UI->>GroupWorkController: GET /api/my-group-tasks
+  GroupWorkController->>GroupProgressService: GetMyWork(userId)
+    GroupProgressService->>GroupWorkRepository: GetTasksAssignedTo(userId)
+    GroupWorkRepository-->>GroupProgressService: GroupTask list
+    GroupProgressService->>GroupWorkRepository: GetSubTasksAssignedTo(userId)
+    GroupWorkRepository-->>GroupProgressService: GroupSubTask list
+  GroupProgressService-->>GroupWorkController: MyGroupWorkDto
+  GroupWorkController-->>UI: 200 OK (MyGroupWorkDto)
+  UI-->>User: Show result
+```
+
+Figure 3.165.2 Sequence Diagram
+
+### 3.165.3 Class Specification
+
+#### 3.165.3.a GroupWorkController
+
+Table 3.165.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyGroupTasks() : MyGroupWorkDto` | `GET /api/my-group-tasks`. Lists the tasks and sub-tasks assigned to the signed-in user across all active groups, with the group name. Requires a signed-in user. |
+
+#### 3.165.3.b GroupProgressService
+
+Table 3.165.3.b: GroupProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMyWork(Guid userId) : MyGroupWorkDto` | Lists the tasks and sub-tasks assigned to the signed-in user across all active groups, with the group name. |
+
+#### 3.165.3.c GroupWorkRepository
+
+Table 3.165.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasksAssignedTo(Guid userId) : GroupTask[]` | Reads the GroupTask list matching (userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetSubTasksAssignedTo(Guid userId) : GroupSubTask[]` | Reads the GroupSubTask list matching (userId); returns nothing or an empty list when there is no match. |
+
+### 3.165.4 Methods Used
+
+Table 3.165.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetMyGroupTasks | IGroupProgressService.GetMyWork | GroupProgressService |
+| 2 | GroupProgressService.GetMyWork | IGroupWorkRepository.GetTasksAssignedTo | GroupWorkRepository |
+| 3 | GroupProgressService.GetMyWork | IGroupWorkRepository.GetSubTasksAssignedTo | GroupWorkRepository |
+
+Entities used: GroupTask, GroupSubTask.
+
+---
+
+# Group: Comments, Activity and Progress
+
+## 3.166 View Task Comments
+
+Lists the comments of a task, oldest first. Any member may read them.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/comments`  
+- **Access:** Signed-in user
+
+### 3.166.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetComments(Guid taskId) GroupCommentDto[]
+  }
+  class IGroupCommentService {
+    <<interface>>
+    +GetComments(Guid userId, Guid taskId) GroupCommentDto[]
+  }
+  class GroupCommentService {
+    +GetComments(Guid userId, Guid taskId) GroupCommentDto[]
+    -GetTaskOrThrow(Guid taskId) GroupTask
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetComments(Guid taskId) GroupTaskComment[]
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetComments(Guid taskId) GroupTaskComment[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTaskComment {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AuthorId
+    -string Content
+    -DateTime CreatedAt
+    -DateTime EditedAt
+  }
+  GroupWorkController ..> IGroupCommentService : uses
+  GroupCommentService ..> IGroupWorkRepository : uses
+  GroupCommentService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupCommentService <|.. GroupCommentService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupTaskComment
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupTaskComment
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+```
+
+Figure 3.166.1 Class Diagram
+
+### 3.166.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupCommentService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Task Comments
+  UI->>GroupWorkController: GET /api/group-tasks/(taskId)/comments
+  GroupWorkController->>GroupCommentService: GetComments(userId, taskId)
+    GroupCommentService->>GroupCommentService: GetTaskOrThrow(taskId)
+      GroupCommentService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupCommentService: GroupTask
+      opt value is missing
+        GroupCommentService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupCommentService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupCommentService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupCommentService: GroupAccess
+    GroupCommentService->>GroupWorkRepository: GetComments(taskId)
+    GroupWorkRepository-->>GroupCommentService: GroupTaskComment list
+  GroupCommentService-->>GroupWorkController: GroupCommentDto list
+  GroupWorkController-->>UI: 200 OK (GroupCommentDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.166.2 Sequence Diagram
+
+### 3.166.3 Class Specification
+
+#### 3.166.3.a GroupWorkController
+
+Table 3.166.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetComments(Guid taskId) : GroupCommentDto[]` | `GET /api/group-tasks/{taskId}/comments`. Lists the comments of a task, oldest first. Any member may read them. Requires a signed-in user. |
+
+#### 3.166.3.b GroupCommentService
+
+Table 3.166.3.b: GroupCommentService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetComments(Guid userId, Guid taskId) : GroupCommentDto[]` | Lists the comments of a task, oldest first. Any member may read them. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads the task of a comment or raises 404. |
+
+#### 3.166.3.c GroupWorkRepository
+
+Table 3.166.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetComments(Guid taskId) : GroupTaskComment[]` | Reads the GroupTaskComment list matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.166.3.d GroupAccessService
+
+Table 3.166.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.166.3.e GroupRepository
+
+Table 3.166.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.166.4 Methods Used
+
+Table 3.166.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetComments | IGroupCommentService.GetComments | GroupCommentService |
+| 2 | GroupCommentService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupCommentService.GetComments | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupCommentService.GetComments | IGroupWorkRepository.GetComments | GroupWorkRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupTaskComment.
+
+---
+
+## 3.167 Add Task Comment
+
+A Leader or Member adds a comment (required, length limited). Members mentioned with @ are notified and the comment is logged. Viewers cannot comment.
+
+- **Endpoint:** `POST /api/group-tasks/{taskId}/comments`  
+- **Access:** Signed-in user
+
+### 3.167.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +CreateComment(Guid taskId, GroupCommentRequestDto request) GroupCommentDto
+  }
+  class IGroupCommentService {
+    <<interface>>
+    +CreateComment(Guid userId, Guid taskId, GroupCommentRequestDto request) GroupCommentDto
+  }
+  class GroupCommentService {
+    +CreateComment(Guid userId, Guid taskId, GroupCommentRequestDto request) GroupCommentDto
+    -GetTaskOrThrow(Guid taskId) GroupTask
+    -ValidateContent(string content) string
+    -NotifyMentions(GroupAccess access, GroupTask task, string authorName, string content) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +AddComment(GroupTaskComment comment) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +AddComment(GroupTaskComment comment) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTaskComment {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AuthorId
+    -string Content
+    -DateTime CreatedAt
+    -DateTime EditedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupCommentService : uses
+  GroupCommentService ..> IGroupWorkRepository : uses
+  GroupCommentService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupCommentService ..> IUnitOfWork : uses
+  GroupCommentService ..> IGroupRepository : uses
+  GroupCommentService ..> IGroupNotifier : uses
+  IGroupCommentService <|.. GroupCommentService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupCommentService ..> GroupTaskComment
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupTaskComment
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupTaskComment
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupTaskComment "*" --> "1" User
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.167.1 Class Diagram
+
+### 3.167.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupCommentService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  User->>UI: Add Task Comment
+  UI->>GroupWorkController: POST /api/group-tasks/(taskId)/comments
+  GroupWorkController->>GroupCommentService: CreateComment(userId, taskId, request)
+    GroupCommentService->>GroupCommentService: GetTaskOrThrow(taskId)
+      GroupCommentService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupCommentService: GroupTask
+      opt value is missing
+        GroupCommentService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupCommentService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupCommentService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupCommentService: GroupAccess
+    GroupCommentService->>GroupCommentService: ValidateContent(content)
+      opt trimmed.Length == 0 || trimmed.Length > MaxContentLength
+        GroupCommentService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupCommentService->>GroupWorkRepository: AddComment(comment)
+    GroupCommentService->>GroupWorkRepository: AddActivity(log)
+    GroupCommentService->>UnitOfWork: SaveChanges()
+    GroupCommentService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupCommentService: Dictionary of Guid,string
+    GroupCommentService->>GroupCommentService: NotifyMentions(access, task, authorName, content)
+      GroupCommentService->>GroupRepository: GetMembers(groupId)
+      GroupRepository-->>GroupCommentService: GroupMemberDto list
+      loop each member in members.Where(m => m.UserId != access.UserId && emai...
+        GroupCommentService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+      end
+  GroupCommentService-->>GroupWorkController: GroupCommentDto
+  GroupWorkController-->>UI: 201 Created (GroupCommentDto)
+  UI-->>User: Show result
+```
+
+Figure 3.167.2 Sequence Diagram
+
+### 3.167.3 Class Specification
+
+#### 3.167.3.a GroupWorkController
+
+Table 3.167.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateComment(Guid taskId, GroupCommentRequestDto request) : GroupCommentDto` | `POST /api/group-tasks/{taskId}/comments`. A Leader or Member adds a comment (required, length limited). Members mentioned with @ are notified and the comment is logged. Viewers cannot comment. Requires a signed-in user. |
+
+#### 3.167.3.b GroupCommentService
+
+Table 3.167.3.b: GroupCommentService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateComment(Guid userId, Guid taskId, GroupCommentRequestDto request) : GroupCommentDto` | A Leader or Member adds a comment (required, length limited). Members mentioned with @ are notified and the comment is logged. Viewers cannot comment. |
+| 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads the task of a comment or raises 404. |
+| 3 | `private ValidateContent(string content) : string` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private NotifyMentions(GroupAccess access, GroupTask task, string authorName, string content)` | Finds the members of the group whose name is mentioned with @ in the comment and notifies each of them (the author is skipped). |
+
+#### 3.167.3.c GroupWorkRepository
+
+Table 3.167.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `AddComment(GroupTaskComment comment)` | Adds a new GroupTaskComment to the context; it is written when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 4 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.167.3.d GroupAccessService
+
+Table 3.167.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.167.3.e GroupRepository
+
+Table 3.167.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.167.3.f UnitOfWork
+
+Table 3.167.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.167.3.g GroupNotifier
+
+Table 3.167.3.g: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.167.4 Methods Used
+
+Table 3.167.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.CreateComment | IGroupCommentService.CreateComment | GroupCommentService |
+| 2 | GroupCommentService.GetTaskOrThrow | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupCommentService.CreateComment | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupCommentService.CreateComment | IGroupWorkRepository.AddComment | GroupWorkRepository |
+| 7 | GroupCommentService.CreateComment | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupCommentService.CreateComment | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | GroupCommentService.CreateComment | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 10 | GroupCommentService.NotifyMentions | IGroupRepository.GetMembers | GroupRepository |
+| 11 | GroupCommentService.NotifyMentions | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupTaskComment, GroupTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, User.
+
+---
+
+## 3.168 Edit Task Comment
+
+Only the author may edit a comment; the edit time is stored.
+
+- **Endpoint:** `PUT /api/group-comments/{commentId}`  
+- **Access:** Signed-in user
+
+### 3.168.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +UpdateComment(Guid commentId, GroupCommentRequestDto request) GroupCommentDto
+  }
+  class IGroupCommentService {
+    <<interface>>
+    +UpdateComment(Guid userId, Guid commentId, GroupCommentRequestDto request) GroupCommentDto
+  }
+  class GroupCommentService {
+    +UpdateComment(Guid userId, Guid commentId, GroupCommentRequestDto request) GroupCommentDto
+    -GetCommentOrThrow(Guid commentId) GroupTaskComment
+    -ValidateContent(string content) string
+    -ToDto(GroupTaskComment comment) GroupCommentDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetComment(Guid commentId) GroupTaskComment
+  }
+  class GroupWorkRepository {
+    +GetComment(Guid commentId) GroupTaskComment
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupTaskComment {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AuthorId
+    -string Content
+    -DateTime CreatedAt
+    -DateTime EditedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupCommentService : uses
+  GroupCommentService ..> IGroupWorkRepository : uses
+  GroupCommentService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupCommentService ..> IUnitOfWork : uses
+  IGroupCommentService <|.. GroupCommentService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupTaskComment
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+```
+
+Figure 3.168.1 Class Diagram
+
+### 3.168.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupCommentService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  User->>UI: Edit Task Comment
+  UI->>GroupWorkController: PUT /api/group-comments/(commentId)
+  GroupWorkController->>GroupCommentService: UpdateComment(userId, commentId, request)
+    GroupCommentService->>GroupCommentService: GetCommentOrThrow(commentId)
+      GroupCommentService->>GroupWorkRepository: GetComment(commentId)
+      GroupWorkRepository-->>GroupCommentService: GroupTaskComment
+      opt value is missing
+        GroupCommentService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupCommentService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupCommentService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupCommentService: GroupAccess
+    opt comment.AuthorId != userId
+      GroupCommentService-->>GroupWorkController: throw GroupForbiddenException
+    end
+    GroupCommentService->>GroupCommentService: ValidateContent(content)
+      opt trimmed.Length == 0 || trimmed.Length > MaxContentLength
+        GroupCommentService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    GroupCommentService->>UnitOfWork: SaveChanges()
+  GroupCommentService-->>GroupWorkController: GroupCommentDto
+  GroupWorkController-->>UI: 200 OK (GroupCommentDto)
+  UI-->>User: Show result
+```
+
+Figure 3.168.2 Sequence Diagram
+
+### 3.168.3 Class Specification
+
+#### 3.168.3.a GroupWorkController
+
+Table 3.168.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateComment(Guid commentId, GroupCommentRequestDto request) : GroupCommentDto` | `PUT /api/group-comments/{commentId}`. Only the author may edit a comment; the edit time is stored. Requires a signed-in user. |
+
+#### 3.168.3.b GroupCommentService
+
+Table 3.168.3.b: GroupCommentService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateComment(Guid userId, Guid commentId, GroupCommentRequestDto request) : GroupCommentDto` | Only the author may edit a comment; the edit time is stored. |
+| 2 | `private GetCommentOrThrow(Guid commentId) : GroupTaskComment` | Loads a comment or raises 404. |
+| 3 | `private ValidateContent(string content) : string` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private ToDto(GroupTaskComment comment) : GroupCommentDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.168.3.c GroupWorkRepository
+
+Table 3.168.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetComment(Guid commentId) : GroupTaskComment` | Reads the GroupTaskComment matching (commentId); returns nothing or an empty list when there is no match. |
+
+#### 3.168.3.d GroupAccessService
+
+Table 3.168.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.168.3.e GroupRepository
+
+Table 3.168.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.168.3.f UnitOfWork
+
+Table 3.168.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.168.4 Methods Used
+
+Table 3.168.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.UpdateComment | IGroupCommentService.UpdateComment | GroupCommentService |
+| 2 | GroupCommentService.GetCommentOrThrow | IGroupWorkRepository.GetComment | GroupWorkRepository |
+| 3 | GroupCommentService.UpdateComment | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupCommentService.UpdateComment | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTaskComment, GroupMember, WorkGroup.
+
+---
+
+## 3.169 Delete Task Comment
+
+The author or a Leader may delete a comment.
+
+- **Endpoint:** `DELETE /api/group-comments/{commentId}`  
+- **Access:** Signed-in user
+
+### 3.169.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +DeleteComment(Guid commentId) IActionResult
+  }
+  class IGroupCommentService {
+    <<interface>>
+    +DeleteComment(Guid userId, Guid commentId) void
+  }
+  class GroupCommentService {
+    +DeleteComment(Guid userId, Guid commentId) void
+    -GetCommentOrThrow(Guid commentId) GroupTaskComment
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetComment(Guid commentId) GroupTaskComment
+    +RemoveComment(GroupTaskComment comment) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetComment(Guid commentId) GroupTaskComment
+    +RemoveComment(GroupTaskComment comment) void
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupTaskComment {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AuthorId
+    -string Content
+    -DateTime CreatedAt
+    -DateTime EditedAt
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupWorkController ..> IGroupCommentService : uses
+  GroupCommentService ..> IGroupWorkRepository : uses
+  GroupCommentService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupCommentService ..> IUnitOfWork : uses
+  IGroupCommentService <|.. GroupCommentService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupTaskComment
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.169.1 Class Diagram
+
+### 3.169.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupCommentService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  User->>UI: Delete Task Comment
+  UI->>GroupWorkController: DELETE /api/group-comments/(commentId)
+  GroupWorkController->>GroupCommentService: DeleteComment(userId, commentId)
+    GroupCommentService->>GroupCommentService: GetCommentOrThrow(commentId)
+      GroupCommentService->>GroupWorkRepository: GetComment(commentId)
+      GroupWorkRepository-->>GroupCommentService: GroupTaskComment
+      opt value is missing
+        GroupCommentService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupCommentService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupCommentService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupCommentService: GroupAccess
+    opt comment.AuthorId != userId && !access.IsLeader
+      GroupCommentService-->>GroupWorkController: throw GroupForbiddenException
+    end
+    GroupCommentService->>GroupWorkRepository: RemoveComment(comment)
+    GroupCommentService->>GroupWorkRepository: AddActivity(log)
+    GroupCommentService->>UnitOfWork: SaveChanges()
+  GroupWorkController-->>UI: 204 No Content
+  UI-->>User: Show result
+```
+
+Figure 3.169.2 Sequence Diagram
+
+### 3.169.3 Class Specification
+
+#### 3.169.3.a GroupWorkController
+
+Table 3.169.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteComment(Guid commentId) : IActionResult` | `DELETE /api/group-comments/{commentId}`. The author or a Leader may delete a comment. Requires a signed-in user. |
+
+#### 3.169.3.b GroupCommentService
+
+Table 3.169.3.b: GroupCommentService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `DeleteComment(Guid userId, Guid commentId)` | The author or a Leader may delete a comment. |
+| 2 | `private GetCommentOrThrow(Guid commentId) : GroupTaskComment` | Loads a comment or raises 404. |
+
+#### 3.169.3.c GroupWorkRepository
+
+Table 3.169.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetComment(Guid commentId) : GroupTaskComment` | Reads the GroupTaskComment matching (commentId); returns nothing or an empty list when there is no match. |
+| 2 | `RemoveComment(GroupTaskComment comment)` | Marks the GroupTaskComment for deletion; it is removed when the unit of work is saved. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.169.3.d GroupAccessService
+
+Table 3.169.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.169.3.e GroupRepository
+
+Table 3.169.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.169.3.f UnitOfWork
+
+Table 3.169.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.169.4 Methods Used
+
+Table 3.169.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.DeleteComment | IGroupCommentService.DeleteComment | GroupCommentService |
+| 2 | GroupCommentService.GetCommentOrThrow | IGroupWorkRepository.GetComment | GroupWorkRepository |
+| 3 | GroupCommentService.DeleteComment | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupCommentService.DeleteComment | IGroupWorkRepository.RemoveComment | GroupWorkRepository |
+| 7 | GroupCommentService.DeleteComment | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupCommentService.DeleteComment | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTaskComment, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.170 View Group Activity Log
+
+Returns the activity log of the group (who changed what, with the old and new value), newest first, with skip and take paging. Viewers are refused.
+
+- **Endpoint:** `GET /api/groups/{groupId}/activity`  
+- **Access:** Signed-in user
+
+### 3.170.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class IGroupService {
+    <<interface>>
+    +GetActivity(Guid userId, Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class GroupService {
+    +GetActivity(Guid userId, Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityLog[]
+  }
+  class GroupWorkRepository {
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityLog[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupsController ..> IGroupService : uses
+  GroupService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupService ..> IGroupWorkRepository : uses
+  IGroupService <|.. GroupService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.170.1 Class Diagram
+
+### 3.170.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  User->>UI: View Group Activity Log
+  UI->>GroupsController: GET /api/groups/(groupId)/activity
+  GroupsController->>GroupService: GetActivity(userId, groupId, skip, take)
+    GroupService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupService: GroupAccess
+    GroupService->>GroupWorkRepository: GetActivity(groupId, skip, take)
+    GroupWorkRepository-->>GroupService: GroupActivityLog list
+  GroupService-->>GroupsController: GroupActivityDto list
+  GroupsController-->>UI: 200 OK (GroupActivityDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.170.2 Sequence Diagram
+
+### 3.170.3 Class Specification
+
+#### 3.170.3.a GroupsController
+
+Table 3.170.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityDto[]` | `GET /api/groups/{groupId}/activity`. Returns the activity log of the group (who changed what, with the old and new value), newest first, with skip and take paging. Viewers are refused. Requires a signed-in user. |
+
+#### 3.170.3.b GroupService
+
+Table 3.170.3.b: GroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid userId, Guid groupId, int skip, int take) : GroupActivityDto[]` | Returns the activity log of the group (who changed what, with the old and new value), newest first, with skip and take paging. Viewers are refused. |
+
+#### 3.170.3.c GroupAccessService
+
+Table 3.170.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.170.3.d GroupRepository
+
+Table 3.170.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.170.3.e GroupWorkRepository
+
+Table 3.170.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityLog[]` | Reads the GroupActivityLog list matching (groupId, skip, take); returns nothing or an empty list when there is no match. |
+
+### 3.170.4 Methods Used
+
+Table 3.170.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetActivity | IGroupService.GetActivity | GroupService |
+| 2 | GroupService.GetActivity | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupService.GetActivity | IGroupWorkRepository.GetActivity | GroupWorkRepository |
+
+Entities used: GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+## 3.171 View Group Progress
+
+Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone.
+
+- **Endpoint:** `GET /api/groups/{groupId}/progress`  
+- **Access:** Signed-in user
+
+### 3.171.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupsController {
+    +GetProgress(Guid groupId) GroupProgressDto
+  }
+  class IGroupProgressService {
+    <<interface>>
+    +GetProgress(Guid userId, Guid groupId) GroupProgressDto
+  }
+  class GroupProgressService {
+    +GetProgress(Guid userId, Guid groupId) GroupProgressDto
+    -BuildProgress(Guid groupId) GroupProgressDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTasksForProgress(Guid groupId) GroupTask[]
+    +GetMilestones(Guid groupId) GroupMilestone[]
+    +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+  }
+  class GroupWorkRepository {
+    +GetTasksForProgress(Guid groupId) GroupTask[]
+    +GetMilestones(Guid groupId) GroupMilestone[]
+    +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  GroupsController ..> IGroupProgressService : uses
+  GroupProgressService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupProgressService ..> IGroupWorkRepository : uses
+  GroupProgressService ..> IGroupRepository : uses
+  IGroupProgressService <|.. GroupProgressService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupFocusSession
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  GroupTask "1" --> "0..*" GroupFocusSession
+  GroupMilestone "1" --> "0..*" GroupTask
+```
+
+Figure 3.171.1 Class Diagram
+
+### 3.171.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupsController
+  participant GroupProgressService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  User->>UI: View Group Progress
+  UI->>GroupsController: GET /api/groups/(groupId)/progress
+  GroupsController->>GroupProgressService: GetProgress(userId, groupId)
+    GroupProgressService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupProgressService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupProgressService: GroupAccess
+    GroupProgressService->>GroupProgressService: BuildProgress(groupId)
+      GroupProgressService->>GroupWorkRepository: GetTasksForProgress(groupId)
+      GroupWorkRepository-->>GroupProgressService: GroupTask list
+      GroupProgressService->>GroupRepository: GetMembers(groupId)
+      GroupRepository-->>GroupProgressService: GroupMemberDto list
+      GroupProgressService->>GroupWorkRepository: GetMilestones(groupId)
+      GroupWorkRepository-->>GroupProgressService: GroupMilestone list
+      GroupProgressService->>GroupWorkRepository: GetFinishedFocusSessionsOfGroup(groupId)
+      GroupWorkRepository-->>GroupProgressService: GroupFocusSession list
+  GroupProgressService-->>GroupsController: GroupProgressDto
+  GroupsController-->>UI: 200 OK (GroupProgressDto)
+  UI-->>User: Show result
+```
+
+Figure 3.171.2 Sequence Diagram
+
+### 3.171.3 Class Specification
+
+#### 3.171.3.a GroupsController
+
+Table 3.171.3.a: GroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetProgress(Guid groupId) : GroupProgressDto` | `GET /api/groups/{groupId}/progress`. Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. Requires a signed-in user. |
+
+#### 3.171.3.b GroupProgressService
+
+Table 3.171.3.b: GroupProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetProgress(Guid userId, Guid groupId) : GroupProgressDto` | Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. |
+| 2 | `private BuildProgress(Guid groupId) : GroupProgressDto` | Builds the progress report of a group: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of each member and milestone. Shared by the member view and the admin view. |
+
+#### 3.171.3.c GroupAccessService
+
+Table 3.171.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.171.3.d GroupRepository
+
+Table 3.171.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.171.3.e GroupWorkRepository
+
+Table 3.171.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasksForProgress(Guid groupId) : GroupTask[]` | Reads the GroupTask list matching (groupId); returns nothing or an empty list when there is no match. |
+| 2 | `GetMilestones(Guid groupId) : GroupMilestone[]` | Reads the GroupMilestone list matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetFinishedFocusSessionsOfGroup(Guid groupId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.171.4 Methods Used
+
+Table 3.171.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupsController.GetProgress | IGroupProgressService.GetProgress | GroupProgressService |
+| 2 | GroupProgressService.GetProgress | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetTasksForProgress | GroupWorkRepository |
+| 6 | GroupProgressService.BuildProgress | IGroupRepository.GetMembers | GroupRepository |
+| 7 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
+| 8 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetFinishedFocusSessionsOfGroup | GroupWorkRepository |
+
+Entities used: GroupMember, WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession.
+
+---
+
+# Group: Focus Session
+
+## 3.172 Start Group Focus Session
+
+The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started.
+
+- **Endpoint:** `POST /api/group-tasks/{taskId}/focus/start`  
+- **Access:** Signed-in user
+
+### 3.172.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupFocusController {
+    +Start(Guid taskId, GroupFocusStartRequestDto request) GroupFocusStartResponseDto
+  }
+  class IGroupFocusService {
+    <<interface>>
+    +Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) GroupFocusStartResponseDto
+  }
+  class GroupFocusService {
+    +Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) GroupFocusStartResponseDto
+    -EnsureNothingRunning(Guid userId) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +AddFocusSession(GroupFocusSession session) void
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +AddFocusSession(GroupFocusSession session) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IFocusSessionRepository {
+    <<interface>>
+    +GetRunningWithDetails(Guid userId) FocusSession
+  }
+  class FocusSessionRepository {
+    +GetRunningWithDetails(Guid userId) FocusSession
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +ExecuteInTransaction(Func~void~ action) void
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +ExecuteInTransaction(Func~void~ action) void
+    +SaveChanges() int
+  }
+  class GroupTaskProgress {
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+    +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class FocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleSlotId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+    -bool IsConfirmed
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  GroupFocusController ..> IGroupFocusService : uses
+  GroupFocusService ..> IGroupWorkRepository : uses
+  GroupFocusService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupFocusService ..> IFocusSessionRepository : uses
+  GroupFocusService ..> IUnitOfWork : uses
+  GroupFocusService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  IGroupFocusService <|.. GroupFocusService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IFocusSessionRepository <|.. FocusSessionRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupFocusService ..> GroupSubTask
+  GroupFocusService ..> GroupFocusSession
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> GroupMilestone
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  FocusSessionRepository ..> FocusSession
+  GroupTask "1" --> "0..*" GroupSubTask
+  GroupTask "1" --> "0..*" GroupFocusSession
+  SubTask "1" --> "0..*" FocusSession
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupMilestone "1" --> "0..*" GroupTask
+  GroupFocusSession "*" --> "1" GroupSubTask
+```
+
+Figure 3.172.1 Class Diagram
+
+### 3.172.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Client App
+  participant GroupFocusController
+  participant GroupFocusService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant FocusSessionRepository
+  participant UnitOfWork
+  participant GroupTaskProgress
+  Member->>UI: Start Group Focus Session
+  UI->>GroupFocusController: POST /api/group-tasks/(taskId)/focus/start
+  GroupFocusController->>GroupFocusService: Start(userId, taskId, request)
+    GroupFocusService->>GroupWorkRepository: GetTask(taskId)
+    GroupWorkRepository-->>GroupFocusService: GroupTask
+    opt value is missing
+      GroupFocusService-->>GroupFocusController: throw NotFoundException (404)
+    end
+    GroupFocusService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupFocusService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupFocusService: GroupAccess
+    opt GroupRules.IsClosed(task.Status)
+      GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+    end
+    alt request.SubTaskId is ( ) subTaskId
+      opt value is missing
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
+      opt GroupRules.IsClosed(subTask.Status)
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
+    else
+      opt task.SubTasks.Count > 0
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
+    end
+    opt !mine
+      GroupFocusService-->>GroupFocusController: throw GroupForbiddenException
+    end
+    GroupFocusService->>GroupFocusService: EnsureNothingRunning(userId)
+      GroupFocusService->>GroupWorkRepository: GetRunningFocusSession(userId)
+      GroupWorkRepository-->>GroupFocusService: GroupFocusSession
+      opt running != null
+        GroupFocusService-->>GroupFocusController: throw FocusConflictException (409)
+      end
+      GroupFocusService->>FocusSessionRepository: GetRunningWithDetails(userId)
+      FocusSessionRepository-->>GroupFocusService: FocusSession
+      opt personal != null
+        GroupFocusService-->>GroupFocusController: throw FocusConflictException (409)
+      end
+    GroupFocusService->>UnitOfWork: ExecuteInTransaction(action)
+    alt subTask != null && subTask.Status == GroupWorkStatuses.ToDo
+      GroupFocusService->>GroupWorkRepository: AddActivity(log)
+    else
+      opt subTask == null && task.Status == GroupWorkStatuses.ToDo
+        GroupFocusService->>GroupWorkRepository: AddActivity(log)
+        GroupFocusService->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+          GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+          GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+          opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+            GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+          end
+      end
+    end
+    GroupFocusService->>GroupWorkRepository: AddFocusSession(session)
+    GroupFocusService->>GroupWorkRepository: AddActivity(log)
+    opt subTask != null
+      GroupFocusService->>GroupTaskProgress: RefreshTask(task, subTasks, actorId)
+        opt result.StatusChanged
+          GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+          GroupTaskProgress->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+        end
+      GroupTaskProgress-->>GroupFocusService: bool
+    end
+    GroupFocusService->>UnitOfWork: SaveChanges()
+  GroupFocusService-->>GroupFocusController: GroupFocusStartResponseDto
+  GroupFocusController-->>UI: 201 Created (GroupFocusStartResponseDto)
+  UI-->>Member: Show result
+```
+
+Figure 3.172.2 Sequence Diagram
+
+### 3.172.3 Class Specification
+
+#### 3.172.3.a GroupFocusController
+
+Table 3.172.3.a: GroupFocusController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Start(Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | `POST /api/group-tasks/{taskId}/focus/start`. The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. Requires a signed-in user. |
+
+#### 3.172.3.b GroupFocusService
+
+Table 3.172.3.b: GroupFocusService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. |
+| 2 | `private EnsureNothingRunning(Guid userId)` | Allows only one running session per person: it checks the group sessions and, read-only, the personal sessions. When one is running it raises FocusConflictException (409 FOCUS_SESSION_CONFLICT) that names the source (Group or Personal) so that the client can send the user there. |
+
+#### 3.172.3.c GroupWorkRepository
+
+Table 3.172.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
+| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 4 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 5 | `AddFocusSession(GroupFocusSession session)` | Adds a new GroupFocusSession to the context; it is written when the unit of work is saved. |
+
+#### 3.172.3.d GroupAccessService
+
+Table 3.172.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.172.3.e GroupRepository
+
+Table 3.172.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.172.3.f FocusSessionRepository
+
+Table 3.172.3.f: FocusSessionRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetRunningWithDetails(Guid userId) : FocusSession` | Returns the user's running FocusSession (EndedAt is null) with its Task and ScheduleSlot; null when nothing runs. |
+
+#### 3.172.3.g UnitOfWork
+
+Table 3.172.3.g: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
+| 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.172.3.h GroupTaskProgress
+
+Table 3.172.3.h: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+| 2 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
+| 3 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+### 3.172.4 Methods Used
+
+Table 3.172.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupFocusController.Start | IGroupFocusService.Start | GroupFocusService |
+| 2 | GroupFocusService.Start | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupFocusService.Start | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupFocusService.EnsureNothingRunning | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 7 | GroupFocusService.EnsureNothingRunning | IFocusSessionRepository.GetRunningWithDetails | FocusSessionRepository |
+| 8 | GroupFocusService.Start | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 9 | GroupFocusService.Start | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 10 | GroupFocusService.Start | GroupTaskProgress.StartMilestoneIfNeeded |  |
+| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 12 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupFocusService.Start | IGroupWorkRepository.AddFocusSession | GroupWorkRepository |
+| 14 | GroupFocusService.Start | GroupTaskProgress.RefreshTask |  |
+| 15 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 16 | GroupFocusService.Start | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupSubTask, GroupFocusSession, GroupTask, SubTask, GroupMember, WorkGroup, FocusSession, GroupActivityLog, GroupMilestone.
+
+---
+
+## 3.173 Stop Group Focus Session
+
+Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked.
+
+- **Endpoint:** `POST /api/group-focus/{sessionId}/stop`  
+- **Access:** Signed-in user
+
+### 3.173.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupFocusController {
+    +Stop(Guid sessionId, GroupFocusStopRequestDto request) GroupFocusStopResponseDto
+  }
+  class IGroupFocusService {
+    <<interface>>
+    +Stop(Guid userId, Guid sessionId, GroupFocusStopRequestDto request) GroupFocusStopResponseDto
+  }
+  class GroupFocusService {
+    +Stop(Guid userId, Guid sessionId, GroupFocusStopRequestDto request) GroupFocusStopResponseDto
+    -Round(double minutes) double
+    -Minutes(GroupFocusSession session, DateTime nowUtc) double
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetFocusSession(Guid sessionId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
+  }
+  class GroupWorkRepository {
+    +GetFocusSession(Guid sessionId) GroupFocusSession
+    +AddActivity(GroupActivityLog log) void
+    +GetMilestone(Guid milestoneId) GroupMilestone
+    +GetFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +ExecuteInTransaction(Func~void~ action) void
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +ExecuteInTransaction(Func~void~ action) void
+    +SaveChanges() int
+  }
+  class GroupTaskProgress {
+    +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
+    +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  GroupFocusController ..> IGroupFocusService : uses
+  GroupFocusService ..> IGroupWorkRepository : uses
+  GroupFocusService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupFocusService ..> IUnitOfWork : uses
+  GroupFocusService ..> GroupTaskProgress : uses
+  GroupTaskProgress ..> IGroupWorkRepository : uses
+  IGroupFocusService <|.. GroupFocusService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> GroupMilestone
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.173.1 Class Diagram
+
+### 3.173.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Client App
+  participant GroupFocusController
+  participant GroupFocusService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  participant GroupTaskProgress
+  Member->>UI: Stop Group Focus Session
+  UI->>GroupFocusController: POST /api/group-focus/(sessionId)/stop
+  GroupFocusController->>GroupFocusService: Stop(userId, sessionId, request)
+    GroupFocusService->>GroupWorkRepository: GetFocusSession(sessionId)
+    GroupWorkRepository-->>GroupFocusService: GroupFocusSession
+    opt session == null || session.UserId != userId
+      GroupFocusService-->>GroupFocusController: throw NotFoundException (404)
+    end
+    GroupFocusService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupFocusService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupFocusService: GroupAccess
+    opt session.EndedAt is ( ) alreadyEnded
+      GroupFocusService-->>GroupFocusController: throw FocusConflictException (409)
+    end
+    opt request.StopReason is FocusStopReason.Blocked or FocusStopReason.Other && str...
+      GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+    end
+    GroupFocusService->>UnitOfWork: ExecuteInTransaction(action)
+    GroupFocusService->>GroupWorkRepository: AddActivity(log)
+    opt request.StopReason == FocusStopReason.Completed && access.Group.Status == Gro...
+      opt subTask != null
+        opt GroupRules.IsOpenSubTask(subTask)
+          GroupFocusService->>GroupWorkRepository: AddActivity(log)
+        end
+        GroupFocusService->>GroupTaskProgress: RefreshTask(task, subTasks, actorId)
+          opt result.StatusChanged
+            GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+            GroupTaskProgress->>GroupTaskProgress: StartMilestoneIfNeeded(task, actorId)
+              GroupTaskProgress->>GroupWorkRepository: GetMilestone(milestoneId)
+              GroupWorkRepository-->>GroupTaskProgress: GroupMilestone
+              opt milestone != null && milestone.Status == GroupWorkStatuses.Planned
+                GroupTaskProgress->>GroupWorkRepository: AddActivity(log)
+              end
+          end
+        GroupTaskProgress-->>GroupFocusService: bool
+      end
+    end
+    GroupFocusService->>UnitOfWork: SaveChanges()
+    GroupFocusService->>GroupWorkRepository: GetFocusSessionsOfTask(taskId)
+    GroupWorkRepository-->>GroupFocusService: GroupFocusSession list
+  GroupFocusService-->>GroupFocusController: GroupFocusStopResponseDto
+  GroupFocusController-->>UI: 200 OK (GroupFocusStopResponseDto)
+  UI-->>Member: Show result
+```
+
+Figure 3.173.2 Sequence Diagram
+
+### 3.173.3 Class Specification
+
+#### 3.173.3.a GroupFocusController
+
+Table 3.173.3.a: GroupFocusController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Stop(Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | `POST /api/group-focus/{sessionId}/stop`. Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. Requires a signed-in user. |
+
+#### 3.173.3.b GroupFocusService
+
+Table 3.173.3.b: GroupFocusService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Stop(Guid userId, Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. |
+| 2 | `private Round(double minutes) : double` | Rounds minutes to 2 decimals. |
+| 3 | `private Minutes(GroupFocusSession session, DateTime nowUtc) : double` | Minutes of a session; a running session is counted up to the current time. |
+
+#### 3.173.3.c GroupWorkRepository
+
+Table 3.173.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetFocusSession(Guid sessionId) : GroupFocusSession` | Reads the GroupFocusSession matching (sessionId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 3 | `GetMilestone(Guid milestoneId) : GroupMilestone` | Reads the GroupMilestone matching (milestoneId); returns nothing or an empty list when there is no match. |
+| 4 | `GetFocusSessionsOfTask(Guid taskId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.173.3.d GroupAccessService
+
+Table 3.173.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.173.3.e GroupRepository
+
+Table 3.173.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.173.3.f UnitOfWork
+
+Table 3.173.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
+| 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.173.3.g GroupTaskProgress
+
+Table 3.173.3.g: GroupTaskProgress Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
+| 2 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+### 3.173.4 Methods Used
+
+Table 3.173.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupFocusController.Stop | IGroupFocusService.Stop | GroupFocusService |
+| 2 | GroupFocusService.Stop | IGroupWorkRepository.GetFocusSession | GroupWorkRepository |
+| 3 | GroupFocusService.Stop | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupFocusService.Stop | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 7 | GroupFocusService.Stop | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 8 | GroupFocusService.Stop | GroupTaskProgress.RefreshTask |  |
+| 9 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 10 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 12 | GroupFocusService.Stop | IUnitOfWork.SaveChanges | UnitOfWork |
+| 13 | GroupFocusService.Stop | IGroupWorkRepository.GetFocusSessionsOfTask | GroupWorkRepository |
+
+Entities used: GroupFocusSession, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone.
+
+---
+
+## 3.174 View My Running Group Session
+
+Returns the user's running group session with the task, the group and the elapsed minutes, or nothing when none is running.
+
+- **Endpoint:** `GET /api/group-focus/current`  
+- **Access:** Signed-in user
+
+### 3.174.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupFocusController {
+    +GetCurrent() IActionResult
+  }
+  class IGroupFocusService {
+    <<interface>>
+    +GetCurrent(Guid userId) GroupFocusCurrentDto
+  }
+  class GroupFocusService {
+    +GetCurrent(Guid userId) GroupFocusCurrentDto
+    -ToCurrent(GroupFocusSession session, DateTimeOffset now) GroupFocusCurrentDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+  }
+  class GroupWorkRepository {
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  GroupFocusController ..> IGroupFocusService : uses
+  GroupFocusService ..> IGroupWorkRepository : uses
+  IGroupFocusService <|.. GroupFocusService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupWorkRepository ..> GroupFocusSession
+```
+
+Figure 3.174.1 Class Diagram
+
+### 3.174.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupFocusController
+  participant GroupFocusService
+  participant GroupWorkRepository
+  User->>UI: View My Running Group Session
+  UI->>GroupFocusController: GET /api/group-focus/current
+  GroupFocusController->>GroupFocusService: GetCurrent(userId)
+    GroupFocusService->>GroupWorkRepository: GetRunningFocusSession(userId)
+    GroupWorkRepository-->>GroupFocusService: GroupFocusSession
+  GroupFocusService-->>GroupFocusController: GroupFocusCurrentDto
+  GroupFocusController-->>UI: 204 No Content or 200 OK
+  UI-->>User: Show result
+```
+
+Figure 3.174.2 Sequence Diagram
+
+### 3.174.3 Class Specification
+
+#### 3.174.3.a GroupFocusController
+
+Table 3.174.3.a: GroupFocusController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetCurrent() : IActionResult` | `GET /api/group-focus/current`. Returns the user's running group session with the task, the group and the elapsed minutes, or nothing when none is running. Requires a signed-in user. |
+
+#### 3.174.3.b GroupFocusService
+
+Table 3.174.3.b: GroupFocusService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetCurrent(Guid userId) : GroupFocusCurrentDto` | Returns the user's running group session with the task, the group and the elapsed minutes, or nothing when none is running. |
+| 2 | `private ToCurrent(GroupFocusSession session, DateTimeOffset now) : GroupFocusCurrentDto` | Maps a running session to the response with the task, the group and the elapsed minutes. |
+
+#### 3.174.3.c GroupWorkRepository
+
+Table 3.174.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
+
+### 3.174.4 Methods Used
+
+Table 3.174.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupFocusController.GetCurrent | IGroupFocusService.GetCurrent | GroupFocusService |
+| 2 | GroupFocusService.GetCurrent | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+
+Entities used: GroupFocusSession.
+
+---
+
+## 3.175 View Task Time per Person
+
+Returns the time tracked on a task: the total, the minutes of every person and of every sub-task, and the estimate.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/time`  
+- **Access:** Signed-in user
+
+### 3.175.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupFocusController {
+    +GetTime(Guid taskId) GroupTaskTimeDto
+  }
+  class IGroupFocusService {
+    <<interface>>
+    +GetTaskTime(Guid userId, Guid taskId) GroupTaskTimeDto
+  }
+  class GroupFocusService {
+    +GetTaskTime(Guid userId, Guid taskId) GroupTaskTimeDto
+    -Round(double minutes) double
+    -Minutes(GroupFocusSession session, DateTime nowUtc) double
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  GroupFocusController ..> IGroupFocusService : uses
+  GroupFocusService ..> IGroupWorkRepository : uses
+  GroupFocusService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupFocusService <|.. GroupFocusService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupFocusSession
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupFocusSession
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+```
+
+Figure 3.175.1 Class Diagram
+
+### 3.175.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupFocusController
+  participant GroupFocusService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Task Time per Person
+  UI->>GroupFocusController: GET /api/group-tasks/(taskId)/time
+  GroupFocusController->>GroupFocusService: GetTaskTime(userId, taskId)
+    GroupFocusService->>GroupWorkRepository: GetTask(taskId)
+    GroupWorkRepository-->>GroupFocusService: GroupTask
+    opt value is missing
+      GroupFocusService-->>GroupFocusController: throw NotFoundException (404)
+    end
+    GroupFocusService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupFocusService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupFocusService: GroupAccess
+    GroupFocusService->>GroupWorkRepository: GetFocusSessionsOfTask(taskId)
+    GroupWorkRepository-->>GroupFocusService: GroupFocusSession list
+  GroupFocusService-->>GroupFocusController: GroupTaskTimeDto
+  GroupFocusController-->>UI: 200 OK (GroupTaskTimeDto)
+  UI-->>User: Show result
+```
+
+Figure 3.175.2 Sequence Diagram
+
+### 3.175.3 Class Specification
+
+#### 3.175.3.a GroupFocusController
+
+Table 3.175.3.a: GroupFocusController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTime(Guid taskId) : GroupTaskTimeDto` | `GET /api/group-tasks/{taskId}/time`. Returns the time tracked on a task: the total, the minutes of every person and of every sub-task, and the estimate. Requires a signed-in user. |
+
+#### 3.175.3.b GroupFocusService
+
+Table 3.175.3.b: GroupFocusService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTaskTime(Guid userId, Guid taskId) : GroupTaskTimeDto` | Returns the time tracked on a task: the total, the minutes of every person and of every sub-task, and the estimate. |
+| 2 | `private Round(double minutes) : double` | Rounds minutes to 2 decimals. |
+| 3 | `private Minutes(GroupFocusSession session, DateTime nowUtc) : double` | Minutes of a session; a running session is counted up to the current time. |
+
+#### 3.175.3.c GroupWorkRepository
+
+Table 3.175.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetFocusSessionsOfTask(Guid taskId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.175.3.d GroupAccessService
+
+Table 3.175.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.175.3.e GroupRepository
+
+Table 3.175.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.175.4 Methods Used
+
+Table 3.175.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupFocusController.GetTime | IGroupFocusService.GetTaskTime | GroupFocusService |
+| 2 | GroupFocusService.GetTaskTime | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupFocusService.GetTaskTime | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupFocusService.GetTaskTime | IGroupWorkRepository.GetFocusSessionsOfTask | GroupWorkRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupFocusSession.
+
+---
+
+# Group: Assignee Availability and Change Requests
+
+## 3.176 Check Assignee Availability
+
+Leader only. Checks whether a member can take a task before assigning it: fixed time against the member's live schedule slots, Google Calendar events and other group tasks, plus a workload warning for the week of the deadline. The Leader sees only busy or free periods, never titles of personal items.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/assignee-check`  
+- **Access:** Signed-in user
+
+### 3.176.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +CheckAssignee(Guid taskId, Guid assigneeId) GroupAssigneeAvailabilityDto
+  }
+  class IGroupAvailabilityService {
+    <<interface>>
+    +CheckForTask(Guid userId, Guid taskId, Guid assigneeId) GroupAssigneeAvailabilityDto
+  }
+  class GroupAvailabilityService {
+    +CheckForTask(Guid userId, Guid taskId, Guid assigneeId) GroupAssigneeAvailabilityDto
+    +Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) GroupAssigneeAvailabilityDto
+    -Period(DateTime start, DateTime end, string source) GroupBusyPeriodDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class ICalendarRepository {
+    <<interface>>
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class CalendarRepository {
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GoogleCalendarEvent {
+    <<Entity>>
+    -Guid Id
+    -Guid GoogleConnectionId
+    -string GoogleEventId
+    -string Title
+    -DateTime StartTime
+    -DateTime EndTime
+    -bool IsAllDay
+    -bool IsCreatedByMetanoia
+    -string Etag
+    -bool IsCancelled
+    -DateTime UpdatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupSchedulingController ..> IGroupAvailabilityService : uses
+  GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupAvailabilityService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupAvailabilityService ..> IGroupRepository : uses
+  GroupAvailabilityService ..> ICalendarRepository : uses
+  IGroupAvailabilityService <|.. GroupAvailabilityService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  ICalendarRepository <|.. CalendarRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  CalendarRepository ..> ScheduleSlot
+  CalendarRepository ..> GoogleCalendarEvent
+  CalendarRepository ..> User
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+```
+
+Figure 3.176.1 Class Diagram
+
+### 3.176.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupAvailabilityService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant CalendarRepository
+  Group Leader->>UI: Check Assignee Availability
+  UI->>GroupSchedulingController: GET /api/group-tasks/(taskId)/assignee-check
+  GroupSchedulingController->>GroupAvailabilityService: CheckForTask(userId, taskId, assigneeId)
+    GroupAvailabilityService->>GroupWorkRepository: GetTask(taskId)
+    GroupWorkRepository-->>GroupAvailabilityService: GroupTask
+    opt value is missing
+      GroupAvailabilityService-->>GroupSchedulingController: throw NotFoundException (404)
+    end
+    GroupAvailabilityService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupAvailabilityService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupAvailabilityService: GroupAccess
+    GroupAvailabilityService->>GroupRepository: GetMember(groupId, userId)
+    GroupRepository-->>GroupAvailabilityService: GroupMember
+    opt member == null
+      GroupAvailabilityService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    GroupAvailabilityService->>GroupAvailabilityService: Check(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes, excludeTas...
+      opt fixedStartUtc is ( ) start && fixedEndUtc is ( ) end
+        GroupAvailabilityService->>CalendarRepository: GetSlots(userId, from, to, includeCancelled)
+        CalendarRepository-->>GroupAvailabilityService: CalendarSlotRow list
+        GroupAvailabilityService->>CalendarRepository: GetGoogleEvents(userId, from, to)
+        CalendarRepository-->>GroupAvailabilityService: GoogleCalendarEvent list
+        GroupAvailabilityService->>GroupWorkRepository: GetFixedTasksOverlapping(userId, startUtc, endUtc, excludeTaskId)
+        GroupWorkRepository-->>GroupAvailabilityService: GroupTask list
+      end
+      opt deadlineUtc is ( ) deadline && estimatedMinutes is ( ) estimate
+        GroupAvailabilityService->>GroupWorkRepository: SumOpenEstimatedMinutes(userId, fromUtc, toUtc, excludeTaskId)
+        GroupWorkRepository-->>GroupAvailabilityService: int
+        GroupAvailabilityService->>CalendarRepository: GetWorkingHours(userId)
+        CalendarRepository-->>GroupAvailabilityService: CalendarWorkingHours
+      end
+  GroupAvailabilityService-->>GroupSchedulingController: GroupAssigneeAvailabilityDto
+  GroupSchedulingController-->>UI: 200 OK (GroupAssigneeAvailabilityDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.176.2 Sequence Diagram
+
+### 3.176.3 Class Specification
+
+#### 3.176.3.a GroupSchedulingController
+
+Table 3.176.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CheckAssignee(Guid taskId, Guid assigneeId) : GroupAssigneeAvailabilityDto` | `GET /api/group-tasks/{taskId}/assignee-check`. Leader only. Checks whether a member can take a task before assigning it: fixed time against the member's live schedule slots, Google Calendar events and other group tasks, plus a workload warning for the week of the deadline. The Leader sees only busy or free periods, never titles of personal items. Requires a signed-in user. |
+
+#### 3.176.3.b GroupAvailabilityService
+
+Table 3.176.3.b: GroupAvailabilityService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CheckForTask(Guid userId, Guid taskId, Guid assigneeId) : GroupAssigneeAvailabilityDto` | Leader only. Checks whether a member can take a task before assigning it: fixed time against the member's live schedule slots, Google Calendar events and other group tasks, plus a workload warning for the week of the deadline. The Leader sees only busy or free periods, never titles of personal items. |
+| 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
+| 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
+
+#### 3.176.3.c GroupWorkRepository
+
+Table 3.176.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
+| 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
+
+#### 3.176.3.d GroupAccessService
+
+Table 3.176.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.176.3.e GroupRepository
+
+Table 3.176.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.176.3.f CalendarRepository
+
+Table 3.176.3.f: CalendarRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) : CalendarSlotRow[]` | Returns the user's schedule slots (with task and project names) that overlap [from, to), ordered by start time; cancelled slots only on request. |
+| 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
+| 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
+
+### 3.176.4 Methods Used
+
+Table 3.176.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.CheckAssignee | IGroupAvailabilityService.CheckForTask | GroupAvailabilityService |
+| 2 | GroupAvailabilityService.CheckForTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupAvailabilityService.CheckForTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupAvailabilityService.CheckForTask | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupAvailabilityService.Check | ICalendarRepository.GetSlots | CalendarRepository |
+| 8 | GroupAvailabilityService.Check | ICalendarRepository.GetGoogleEvents | CalendarRepository |
+| 9 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
+| 10 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
+| 11 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleCalendarEvent, User.
+
+---
+
+## 3.177 Propose Time Change
+
+The assignee of a task (or of one of its sub-tasks) proposes a new fixed time or deadline with a reason. Only one pending proposal per person and task; the Leaders are notified.
+
+- **Endpoint:** `POST /api/group-tasks/{taskId}/change-requests`  
+- **Access:** Signed-in user
+
+### 3.177.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +CreateChangeRequest(Guid taskId, GroupChangeRequestCreateDto request) GroupChangeRequestDto
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +Create(Guid userId, Guid taskId, GroupChangeRequestCreateDto request) GroupChangeRequestDto
+  }
+  class GroupChangeRequestService {
+    +Create(Guid userId, Guid taskId, GroupChangeRequestCreateDto request) GroupChangeRequestDto
+    -ValidateReason(string reason) string
+    -ValidateValues(DateTimeOffset newStart, DateTimeOffset newEnd, DateTimeOffset newDeadline) Tuple
+    -Describe(DateTime fixedStart, DateTime fixedEnd, DateTime deadline) string
+    -ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) GroupChangeRequestDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetPendingChangeRequest(Guid taskId, Guid requestedById) GroupTaskChangeRequest
+    +AddChangeRequest(GroupTaskChangeRequest request) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetPendingChangeRequest(Guid taskId, Guid requestedById) GroupTaskChangeRequest
+    +AddChangeRequest(GroupTaskChangeRequest request) void
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IUnitOfWork : uses
+  GroupChangeRequestService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IGroupNotifier : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupChangeRequestService ..> GroupTaskChangeRequest
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupTaskChangeRequest
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupTaskChangeRequest "*" --> "1" User
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.177.1 Class Diagram
+
+### 3.177.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Member->>UI: Propose Time Change
+  UI->>GroupSchedulingController: POST /api/group-tasks/(taskId)/change-requests
+  GroupSchedulingController->>GroupChangeRequestService: Create(userId, taskId, request)
+    GroupChangeRequestService->>GroupWorkRepository: GetTask(taskId)
+    GroupWorkRepository-->>GroupChangeRequestService: GroupTask
+    opt value is missing
+      GroupChangeRequestService-->>GroupSchedulingController: throw NotFoundException (404)
+    end
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    opt GroupRules.IsClosed(task.Status)
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    opt !mine
+      GroupChangeRequestService-->>GroupSchedulingController: throw GroupForbiddenException
+    end
+    GroupChangeRequestService->>GroupChangeRequestService: ValidateReason(reason)
+      opt trimmed.Length == 0 || trimmed.Length > MaxReasonLength
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+    GroupChangeRequestService->>GroupChangeRequestService: ValidateValues(newStart, newEnd, newDeadline)
+      opt (newStart == null) != (newEnd == null)
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+      opt newStart is ( ) start && newEnd is ( ) end && end <= start
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+      opt newStart == null && newDeadline == null
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+    opt (newStart == null || sameFixed) && sameDeadline
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    GroupChangeRequestService->>GroupWorkRepository: GetPendingChangeRequest(taskId, requestedById)
+    GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest
+    opt work.GetPendingChangeRequest(taskId, userId) != null
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    GroupChangeRequestService->>GroupWorkRepository: AddChangeRequest(request)
+    GroupChangeRequestService->>GroupWorkRepository: AddActivity(log)
+    GroupChangeRequestService->>UnitOfWork: SaveChanges()
+    GroupChangeRequestService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupChangeRequestService: Dictionary of Guid,string
+    GroupChangeRequestService->>GroupRepository: GetLeaderIds(groupId)
+    GroupRepository-->>GroupChangeRequestService: Guid list
+    loop each leaderId in (groups.GetLeaderIds(task.GroupId)).Where(id => id...
+      GroupChangeRequestService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    end
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto
+  GroupSchedulingController-->>UI: 201 Created (GroupChangeRequestDto)
+  UI-->>Member: Show result
+```
+
+Figure 3.177.2 Sequence Diagram
+
+### 3.177.3 Class Specification
+
+#### 3.177.3.a GroupSchedulingController
+
+Table 3.177.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateChangeRequest(Guid taskId, GroupChangeRequestCreateDto request) : GroupChangeRequestDto` | `POST /api/group-tasks/{taskId}/change-requests`. The assignee of a task (or of one of its sub-tasks) proposes a new fixed time or deadline with a reason. Only one pending proposal per person and task; the Leaders are notified. Requires a signed-in user. |
+
+#### 3.177.3.b GroupChangeRequestService
+
+Table 3.177.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Create(Guid userId, Guid taskId, GroupChangeRequestCreateDto request) : GroupChangeRequestDto` | The assignee of a task (or of one of its sub-tasks) proposes a new fixed time or deadline with a reason. Only one pending proposal per person and task; the Leaders are notified. |
+| 2 | `private ValidateReason(string reason) : string` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 3 | `private ValidateValues(DateTimeOffset newStart, DateTimeOffset newEnd, DateTimeOffset newDeadline) : Tuple` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private Describe(DateTime fixedStart, DateTime fixedEnd, DateTime deadline) : string` | Formats the fixed time and the deadline as one short text for the notification and the activity log. |
+| 5 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.177.3.c GroupWorkRepository
+
+Table 3.177.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetPendingChangeRequest(Guid taskId, Guid requestedById) : GroupTaskChangeRequest` | Reads the GroupTaskChangeRequest matching (taskId, requestedById); returns nothing or an empty list when there is no match. |
+| 3 | `AddChangeRequest(GroupTaskChangeRequest request)` | Adds a new GroupTaskChangeRequest to the context; it is written when the unit of work is saved. |
+| 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 5 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.177.3.d GroupAccessService
+
+Table 3.177.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.177.3.e GroupRepository
+
+Table 3.177.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.177.3.f UnitOfWork
+
+Table 3.177.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.177.3.g GroupNotifier
+
+Table 3.177.3.g: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.177.4 Methods Used
+
+Table 3.177.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.CreateChangeRequest | IGroupChangeRequestService.Create | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.Create | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupChangeRequestService.Create | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupChangeRequestService.Create | IGroupWorkRepository.GetPendingChangeRequest | GroupWorkRepository |
+| 7 | GroupChangeRequestService.Create | IGroupWorkRepository.AddChangeRequest | GroupWorkRepository |
+| 8 | GroupChangeRequestService.Create | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupChangeRequestService.Create | IUnitOfWork.SaveChanges | UnitOfWork |
+| 10 | GroupChangeRequestService.Create | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 11 | GroupChangeRequestService.Create | IGroupRepository.GetLeaderIds | GroupRepository |
+| 12 | GroupChangeRequestService.Create | IGroupNotifier.Notify | GroupNotifier |
+
+Entities used: GroupTaskChangeRequest, GroupTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, User.
+
+---
+
+## 3.178 View Task Change Requests
+
+Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/change-requests`  
+- **Access:** Signed-in user
+
+### 3.178.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +GetTaskChangeRequests(Guid taskId) GroupChangeRequestDto[]
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +GetOfTask(Guid userId, Guid taskId) GroupChangeRequestDto[]
+  }
+  class GroupChangeRequestService {
+    +GetOfTask(Guid userId, Guid taskId) GroupChangeRequestDto[]
+    -ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) GroupChangeRequestDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +GetChangeRequestsOfTask(Guid taskId, Guid requestedById) GroupTaskChangeRequest[]
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +GetChangeRequestsOfTask(Guid taskId, Guid requestedById) GroupTaskChangeRequest[]
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupTask "1" --> "0..*" GroupTaskChangeRequest
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+```
+
+Figure 3.178.1 Class Diagram
+
+### 3.178.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  User->>UI: View Task Change Requests
+  UI->>GroupSchedulingController: GET /api/group-tasks/(taskId)/change-requests
+  GroupSchedulingController->>GroupChangeRequestService: GetOfTask(userId, taskId)
+    GroupChangeRequestService->>GroupWorkRepository: GetTask(taskId)
+    GroupWorkRepository-->>GroupChangeRequestService: GroupTask
+    opt value is missing
+      GroupChangeRequestService-->>GroupSchedulingController: throw NotFoundException (404)
+    end
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    GroupChangeRequestService->>GroupWorkRepository: GetChangeRequestsOfTask(taskId, requestedById)
+    GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest list
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto list
+  GroupSchedulingController-->>UI: 200 OK (GroupChangeRequestDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.178.2 Sequence Diagram
+
+### 3.178.3 Class Specification
+
+#### 3.178.3.a GroupSchedulingController
+
+Table 3.178.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTaskChangeRequests(Guid taskId) : GroupChangeRequestDto[]` | `GET /api/group-tasks/{taskId}/change-requests`. Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused. Requires a signed-in user. |
+
+#### 3.178.3.b GroupChangeRequestService
+
+Table 3.178.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOfTask(Guid userId, Guid taskId) : GroupChangeRequestDto[]` | Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused. |
+| 2 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.178.3.c GroupWorkRepository
+
+Table 3.178.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `GetChangeRequestsOfTask(Guid taskId, Guid requestedById) : GroupTaskChangeRequest[]` | Reads the GroupTaskChangeRequest list matching (taskId, requestedById); returns nothing or an empty list when there is no match. |
+
+#### 3.178.3.d GroupAccessService
+
+Table 3.178.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.178.3.e GroupRepository
+
+Table 3.178.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.178.4 Methods Used
+
+Table 3.178.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.GetTaskChangeRequests | IGroupChangeRequestService.GetOfTask | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.GetOfTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupChangeRequestService.GetOfTask | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupChangeRequestService.GetOfTask | IGroupWorkRepository.GetChangeRequestsOfTask | GroupWorkRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupTaskChangeRequest.
+
+---
+
+## 3.179 View Group Change Requests
+
+Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused.
+
+- **Endpoint:** `GET /api/groups/{groupId}/change-requests`  
+- **Access:** Signed-in user
+
+### 3.179.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +GetGroupChangeRequests(Guid groupId, string status) GroupChangeRequestDto[]
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +GetOfGroup(Guid userId, Guid groupId, string status) GroupChangeRequestDto[]
+  }
+  class GroupChangeRequestService {
+    +GetOfGroup(Guid userId, Guid groupId, string status) GroupChangeRequestDto[]
+    -ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) GroupChangeRequestDto
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetChangeRequestsOfGroup(Guid groupId, string status, Guid requestedById) GroupTaskChangeRequest[]
+  }
+  class GroupWorkRepository {
+    +GetChangeRequestsOfGroup(Guid groupId, string status, Guid requestedById) GroupTaskChangeRequest[]
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  WorkGroup "1" --> "0..*" GroupMember
+```
+
+Figure 3.179.1 Class Diagram
+
+### 3.179.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupWorkRepository
+  User->>UI: View Group Change Requests
+  UI->>GroupSchedulingController: GET /api/groups/(groupId)/change-requests
+  GroupSchedulingController->>GroupChangeRequestService: GetOfGroup(userId, groupId, status)
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    opt !string.IsNullOrWhiteSpace(status) && !GroupChangeRequestStatuses.IsValid(sta...
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    GroupChangeRequestService->>GroupWorkRepository: GetChangeRequestsOfGroup(groupId, status, requestedById)
+    GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest list
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto list
+  GroupSchedulingController-->>UI: 200 OK (GroupChangeRequestDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.179.2 Sequence Diagram
+
+### 3.179.3 Class Specification
+
+#### 3.179.3.a GroupSchedulingController
+
+Table 3.179.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupChangeRequests(Guid groupId, string status) : GroupChangeRequestDto[]` | `GET /api/groups/{groupId}/change-requests`. Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused. Requires a signed-in user. |
+
+#### 3.179.3.b GroupChangeRequestService
+
+Table 3.179.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOfGroup(Guid userId, Guid groupId, string status) : GroupChangeRequestDto[]` | Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused. |
+| 2 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.179.3.c GroupAccessService
+
+Table 3.179.3.c: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.179.3.d GroupRepository
+
+Table 3.179.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.179.3.e GroupWorkRepository
+
+Table 3.179.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetChangeRequestsOfGroup(Guid groupId, string status, Guid requestedById) : GroupTaskChangeRequest[]` | Reads the GroupTaskChangeRequest list matching (groupId, status, requestedById); returns nothing or an empty list when there is no match. |
+
+### 3.179.4 Methods Used
+
+Table 3.179.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.GetGroupChangeRequests | IGroupChangeRequestService.GetOfGroup | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.GetOfGroup | IGroupAccessService.GetAccess | GroupAccessService |
+| 3 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 5 | GroupChangeRequestService.GetOfGroup | IGroupWorkRepository.GetChangeRequestsOfGroup | GroupWorkRepository |
+
+Entities used: GroupMember, WorkGroup, GroupTaskChangeRequest.
+
+---
+
+## 3.180 Approve Change Request
+
+Leader only. Checks the assignee's availability for the new time (409 until confirmed), applies the new fixed time or deadline to the task, logs the change and notifies the proposer.
+
+- **Endpoint:** `POST /api/group-change-requests/{requestId}/approve`  
+- **Access:** Signed-in user
+
+### 3.180.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +Approve(Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +Approve(Guid userId, Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+  }
+  class GroupChangeRequestService {
+    +Approve(Guid userId, Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+    -GetRequestOrThrow(Guid requestId) GroupTaskChangeRequest
+    -EnsurePending(GroupTaskChangeRequest changeRequest) void
+    -Describe(DateTime fixedStart, DateTime fixedEnd, DateTime deadline) string
+    -Decide(GroupTaskChangeRequest changeRequest, string status, Guid deciderId, string note) void
+    -NotifyDecision(GroupAccess access, GroupTaskChangeRequest changeRequest, GroupTask task, string outcome) void
+    -ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) GroupChangeRequestDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
+    +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IGroupAvailabilityService {
+    <<interface>>
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+  }
+  class GroupAvailabilityService {
+    +EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm) void
+    +Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) GroupAssigneeAvailabilityDto
+    -Period(DateTime start, DateTime end, string source) GroupBusyPeriodDto
+  }
+  class ICalendarRepository {
+    <<interface>>
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class CalendarRepository {
+    +GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) CalendarSlotRow[]
+    +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
+    +GetWorkingHours(Guid userId) CalendarWorkingHours
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GoogleCalendarEvent {
+    <<Entity>>
+    -Guid Id
+    -Guid GoogleConnectionId
+    -string GoogleEventId
+    -string Title
+    -DateTime StartTime
+    -DateTime EndTime
+    -bool IsAllDay
+    -bool IsCreatedByMetanoia
+    -string Etag
+    -bool IsCancelled
+    -DateTime UpdatedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IGroupAvailabilityService : uses
+  GroupAvailabilityService ..> ICalendarRepository : uses
+  GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IUnitOfWork : uses
+  GroupChangeRequestService ..> IGroupNotifier : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupAvailabilityService <|.. GroupAvailabilityService : implements
+  ICalendarRepository <|.. CalendarRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  CalendarRepository ..> ScheduleSlot
+  CalendarRepository ..> GoogleCalendarEvent
+  CalendarRepository ..> User
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupTask "1" --> "0..*" GroupTaskChangeRequest
+  GroupTaskChangeRequest "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupTask "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.180.1 Class Diagram
+
+### 3.180.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant GroupAvailabilityService
+  participant CalendarRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Approve Change Request
+  UI->>GroupSchedulingController: POST /api/group-change-requests/(requestId)/approve
+  GroupSchedulingController->>GroupChangeRequestService: Approve(userId, requestId, request)
+    GroupChangeRequestService->>GroupChangeRequestService: GetRequestOrThrow(requestId)
+      GroupChangeRequestService->>GroupWorkRepository: GetChangeRequest(requestId)
+      GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest
+      opt value is missing
+        GroupChangeRequestService-->>GroupSchedulingController: throw NotFoundException (404)
+      end
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    GroupChangeRequestService->>GroupChangeRequestService: EnsurePending(changeRequest)
+      opt changeRequest.Status != GroupChangeRequestStatuses.Pending
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+    opt GroupRules.IsClosed(task.Status)
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    opt task.AssigneeId is ( ) assigneeId
+      GroupChangeRequestService->>GroupAvailabilityService: EnsureAvailable(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes,...
+        GroupAvailabilityService->>GroupAvailabilityService: Check(assigneeId, fixedStartUtc, fixedEndUtc, deadlineUtc, estimatedMinutes, excludeTas...
+          opt fixedStartUtc is ( ) start && fixedEndUtc is ( ) end
+            GroupAvailabilityService->>CalendarRepository: GetSlots(userId, from, to, includeCancelled)
+            CalendarRepository-->>GroupAvailabilityService: CalendarSlotRow list
+            GroupAvailabilityService->>CalendarRepository: GetGoogleEvents(userId, from, to)
+            CalendarRepository-->>GroupAvailabilityService: GoogleCalendarEvent list
+            GroupAvailabilityService->>GroupWorkRepository: GetFixedTasksOverlapping(userId, startUtc, endUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: GroupTask list
+          end
+          opt deadlineUtc is ( ) deadline && estimatedMinutes is ( ) estimate
+            GroupAvailabilityService->>GroupWorkRepository: SumOpenEstimatedMinutes(userId, fromUtc, toUtc, excludeTaskId)
+            GroupWorkRepository-->>GroupAvailabilityService: int
+            GroupAvailabilityService->>CalendarRepository: GetWorkingHours(userId)
+            CalendarRepository-->>GroupAvailabilityService: CalendarWorkingHours
+          end
+        GroupAvailabilityService-->>GroupChangeRequestService: throw GroupAssigneeBusyException
+    end
+    GroupChangeRequestService->>GroupWorkRepository: AddActivity(log)
+    GroupChangeRequestService->>GroupWorkRepository: AddActivity(log)
+    GroupChangeRequestService->>UnitOfWork: SaveChanges()
+    GroupChangeRequestService->>GroupChangeRequestService: NotifyDecision(access, changeRequest, task, outcome)
+      GroupChangeRequestService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    GroupChangeRequestService->>GroupChangeRequestService: ToDto(changeRequest, task, deciderId)
+      GroupChangeRequestService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupChangeRequestService: Dictionary of Guid,string
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto
+  GroupSchedulingController-->>UI: 200 OK (GroupChangeRequestDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.180.2 Sequence Diagram
+
+### 3.180.3 Class Specification
+
+#### 3.180.3.a GroupSchedulingController
+
+Table 3.180.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Approve(Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/approve`. Leader only. Checks the assignee's availability for the new time (409 until confirmed), applies the new fixed time or deadline to the task, logs the change and notifies the proposer. Requires a signed-in user. |
+
+#### 3.180.3.b GroupChangeRequestService
+
+Table 3.180.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Approve(Guid userId, Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | Leader only. Checks the assignee's availability for the new time (409 until confirmed), applies the new fixed time or deadline to the task, logs the change and notifies the proposer. |
+| 2 | `private GetRequestOrThrow(Guid requestId) : GroupTaskChangeRequest` | Loads a change request with its task or raises 404. |
+| 3 | `private EnsurePending(GroupTaskChangeRequest changeRequest)` | Allows only a Pending request to be decided or withdrawn; otherwise UserFriendlyException. |
+| 4 | `private Describe(DateTime fixedStart, DateTime fixedEnd, DateTime deadline) : string` | Formats the fixed time and the deadline as one short text for the notification and the activity log. |
+| 5 | `private Decide(GroupTaskChangeRequest changeRequest, string status, Guid deciderId, string note)` | Stores the outcome on the request: status, who decided, when, and the optional note. |
+| 6 | `private NotifyDecision(GroupAccess access, GroupTaskChangeRequest changeRequest, GroupTask task, string outcome)` | Notifies the proposer of the outcome with the Leader's note (skipped when the proposer decided it themselves). |
+| 7 | `private ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+| 8 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.180.3.c GroupWorkRepository
+
+Table 3.180.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetChangeRequest(Guid requestId) : GroupTaskChangeRequest` | Reads the GroupTaskChangeRequest matching (requestId); returns nothing or an empty list when there is no match. |
+| 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
+| 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
+| 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 5 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.180.3.d GroupAccessService
+
+Table 3.180.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.180.3.e GroupRepository
+
+Table 3.180.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.180.3.f GroupAvailabilityService
+
+Table 3.180.3.f: GroupAvailabilityService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `EnsureAvailable(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId, bool confirm)` | Returns at once when the Leader already confirmed. Otherwise runs the availability check and, when the assignee is busy or overloaded, raises GroupAssigneeBusyException (HTTP 409 GROUP_ASSIGNEE_BUSY) with the busy periods and the workload so that the Leader can confirm with confirmConflicts. |
+| 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
+| 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
+
+#### 3.180.3.g CalendarRepository
+
+Table 3.180.3.g: CalendarRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, DateTime from, DateTime to, bool includeCancelled) : CalendarSlotRow[]` | Returns the user's schedule slots (with task and project names) that overlap [from, to), ordered by start time; cancelled slots only on request. |
+| 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
+| 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
+
+#### 3.180.3.h UnitOfWork
+
+Table 3.180.3.h: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.180.3.i GroupNotifier
+
+Table 3.180.3.i: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.180.4 Methods Used
+
+Table 3.180.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.Approve | IGroupChangeRequestService.Approve | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.GetRequestOrThrow | IGroupWorkRepository.GetChangeRequest | GroupWorkRepository |
+| 3 | GroupChangeRequestService.Approve | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupChangeRequestService.Approve | IGroupAvailabilityService.EnsureAvailable | GroupAvailabilityService |
+| 7 | GroupAvailabilityService.Check | ICalendarRepository.GetSlots | CalendarRepository |
+| 8 | GroupAvailabilityService.Check | ICalendarRepository.GetGoogleEvents | CalendarRepository |
+| 9 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
+| 10 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
+| 11 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
+| 12 | GroupChangeRequestService.Approve | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupChangeRequestService.Approve | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | GroupChangeRequestService.NotifyDecision | IGroupNotifier.Notify | GroupNotifier |
+| 15 | GroupChangeRequestService.ToDto | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleCalendarEvent, GroupTask, User, GroupActivityLog.
+
+---
+
+## 3.181 Reject Change Request
+
+Leader only. Rejects a pending request; a reason is mandatory and the proposer is notified.
+
+- **Endpoint:** `POST /api/group-change-requests/{requestId}/reject`  
+- **Access:** Signed-in user
+
+### 3.181.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +Reject(Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +Reject(Guid userId, Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+  }
+  class GroupChangeRequestService {
+    +Reject(Guid userId, Guid requestId, GroupChangeDecisionDto request) GroupChangeRequestDto
+    -GetRequestOrThrow(Guid requestId) GroupTaskChangeRequest
+    -EnsurePending(GroupTaskChangeRequest changeRequest) void
+    -Decide(GroupTaskChangeRequest changeRequest, string status, Guid deciderId, string note) void
+    -NotifyDecision(GroupAccess access, GroupTaskChangeRequest changeRequest, GroupTask task, string outcome) void
+    -ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) GroupChangeRequestDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IUnitOfWork : uses
+  GroupChangeRequestService ..> IGroupNotifier : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupTaskChangeRequest "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.181.1 Class Diagram
+
+### 3.181.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Group Leader
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  Group Leader->>UI: Reject Change Request
+  UI->>GroupSchedulingController: POST /api/group-change-requests/(requestId)/reject
+  GroupSchedulingController->>GroupChangeRequestService: Reject(userId, requestId, request)
+    GroupChangeRequestService->>GroupChangeRequestService: GetRequestOrThrow(requestId)
+      GroupChangeRequestService->>GroupWorkRepository: GetChangeRequest(requestId)
+      GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest
+      opt value is missing
+        GroupChangeRequestService-->>GroupSchedulingController: throw NotFoundException (404)
+      end
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    GroupChangeRequestService->>GroupChangeRequestService: EnsurePending(changeRequest)
+      opt changeRequest.Status != GroupChangeRequestStatuses.Pending
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+    opt string.IsNullOrEmpty(note) || note.Length > MaxReasonLength
+      GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+    end
+    GroupChangeRequestService->>GroupWorkRepository: AddActivity(log)
+    GroupChangeRequestService->>UnitOfWork: SaveChanges()
+    GroupChangeRequestService->>GroupChangeRequestService: NotifyDecision(access, changeRequest, task, outcome)
+      GroupChangeRequestService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+    GroupChangeRequestService->>GroupChangeRequestService: ToDto(changeRequest, task, deciderId)
+      GroupChangeRequestService->>GroupWorkRepository: GetUserNames(userIds)
+      GroupWorkRepository-->>GroupChangeRequestService: Dictionary of Guid,string
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto
+  GroupSchedulingController-->>UI: 200 OK (GroupChangeRequestDto)
+  UI-->>Group Leader: Show result
+```
+
+Figure 3.181.2 Sequence Diagram
+
+### 3.181.3 Class Specification
+
+#### 3.181.3.a GroupSchedulingController
+
+Table 3.181.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Reject(Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/reject`. Leader only. Rejects a pending request; a reason is mandatory and the proposer is notified. Requires a signed-in user. |
+
+#### 3.181.3.b GroupChangeRequestService
+
+Table 3.181.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Reject(Guid userId, Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | Leader only. Rejects a pending request; a reason is mandatory and the proposer is notified. |
+| 2 | `private GetRequestOrThrow(Guid requestId) : GroupTaskChangeRequest` | Loads a change request with its task or raises 404. |
+| 3 | `private EnsurePending(GroupTaskChangeRequest changeRequest)` | Allows only a Pending request to be decided or withdrawn; otherwise UserFriendlyException. |
+| 4 | `private Decide(GroupTaskChangeRequest changeRequest, string status, Guid deciderId, string note)` | Stores the outcome on the request: status, who decided, when, and the optional note. |
+| 5 | `private NotifyDecision(GroupAccess access, GroupTaskChangeRequest changeRequest, GroupTask task, string outcome)` | Notifies the proposer of the outcome with the Leader's note (skipped when the proposer decided it themselves). |
+| 6 | `private ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+| 7 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.181.3.c GroupWorkRepository
+
+Table 3.181.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetChangeRequest(Guid requestId) : GroupTaskChangeRequest` | Reads the GroupTaskChangeRequest matching (requestId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 3 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.181.3.d GroupAccessService
+
+Table 3.181.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.181.3.e GroupRepository
+
+Table 3.181.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.181.3.f UnitOfWork
+
+Table 3.181.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.181.3.g GroupNotifier
+
+Table 3.181.3.g: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+### 3.181.4 Methods Used
+
+Table 3.181.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.Reject | IGroupChangeRequestService.Reject | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.GetRequestOrThrow | IGroupWorkRepository.GetChangeRequest | GroupWorkRepository |
+| 3 | GroupChangeRequestService.Reject | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupChangeRequestService.Reject | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 7 | GroupChangeRequestService.Reject | IUnitOfWork.SaveChanges | UnitOfWork |
+| 8 | GroupChangeRequestService.NotifyDecision | IGroupNotifier.Notify | GroupNotifier |
+| 9 | GroupChangeRequestService.ToDto | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, GroupActivityLog, User.
+
+---
+
+## 3.182 Withdraw Change Request
+
+Only the proposer may withdraw their pending request.
+
+- **Endpoint:** `POST /api/group-change-requests/{requestId}/cancel`  
+- **Access:** Signed-in user
+
+### 3.182.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupSchedulingController {
+    +Cancel(Guid requestId) GroupChangeRequestDto
+  }
+  class IGroupChangeRequestService {
+    <<interface>>
+    +Cancel(Guid userId, Guid requestId) GroupChangeRequestDto
+  }
+  class GroupChangeRequestService {
+    +Cancel(Guid userId, Guid requestId) GroupChangeRequestDto
+    -GetRequestOrThrow(Guid requestId) GroupTaskChangeRequest
+    -EnsurePending(GroupTaskChangeRequest changeRequest) void
+    -ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) GroupChangeRequestDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +GetChangeRequest(Guid requestId) GroupTaskChangeRequest
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class GroupTaskChangeRequest {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid RequestedById
+    -DateTime NewFixedStart
+    -DateTime NewFixedEnd
+    -DateTime NewDeadline
+    -string Reason
+    -string Status
+    -Guid DecidedById
+    -DateTime DecidedAt
+    -string DecisionNote
+    -DateTime CreatedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  GroupSchedulingController ..> IGroupChangeRequestService : uses
+  GroupChangeRequestService ..> IGroupWorkRepository : uses
+  GroupChangeRequestService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupChangeRequestService ..> IUnitOfWork : uses
+  IGroupChangeRequestService <|.. GroupChangeRequestService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  GroupWorkRepository ..> GroupTaskChangeRequest
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.182.1 Class Diagram
+
+### 3.182.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupSchedulingController
+  participant GroupChangeRequestService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant UnitOfWork
+  User->>UI: Withdraw Change Request
+  UI->>GroupSchedulingController: POST /api/group-change-requests/(requestId)/cancel
+  GroupSchedulingController->>GroupChangeRequestService: Cancel(userId, requestId)
+    GroupChangeRequestService->>GroupChangeRequestService: GetRequestOrThrow(requestId)
+      GroupChangeRequestService->>GroupWorkRepository: GetChangeRequest(requestId)
+      GroupWorkRepository-->>GroupChangeRequestService: GroupTaskChangeRequest
+      opt value is missing
+        GroupChangeRequestService-->>GroupSchedulingController: throw NotFoundException (404)
+      end
+    GroupChangeRequestService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupChangeRequestService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupChangeRequestService: GroupAccess
+    opt changeRequest.RequestedById != userId
+      GroupChangeRequestService-->>GroupSchedulingController: throw GroupForbiddenException
+    end
+    GroupChangeRequestService->>GroupChangeRequestService: EnsurePending(changeRequest)
+      opt changeRequest.Status != GroupChangeRequestStatuses.Pending
+        GroupChangeRequestService-->>GroupSchedulingController: throw UserFriendlyException (400)
+      end
+    GroupChangeRequestService->>GroupWorkRepository: AddActivity(log)
+    GroupChangeRequestService->>UnitOfWork: SaveChanges()
+  GroupChangeRequestService-->>GroupSchedulingController: GroupChangeRequestDto
+  GroupSchedulingController-->>UI: 200 OK (GroupChangeRequestDto)
+  UI-->>User: Show result
+```
+
+Figure 3.182.2 Sequence Diagram
+
+### 3.182.3 Class Specification
+
+#### 3.182.3.a GroupSchedulingController
+
+Table 3.182.3.a: GroupSchedulingController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Cancel(Guid requestId) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/cancel`. Only the proposer may withdraw their pending request. Requires a signed-in user. |
+
+#### 3.182.3.b GroupChangeRequestService
+
+Table 3.182.3.b: GroupChangeRequestService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Cancel(Guid userId, Guid requestId) : GroupChangeRequestDto` | Only the proposer may withdraw their pending request. |
+| 2 | `private GetRequestOrThrow(Guid requestId) : GroupTaskChangeRequest` | Loads a change request with its task or raises 404. |
+| 3 | `private EnsurePending(GroupTaskChangeRequest changeRequest)` | Allows only a Pending request to be decided or withdrawn; otherwise UserFriendlyException. |
+| 4 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.182.3.c GroupWorkRepository
+
+Table 3.182.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetChangeRequest(Guid requestId) : GroupTaskChangeRequest` | Reads the GroupTaskChangeRequest matching (requestId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.182.3.d GroupAccessService
+
+Table 3.182.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.182.3.e GroupRepository
+
+Table 3.182.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.182.3.f UnitOfWork
+
+Table 3.182.3.f: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+### 3.182.4 Methods Used
+
+Table 3.182.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupSchedulingController.Cancel | IGroupChangeRequestService.Cancel | GroupChangeRequestService |
+| 2 | GroupChangeRequestService.GetRequestOrThrow | IGroupWorkRepository.GetChangeRequest | GroupWorkRepository |
+| 3 | GroupChangeRequestService.Cancel | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupChangeRequestService.Cancel | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 7 | GroupChangeRequestService.Cancel | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, GroupActivityLog.
+
+---
+
+# Administration: Groups
+
+## 3.183 Admin: Search Groups
+
+Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging.
+
+- **Endpoint:** `GET /api/admin/groups`  
+- **Access:** Admin role
+
+### 3.183.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +Search(string search, string status, Guid ownerId, int page, int pageSize) PagedResultDto~AdminGroupListItemDto~
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +Search(string search, string status, Guid ownerId, int page, int pageSize) PagedResultDto~AdminGroupListItemDto~
+  }
+  class AdminGroupService {
+    +Search(string search, string status, Guid ownerId, int page, int pageSize) PagedResultDto~AdminGroupListItemDto~
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +Search(string search, string status, Guid ownerId, int page, int pageSize) Tuple
+  }
+  class AdminGroupRepository {
+    +Search(string search, string status, Guid ownerId, int page, int pageSize) Tuple
+  }
+  class Task {
+    <<Entity>>
+    -Guid Id
+    -Guid ProjectId
+    -Guid MilestoneId
+    -Guid DomainId
+    -string Title
+    -string Description
+    -string TaskType
+    -string Status
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+    -DateTime Deadline
+    -int EstimatedMinutes
+    -int AiEstimatedMinutes
+    -DateTime FixedStart
+    -DateTime FixedEnd
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+  AdminGroupRepository ..> Task
+```
+
+Figure 3.183.1 Class Diagram
+
+### 3.183.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant AdminGroupRepository
+  Admin->>UI: Admin: Search Groups
+  UI->>AdminGroupsController: GET /api/admin/groups
+  AdminGroupsController->>AdminGroupService: Search(search, status, ownerId, page, pageSize)
+    opt !string.IsNullOrWhiteSpace(status) && status != GroupStatuses.Active && statu...
+      AdminGroupService-->>AdminGroupsController: throw UserFriendlyException (400)
+    end
+    AdminGroupService->>AdminGroupRepository: Search(search, status, ownerId, page, pageSize)
+    AdminGroupRepository-->>AdminGroupService: Tuple
+  AdminGroupService-->>AdminGroupsController: PagedResultDto of AdminGroupListItemDto
+  AdminGroupsController-->>UI: 200 OK (PagedResultDto of AdminGroupListItemDto)
+  UI-->>Admin: Show result
+```
+
+Figure 3.183.2 Sequence Diagram
+
+### 3.183.3 Class Specification
+
+#### 3.183.3.a AdminGroupsController
+
+Table 3.183.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : <>` | `GET /api/admin/groups`. Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging. Requires the Admin role. |
+
+#### 3.183.3.b AdminGroupService
+
+Table 3.183.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : <>` | Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging. |
+
+#### 3.183.3.c AdminGroupRepository
+
+Table 3.183.3.c: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : Tuple` | Reads the Tuple matching (search, status, ownerId, page, pageSize); returns nothing or an empty list when there is no match. |
+
+### 3.183.4 Methods Used
+
+Table 3.183.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.Search | IAdminGroupService.Search | AdminGroupService |
+| 2 | AdminGroupService.Search | IAdminGroupRepository.Search | AdminGroupRepository |
+
+Entities used: Task.
+
+---
+
+## 3.184 Admin: View Group Statistics
+
+Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions.
+
+- **Endpoint:** `GET /api/admin/groups/stats`  
+- **Access:** Admin role
+
+### 3.184.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +GetStats() AdminGroupStatsDto
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +GetStats() AdminGroupStatsDto
+  }
+  class AdminGroupService {
+    +GetStats() AdminGroupStatsDto
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +GetStats(DateTime nowUtc) AdminGroupStatsDto
+  }
+  class AdminGroupRepository {
+    +GetStats(DateTime nowUtc) AdminGroupStatsDto
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+```
+
+Figure 3.184.1 Class Diagram
+
+### 3.184.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant AdminGroupRepository
+  Admin->>UI: Admin: View Group Statistics
+  UI->>AdminGroupsController: GET /api/admin/groups/stats
+  AdminGroupsController->>AdminGroupService: GetStats()
+    AdminGroupService->>AdminGroupRepository: GetStats(nowUtc)
+    AdminGroupRepository-->>AdminGroupService: AdminGroupStatsDto
+  AdminGroupService-->>AdminGroupsController: AdminGroupStatsDto
+  AdminGroupsController-->>UI: 200 OK (AdminGroupStatsDto)
+  UI-->>Admin: Show result
+```
+
+Figure 3.184.2 Sequence Diagram
+
+### 3.184.3 Class Specification
+
+#### 3.184.3.a AdminGroupsController
+
+Table 3.184.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetStats() : AdminGroupStatsDto` | `GET /api/admin/groups/stats`. Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions. Requires the Admin role. |
+
+#### 3.184.3.b AdminGroupService
+
+Table 3.184.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetStats() : AdminGroupStatsDto` | Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions. |
+
+#### 3.184.3.c AdminGroupRepository
+
+Table 3.184.3.c: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetStats(DateTime nowUtc) : AdminGroupStatsDto` | Reads the AdminGroupStatsDto matching (nowUtc); returns nothing or an empty list when there is no match. |
+
+### 3.184.4 Methods Used
+
+Table 3.184.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.GetStats | IAdminGroupService.GetStats | AdminGroupService |
+| 2 | AdminGroupService.GetStats | IAdminGroupRepository.GetStats | AdminGroupRepository |
+
+---
+
+## 3.185 Admin: View Group Detail
+
+Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars.
+
+- **Endpoint:** `GET /api/admin/groups/{groupId}`  
+- **Access:** Admin role
+
+### 3.185.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +Get(Guid groupId) AdminGroupDetailDto
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +Get(Guid groupId) AdminGroupDetailDto
+  }
+  class AdminGroupService {
+    +Get(Guid groupId) AdminGroupDetailDto
+    -BuildDetail(Guid groupId) AdminGroupDetailDto
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class AdminGroupRepository {
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupProgressService {
+    <<interface>>
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+  }
+  class GroupProgressService {
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+    -BuildProgress(Guid groupId) GroupProgressDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTasksForProgress(Guid groupId) GroupTask[]
+    +GetMilestones(Guid groupId) GroupMilestone[]
+    +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+  }
+  class GroupWorkRepository {
+    +GetTasksForProgress(Guid groupId) GroupTask[]
+    +GetMilestones(Guid groupId) GroupMilestone[]
+    +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMilestone {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -string Name
+    -int OrderIndex
+    -DateOnly DueDate
+    -string Status
+    -DateTime DeliveredAt
+    -int RevisionCount
+  }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  AdminGroupService ..> IGroupRepository : uses
+  AdminGroupService ..> IGroupProgressService : uses
+  GroupProgressService ..> IGroupWorkRepository : uses
+  GroupProgressService ..> IGroupRepository : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupProgressService <|.. GroupProgressService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  AdminGroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupMilestone
+  GroupWorkRepository ..> GroupFocusSession
+  WorkGroup "1" --> "0..*" GroupMilestone
+  WorkGroup "1" --> "0..*" GroupTask
+  GroupTask "1" --> "0..*" GroupFocusSession
+  GroupMilestone "1" --> "0..*" GroupTask
+```
+
+Figure 3.185.1 Class Diagram
+
+### 3.185.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant AdminGroupRepository
+  participant GroupRepository
+  participant GroupProgressService
+  participant GroupWorkRepository
+  Admin->>UI: Admin: View Group Detail
+  UI->>AdminGroupsController: GET /api/admin/groups/(groupId)
+  AdminGroupsController->>AdminGroupService: Get(groupId)
+    AdminGroupService->>AdminGroupService: BuildDetail(groupId)
+      AdminGroupService->>AdminGroupRepository: GetGroupWithOwner(groupId)
+      AdminGroupRepository-->>AdminGroupService: WorkGroup
+      opt value is missing
+        AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+      end
+      AdminGroupService->>GroupRepository: GetMembers(groupId)
+      GroupRepository-->>AdminGroupService: GroupMemberDto list
+      AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
+        GroupProgressService->>GroupProgressService: BuildProgress(groupId)
+          GroupProgressService->>GroupWorkRepository: GetTasksForProgress(groupId)
+          GroupWorkRepository-->>GroupProgressService: GroupTask list
+          GroupProgressService->>GroupRepository: GetMembers(groupId)
+          GroupRepository-->>GroupProgressService: GroupMemberDto list
+          GroupProgressService->>GroupWorkRepository: GetMilestones(groupId)
+          GroupWorkRepository-->>GroupProgressService: GroupMilestone list
+          GroupProgressService->>GroupWorkRepository: GetFinishedFocusSessionsOfGroup(groupId)
+          GroupWorkRepository-->>GroupProgressService: GroupFocusSession list
+      GroupProgressService-->>AdminGroupService: GroupProgressDto
+  AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
+  AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
+  UI-->>Admin: Show result
+```
+
+Figure 3.185.2 Sequence Diagram
+
+### 3.185.3 Class Specification
+
+#### 3.185.3.a AdminGroupsController
+
+Table 3.185.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Get(Guid groupId) : AdminGroupDetailDto` | `GET /api/admin/groups/{groupId}`. Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars. Requires the Admin role. |
+
+#### 3.185.3.b AdminGroupService
+
+Table 3.185.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Get(Guid groupId) : AdminGroupDetailDto` | Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars. |
+| 2 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
+
+#### 3.185.3.c AdminGroupRepository
+
+Table 3.185.3.c: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.185.3.d GroupRepository
+
+Table 3.185.3.d: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.185.3.e GroupProgressService
+
+Table 3.185.3.e: GroupProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
+| 2 | `private BuildProgress(Guid groupId) : GroupProgressDto` | Builds the progress report of a group: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of each member and milestone. Shared by the member view and the admin view. |
+
+#### 3.185.3.f GroupWorkRepository
+
+Table 3.185.3.f: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTasksForProgress(Guid groupId) : GroupTask[]` | Reads the GroupTask list matching (groupId); returns nothing or an empty list when there is no match. |
+| 2 | `GetMilestones(Guid groupId) : GroupMilestone[]` | Reads the GroupMilestone list matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetFinishedFocusSessionsOfGroup(Guid groupId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.185.4 Methods Used
+
+Table 3.185.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.Get | IAdminGroupService.Get | AdminGroupService |
+| 2 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
+| 3 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
+| 4 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 5 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetTasksForProgress | GroupWorkRepository |
+| 6 | GroupProgressService.BuildProgress | IGroupRepository.GetMembers | GroupRepository |
+| 7 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
+| 8 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetFinishedFocusSessionsOfGroup | GroupWorkRepository |
+
+Entities used: WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession.
+
+---
+
+## 3.186 Admin: View Group Activity
+
+Returns the activity log of any group, newest first, with skip and take paging.
+
+- **Endpoint:** `GET /api/admin/groups/{groupId}/activity`  
+- **Access:** Admin role
+
+### 3.186.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class AdminGroupService {
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityDto[]
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class AdminGroupRepository {
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityLog[]
+  }
+  class GroupWorkRepository {
+    +GetActivity(Guid groupId, int skip, int take) GroupActivityLog[]
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  AdminGroupService ..> IGroupWorkRepository : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  AdminGroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.186.1 Class Diagram
+
+### 3.186.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant AdminGroupRepository
+  participant GroupWorkRepository
+  Admin->>UI: Admin: View Group Activity
+  UI->>AdminGroupsController: GET /api/admin/groups/(groupId)/activity
+  AdminGroupsController->>AdminGroupService: GetActivity(groupId, skip, take)
+    AdminGroupService->>AdminGroupRepository: GetGroupWithOwner(groupId)
+    AdminGroupRepository-->>AdminGroupService: WorkGroup
+    opt value is missing
+      AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+    end
+    AdminGroupService->>GroupWorkRepository: GetActivity(groupId, skip, take)
+    GroupWorkRepository-->>AdminGroupService: GroupActivityLog list
+  AdminGroupService-->>AdminGroupsController: GroupActivityDto list
+  AdminGroupsController-->>UI: 200 OK (GroupActivityDto list)
+  UI-->>Admin: Show result
+```
+
+Figure 3.186.2 Sequence Diagram
+
+### 3.186.3 Class Specification
+
+#### 3.186.3.a AdminGroupsController
+
+Table 3.186.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityDto[]` | `GET /api/admin/groups/{groupId}/activity`. Returns the activity log of any group, newest first, with skip and take paging. Requires the Admin role. |
+
+#### 3.186.3.b AdminGroupService
+
+Table 3.186.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityDto[]` | Returns the activity log of any group, newest first, with skip and take paging. |
+
+#### 3.186.3.c AdminGroupRepository
+
+Table 3.186.3.c: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.186.3.d GroupWorkRepository
+
+Table 3.186.3.d: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityLog[]` | Reads the GroupActivityLog list matching (groupId, skip, take); returns nothing or an empty list when there is no match. |
+
+### 3.186.4 Methods Used
+
+Table 3.186.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.GetActivity | IAdminGroupService.GetActivity | AdminGroupService |
+| 2 | AdminGroupService.GetActivity | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
+| 3 | AdminGroupService.GetActivity | IGroupWorkRepository.GetActivity | GroupWorkRepository |
+
+Entities used: WorkGroup, GroupActivityLog.
+
+---
+
+## 3.187 Admin: Archive Group
+
+Moves a group to Archived (reason required in the X-Admin-Reason header). The change is written to the admin action log, to the group's activity log with the reason, and the Leaders are notified.
+
+- **Endpoint:** `POST /api/admin/groups/{groupId}/archive`  
+- **Access:** Admin role
+
+### 3.187.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +Archive(Guid groupId) AdminGroupDetailDto
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +Archive(Guid adminId, Guid groupId, string reason) AdminGroupDetailDto
+  }
+  class AdminGroupService {
+    +Archive(Guid adminId, Guid groupId, string reason) AdminGroupDetailDto
+    -SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) AdminGroupDetailDto
+    -BuildDetail(Guid groupId) AdminGroupDetailDto
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class AdminGroupRepository {
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class IGroupProgressService {
+    <<interface>>
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+  }
+  class GroupProgressService {
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IGroupRepository : uses
+  AdminGroupService ..> IGroupWorkRepository : uses
+  AdminGroupService ..> IUnitOfWork : uses
+  AdminGroupService ..> IGroupNotifier : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  AdminGroupService ..> IGroupProgressService : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+  IGroupProgressService <|.. GroupProgressService : implements
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  AdminGroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.187.1 Class Diagram
+
+### 3.187.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  participant AdminGroupRepository
+  participant GroupProgressService
+  Admin->>UI: Admin: Archive Group
+  UI->>AdminGroupsController: POST /api/admin/groups/(groupId)/archive
+  AdminGroupsController->>AdminGroupService: Archive(adminId, groupId, reason)
+    AdminGroupService->>AdminGroupService: SetStatus(adminId, groupId, newStatus, reason)
+      AdminGroupService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>AdminGroupService: WorkGroup
+      opt value is missing
+        AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+      end
+      opt group.Status == newStatus
+        AdminGroupService-->>AdminGroupsController: throw UserFriendlyException (400)
+      end
+      AdminGroupService->>GroupWorkRepository: AddActivity(log)
+      AdminGroupService->>UnitOfWork: SaveChanges()
+      AdminGroupService->>GroupRepository: GetLeaderIds(groupId)
+      GroupRepository-->>AdminGroupService: Guid list
+      loop each leaderId in groups.GetLeaderIds(groupId)
+        AdminGroupService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+      end
+      AdminGroupService->>AdminGroupService: BuildDetail(groupId)
+        AdminGroupService->>AdminGroupRepository: GetGroupWithOwner(groupId)
+        AdminGroupRepository-->>AdminGroupService: WorkGroup
+        opt value is missing
+          AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+        end
+        AdminGroupService->>GroupRepository: GetMembers(groupId)
+        GroupRepository-->>AdminGroupService: GroupMemberDto list
+        AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
+        GroupProgressService-->>AdminGroupService: GroupProgressDto
+  AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
+  AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
+  UI-->>Admin: Show result
+```
+
+Figure 3.187.2 Sequence Diagram
+
+### 3.187.3 Class Specification
+
+#### 3.187.3.a AdminGroupsController
+
+Table 3.187.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Archive(Guid groupId) : AdminGroupDetailDto` | `POST /api/admin/groups/{groupId}/archive`. Moves a group to Archived (reason required in the X-Admin-Reason header). The change is written to the admin action log, to the group's activity log with the reason, and the Leaders are notified. Requires the Admin role. |
+
+#### 3.187.3.b AdminGroupService
+
+Table 3.187.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Archive(Guid adminId, Guid groupId, string reason) : AdminGroupDetailDto` | Moves a group to Archived (reason required in the X-Admin-Reason header). The change is written to the admin action log, to the group's activity log with the reason, and the Leaders are notified. |
+| 2 | `private SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) : AdminGroupDetailDto` | Shared by Archive and Restore: refuses a no-op change, sets the group status, writes the group activity row (actor = the administrator, with the reason), saves, and notifies every Leader of the group about the change and the reason. |
+| 3 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
+
+#### 3.187.3.c GroupRepository
+
+Table 3.187.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 2 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.187.3.d GroupWorkRepository
+
+Table 3.187.3.d: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.187.3.e UnitOfWork
+
+Table 3.187.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.187.3.f GroupNotifier
+
+Table 3.187.3.f: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+#### 3.187.3.g AdminGroupRepository
+
+Table 3.187.3.g: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.187.3.h GroupProgressService
+
+Table 3.187.3.h: GroupProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
+
+### 3.187.4 Methods Used
+
+Table 3.187.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.Archive | IAdminGroupService.Archive | AdminGroupService |
+| 2 | AdminGroupService.SetStatus | IGroupRepository.GetGroup | GroupRepository |
+| 3 | AdminGroupService.SetStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 4 | AdminGroupService.SetStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | AdminGroupService.SetStatus | IGroupRepository.GetLeaderIds | GroupRepository |
+| 6 | AdminGroupService.SetStatus | IGroupNotifier.Notify | GroupNotifier |
+| 7 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
+| 8 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
+| 9 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+
+Entities used: WorkGroup, GroupActivityLog.
+
+---
+
+## 3.188 Admin: Restore Group
+
+Moves an archived group back to Active (reason required). Logged in the admin action log and in the group's activity log, and the Leaders are notified.
+
+- **Endpoint:** `POST /api/admin/groups/{groupId}/restore`  
+- **Access:** Admin role
+
+### 3.188.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class AdminGroupsController {
+    +Restore(Guid groupId) AdminGroupDetailDto
+  }
+  class IAdminGroupService {
+    <<interface>>
+    +Restore(Guid adminId, Guid groupId, string reason) AdminGroupDetailDto
+  }
+  class AdminGroupService {
+    +Restore(Guid adminId, Guid groupId, string reason) AdminGroupDetailDto
+    -SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) AdminGroupDetailDto
+    -BuildDetail(Guid groupId) AdminGroupDetailDto
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetGroup(Guid groupId) WorkGroup
+    +GetLeaderIds(Guid groupId) Guid[]
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +AddActivity(GroupActivityLog log) void
+  }
+  class GroupWorkRepository {
+    +AddActivity(GroupActivityLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class IAdminGroupRepository {
+    <<interface>>
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class AdminGroupRepository {
+    +GetGroupWithOwner(Guid groupId) WorkGroup
+  }
+  class IGroupProgressService {
+    <<interface>>
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+  }
+  class GroupProgressService {
+    +GetProgressForAdmin(Guid groupId) GroupProgressDto
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  AdminGroupsController ..> IAdminGroupService : uses
+  AdminGroupService ..> IGroupRepository : uses
+  AdminGroupService ..> IGroupWorkRepository : uses
+  AdminGroupService ..> IUnitOfWork : uses
+  AdminGroupService ..> IGroupNotifier : uses
+  AdminGroupService ..> IAdminGroupRepository : uses
+  AdminGroupService ..> IGroupProgressService : uses
+  IAdminGroupService <|.. AdminGroupService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupNotifier <|.. GroupNotifier : implements
+  IAdminGroupRepository <|.. AdminGroupRepository : implements
+  IGroupProgressService <|.. GroupProgressService : implements
+  GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupActivityLog
+  AdminGroupRepository ..> WorkGroup
+  WorkGroup "1" --> "0..*" GroupActivityLog
+```
+
+Figure 3.188.1 Class Diagram
+
+### 3.188.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Admin
+  participant UI as Client App
+  participant AdminGroupsController
+  participant AdminGroupService
+  participant GroupRepository
+  participant GroupWorkRepository
+  participant UnitOfWork
+  participant GroupNotifier
+  participant AdminGroupRepository
+  participant GroupProgressService
+  Admin->>UI: Admin: Restore Group
+  UI->>AdminGroupsController: POST /api/admin/groups/(groupId)/restore
+  AdminGroupsController->>AdminGroupService: Restore(adminId, groupId, reason)
+    AdminGroupService->>AdminGroupService: SetStatus(adminId, groupId, newStatus, reason)
+      AdminGroupService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>AdminGroupService: WorkGroup
+      opt value is missing
+        AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+      end
+      opt group.Status == newStatus
+        AdminGroupService-->>AdminGroupsController: throw UserFriendlyException (400)
+      end
+      AdminGroupService->>GroupWorkRepository: AddActivity(log)
+      AdminGroupService->>UnitOfWork: SaveChanges()
+      AdminGroupService->>GroupRepository: GetLeaderIds(groupId)
+      GroupRepository-->>AdminGroupService: Guid list
+      loop each leaderId in groups.GetLeaderIds(groupId)
+        AdminGroupService->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+      end
+      AdminGroupService->>AdminGroupService: BuildDetail(groupId)
+        AdminGroupService->>AdminGroupRepository: GetGroupWithOwner(groupId)
+        AdminGroupRepository-->>AdminGroupService: WorkGroup
+        opt value is missing
+          AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
+        end
+        AdminGroupService->>GroupRepository: GetMembers(groupId)
+        GroupRepository-->>AdminGroupService: GroupMemberDto list
+        AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
+        GroupProgressService-->>AdminGroupService: GroupProgressDto
+  AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
+  AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
+  UI-->>Admin: Show result
+```
+
+Figure 3.188.2 Sequence Diagram
+
+### 3.188.3 Class Specification
+
+#### 3.188.3.a AdminGroupsController
+
+Table 3.188.3.a: AdminGroupsController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Restore(Guid groupId) : AdminGroupDetailDto` | `POST /api/admin/groups/{groupId}/restore`. Moves an archived group back to Active (reason required). Logged in the admin action log and in the group's activity log, and the Leaders are notified. Requires the Admin role. |
+
+#### 3.188.3.b AdminGroupService
+
+Table 3.188.3.b: AdminGroupService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Restore(Guid adminId, Guid groupId, string reason) : AdminGroupDetailDto` | Moves an archived group back to Active (reason required). Logged in the admin action log and in the group's activity log, and the Leaders are notified. |
+| 2 | `private SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) : AdminGroupDetailDto` | Shared by Archive and Restore: refuses a no-op change, sets the group status, writes the group activity row (actor = the administrator, with the reason), saves, and notifies every Leader of the group about the change and the reason. |
+| 3 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
+
+#### 3.188.3.c GroupRepository
+
+Table 3.188.3.c: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+| 2 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
+| 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.188.3.d GroupWorkRepository
+
+Table 3.188.3.d: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.188.3.e UnitOfWork
+
+Table 3.188.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.188.3.f GroupNotifier
+
+Table 3.188.3.f: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
+
+#### 3.188.3.g AdminGroupRepository
+
+Table 3.188.3.g: AdminGroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.188.3.h GroupProgressService
+
+Table 3.188.3.h: GroupProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
+
+### 3.188.4 Methods Used
+
+Table 3.188.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | AdminGroupsController.Restore | IAdminGroupService.Restore | AdminGroupService |
+| 2 | AdminGroupService.SetStatus | IGroupRepository.GetGroup | GroupRepository |
+| 3 | AdminGroupService.SetStatus | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 4 | AdminGroupService.SetStatus | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | AdminGroupService.SetStatus | IGroupRepository.GetLeaderIds | GroupRepository |
+| 6 | AdminGroupService.SetStatus | IGroupNotifier.Notify | GroupNotifier |
+| 7 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
+| 8 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
+| 9 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+
+Entities used: WorkGroup, GroupActivityLog.
+
+---
+
 # Background Jobs
 
-## 3.139 Remind Before Slot Starts
+## 3.189 Remind Before Slot Starts
 
 Hangfire job that runs reminder-lead minutes before the slot start. When the slot is still Approved it sends a 'starting soon' notification.
 
-### 3.139.1 Class Diagram
+### 3.189.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26388,12 +39777,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -26423,6 +39812,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -26453,9 +39844,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.139.1 Class Diagram
+Figure 3.189.1 Class Diagram
 
-### 3.139.2 Sequence Diagram
+### 3.189.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -26468,10 +39859,10 @@ sequenceDiagram
   participant UserPushSubscriptionRepository
   Hangfire->>SlotBackgroundJobs: PreStartReminder(slotId)
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -26484,13 +39875,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.139.2 Sequence Diagram
+Figure 3.189.2 Sequence Diagram
 
-### 3.139.3 Class Specification
+### 3.189.3 Class Specification
 
-#### 3.139.3.a SlotBackgroundJobs
+#### 3.189.3.a SlotBackgroundJobs
 
-Table 3.139.3.a: SlotBackgroundJobs Description Table
+Table 3.189.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -26499,44 +39890,44 @@ Table 3.139.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.139.3.b NotificationService
+#### 3.189.3.b NotificationService
 
-Table 3.139.3.b: NotificationService Description Table
+Table 3.189.3.b: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.139.3.c NotificationRepository
+#### 3.189.3.c NotificationRepository
 
-Table 3.139.3.c: NotificationRepository Description Table
+Table 3.189.3.c: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.139.3.d UnitOfWork
+#### 3.189.3.d UnitOfWork
 
-Table 3.139.3.d: UnitOfWork Description Table
+Table 3.189.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.139.3.e UserPushSubscriptionRepository
+#### 3.189.3.e UserPushSubscriptionRepository
 
-Table 3.139.3.e: UserPushSubscriptionRepository Description Table
+Table 3.189.3.e: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.139.4 Methods Used
+### 3.189.4 Methods Used
 
-Table 3.139.4: Methods used by this function
+Table 3.189.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -26551,11 +39942,11 @@ Entities used: Notification, UserPushSubscription.
 
 ---
 
-## 3.140 Mark Slot Due and Prompt Start
+## 3.190 Mark Slot Due and Prompt Start
 
 Hangfire job that runs at the slot start. An Approved slot becomes Due (the timer is never started automatically) and a notification asks the user to press Start.
 
-### 3.140.1 Class Diagram
+### 3.190.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26571,12 +39962,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -26606,6 +39997,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -26637,9 +40030,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.140.1 Class Diagram
+Figure 3.190.1 Class Diagram
 
-### 3.140.2 Sequence Diagram
+### 3.190.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -26654,10 +40047,10 @@ sequenceDiagram
   Hangfire->>SlotBackgroundJobs: SlotDue(slotId)
   SlotBackgroundJobs->>AppDbContext: SaveChanges()
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -26670,13 +40063,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.140.2 Sequence Diagram
+Figure 3.190.2 Sequence Diagram
 
-### 3.140.3 Class Specification
+### 3.190.3 Class Specification
 
-#### 3.140.3.a SlotBackgroundJobs
+#### 3.190.3.a SlotBackgroundJobs
 
-Table 3.140.3.a: SlotBackgroundJobs Description Table
+Table 3.190.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -26685,52 +40078,52 @@ Table 3.140.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.140.3.b AppDbContext
+#### 3.190.3.b AppDbContext
 
-Table 3.140.3.b: AppDbContext Description Table
+Table 3.190.3.b: AppDbContext Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
 
-#### 3.140.3.c NotificationService
+#### 3.190.3.c NotificationService
 
-Table 3.140.3.c: NotificationService Description Table
+Table 3.190.3.c: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.140.3.d NotificationRepository
+#### 3.190.3.d NotificationRepository
 
-Table 3.140.3.d: NotificationRepository Description Table
+Table 3.190.3.d: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.140.3.e UnitOfWork
+#### 3.190.3.e UnitOfWork
 
-Table 3.140.3.e: UnitOfWork Description Table
+Table 3.190.3.e: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.140.3.f UserPushSubscriptionRepository
+#### 3.190.3.f UserPushSubscriptionRepository
 
-Table 3.140.3.f: UserPushSubscriptionRepository Description Table
+Table 3.190.3.f: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.140.4 Methods Used
+### 3.190.4 Methods Used
 
-Table 3.140.4: Methods used by this function
+Table 3.190.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -26746,11 +40139,11 @@ Entities used: Notification, UserPushSubscription.
 
 ---
 
-## 3.141 Nudge Not-started Slot
+## 3.191 Nudge Not-started Slot
 
 Hangfire job that runs 20 minutes after the slot start. When the slot is still Due and has no focus session it nudges the user to start.
 
-### 3.141.1 Class Diagram
+### 3.191.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26763,12 +40156,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -26798,6 +40191,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -26828,9 +40223,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.141.1 Class Diagram
+Figure 3.191.1 Class Diagram
 
-### 3.141.2 Sequence Diagram
+### 3.191.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -26843,10 +40238,10 @@ sequenceDiagram
   participant UserPushSubscriptionRepository
   Hangfire->>SlotBackgroundJobs: NotStartedNudge(slotId)
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -26859,13 +40254,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.141.2 Sequence Diagram
+Figure 3.191.2 Sequence Diagram
 
-### 3.141.3 Class Specification
+### 3.191.3 Class Specification
 
-#### 3.141.3.a SlotBackgroundJobs
+#### 3.191.3.a SlotBackgroundJobs
 
-Table 3.141.3.a: SlotBackgroundJobs Description Table
+Table 3.191.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -26874,44 +40269,44 @@ Table 3.141.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.141.3.b NotificationService
+#### 3.191.3.b NotificationService
 
-Table 3.141.3.b: NotificationService Description Table
+Table 3.191.3.b: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.141.3.c NotificationRepository
+#### 3.191.3.c NotificationRepository
 
-Table 3.141.3.c: NotificationRepository Description Table
+Table 3.191.3.c: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.141.3.d UnitOfWork
+#### 3.191.3.d UnitOfWork
 
-Table 3.141.3.d: UnitOfWork Description Table
+Table 3.191.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.141.3.e UserPushSubscriptionRepository
+#### 3.191.3.e UserPushSubscriptionRepository
 
-Table 3.141.3.e: UserPushSubscriptionRepository Description Table
+Table 3.191.3.e: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.141.4 Methods Used
+### 3.191.4 Methods Used
 
-Table 3.141.4: Methods used by this function
+Table 3.191.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -26926,11 +40321,11 @@ Entities used: Notification, UserPushSubscription.
 
 ---
 
-## 3.142 Remind Slot Is Ending
+## 3.192 Remind Slot Is Ending
 
 Hangfire job that runs 10 minutes before the planned end. Only when a session is running (slot InProgress) it warns the user that time is almost up.
 
-### 3.142.1 Class Diagram
+### 3.192.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -26943,12 +40338,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -26978,6 +40373,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -27008,9 +40405,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.142.1 Class Diagram
+Figure 3.192.1 Class Diagram
 
-### 3.142.2 Sequence Diagram
+### 3.192.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27023,10 +40420,10 @@ sequenceDiagram
   participant UserPushSubscriptionRepository
   Hangfire->>SlotBackgroundJobs: NearEndReminder(slotId)
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -27039,13 +40436,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.142.2 Sequence Diagram
+Figure 3.192.2 Sequence Diagram
 
-### 3.142.3 Class Specification
+### 3.192.3 Class Specification
 
-#### 3.142.3.a SlotBackgroundJobs
+#### 3.192.3.a SlotBackgroundJobs
 
-Table 3.142.3.a: SlotBackgroundJobs Description Table
+Table 3.192.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27054,44 +40451,44 @@ Table 3.142.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.142.3.b NotificationService
+#### 3.192.3.b NotificationService
 
-Table 3.142.3.b: NotificationService Description Table
+Table 3.192.3.b: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.142.3.c NotificationRepository
+#### 3.192.3.c NotificationRepository
 
-Table 3.142.3.c: NotificationRepository Description Table
+Table 3.192.3.c: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.142.3.d UnitOfWork
+#### 3.192.3.d UnitOfWork
 
-Table 3.142.3.d: UnitOfWork Description Table
+Table 3.192.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.142.3.e UserPushSubscriptionRepository
+#### 3.192.3.e UserPushSubscriptionRepository
 
-Table 3.142.3.e: UserPushSubscriptionRepository Description Table
+Table 3.192.3.e: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.142.4 Methods Used
+### 3.192.4 Methods Used
 
-Table 3.142.4: Methods used by this function
+Table 3.192.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -27106,11 +40503,11 @@ Entities used: Notification, UserPushSubscription.
 
 ---
 
-## 3.143 Handle Slot End
+## 3.193 Handle Slot End
 
 Hangfire job that runs at the planned end. A running slot becomes Overrun and waits for Stop; a paused slot triggers a check-in notification; a slot that was never started becomes Missed, the task status is derived again and the user is notified.
 
-### 3.143.1 Class Diagram
+### 3.193.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -27126,12 +40523,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -27173,6 +40570,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -27219,9 +40618,9 @@ classDiagram
   TaskProgressService ..> ScheduleChangeLog
 ```
 
-Figure 3.143.1 Class Diagram
+Figure 3.193.1 Class Diagram
 
-### 3.143.2 Sequence Diagram
+### 3.193.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27240,10 +40639,10 @@ sequenceDiagram
   end
   opt dbContext.FocusSessions.Any(s => s.ScheduleSlotId == slotId)
     SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-      SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+      SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
         NotificationService->>NotificationRepository: Add(notification)
         NotificationService->>UnitOfWork: SaveChanges()
-        NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+        NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
           NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
           UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
           loop each subscription in subscriptions
@@ -27262,13 +40661,13 @@ sequenceDiagram
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
 ```
 
-Figure 3.143.2 Sequence Diagram
+Figure 3.193.2 Sequence Diagram
 
-### 3.143.3 Class Specification
+### 3.193.3 Class Specification
 
-#### 3.143.3.a SlotBackgroundJobs
+#### 3.193.3.a SlotBackgroundJobs
 
-Table 3.143.3.a: SlotBackgroundJobs Description Table
+Table 3.193.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27277,52 +40676,52 @@ Table 3.143.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.143.3.b AppDbContext
+#### 3.193.3.b AppDbContext
 
-Table 3.143.3.b: AppDbContext Description Table
+Table 3.193.3.b: AppDbContext Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
 
-#### 3.143.3.c NotificationService
+#### 3.193.3.c NotificationService
 
-Table 3.143.3.c: NotificationService Description Table
+Table 3.193.3.c: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.143.3.d NotificationRepository
+#### 3.193.3.d NotificationRepository
 
-Table 3.143.3.d: NotificationRepository Description Table
+Table 3.193.3.d: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.143.3.e UnitOfWork
+#### 3.193.3.e UnitOfWork
 
-Table 3.143.3.e: UnitOfWork Description Table
+Table 3.193.3.e: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.143.3.f UserPushSubscriptionRepository
+#### 3.193.3.f UserPushSubscriptionRepository
 
-Table 3.143.3.f: UserPushSubscriptionRepository Description Table
+Table 3.193.3.f: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-#### 3.143.3.g TaskProgressService
+#### 3.193.3.g TaskProgressService
 
-Table 3.143.3.g: TaskProgressService Description Table
+Table 3.193.3.g: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27333,9 +40732,9 @@ Table 3.143.3.g: TaskProgressService Description Table
 | 5 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 6 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-### 3.143.4 Methods Used
+### 3.193.4 Methods Used
 
-Table 3.143.4: Methods used by this function
+Table 3.193.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -27352,11 +40751,11 @@ Entities used: Notification, UserPushSubscription, ScheduleChangeLog.
 
 ---
 
-## 3.144 Remind Overrun
+## 3.194 Remind Overrun
 
 Hangfire job that runs 15 minutes after the planned end. When the slot is Overrun and a session is still running it reminds the user to press Stop.
 
-### 3.144.1 Class Diagram
+### 3.194.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -27369,12 +40768,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -27404,6 +40803,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -27434,9 +40835,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.144.1 Class Diagram
+Figure 3.194.1 Class Diagram
 
-### 3.144.2 Sequence Diagram
+### 3.194.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27449,10 +40850,10 @@ sequenceDiagram
   participant UserPushSubscriptionRepository
   Hangfire->>SlotBackgroundJobs: OverrunReminder(slotId)
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -27465,13 +40866,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.144.2 Sequence Diagram
+Figure 3.194.2 Sequence Diagram
 
-### 3.144.3 Class Specification
+### 3.194.3 Class Specification
 
-#### 3.144.3.a SlotBackgroundJobs
+#### 3.194.3.a SlotBackgroundJobs
 
-Table 3.144.3.a: SlotBackgroundJobs Description Table
+Table 3.194.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27480,44 +40881,44 @@ Table 3.144.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.144.3.b NotificationService
+#### 3.194.3.b NotificationService
 
-Table 3.144.3.b: NotificationService Description Table
+Table 3.194.3.b: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.144.3.c NotificationRepository
+#### 3.194.3.c NotificationRepository
 
-Table 3.144.3.c: NotificationRepository Description Table
+Table 3.194.3.c: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.144.3.d UnitOfWork
+#### 3.194.3.d UnitOfWork
 
-Table 3.144.3.d: UnitOfWork Description Table
+Table 3.194.3.d: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.144.3.e UserPushSubscriptionRepository
+#### 3.194.3.e UserPushSubscriptionRepository
 
-Table 3.144.3.e: UserPushSubscriptionRepository Description Table
+Table 3.194.3.e: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.144.4 Methods Used
+### 3.194.4 Methods Used
 
-Table 3.144.4: Methods used by this function
+Table 3.194.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -27532,11 +40933,11 @@ Entities used: Notification, UserPushSubscription.
 
 ---
 
-## 3.145 Retry Check-in (placeholder)
+## 3.195 Retry Check-in (placeholder)
 
 Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet.
 
-### 3.145.1 Class Diagram
+### 3.195.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -27546,9 +40947,9 @@ classDiagram
   }
 ```
 
-Figure 3.145.1 Class Diagram
+Figure 3.195.1 Class Diagram
 
-### 3.145.2 Sequence Diagram
+### 3.195.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27558,32 +40959,32 @@ sequenceDiagram
   Hangfire->>SlotBackgroundJobs: CheckInRetry(slotId)
 ```
 
-Figure 3.145.2 Sequence Diagram
+Figure 3.195.2 Sequence Diagram
 
-### 3.145.3 Class Specification
+### 3.195.3 Class Specification
 
-#### 3.145.3.a SlotBackgroundJobs
+#### 3.195.3.a SlotBackgroundJobs
 
-Table 3.145.3.a: SlotBackgroundJobs Description Table
+Table 3.195.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CheckInRetry(Guid slotId)` | Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet. |
 
-### 3.145.4 Methods Used
+### 3.195.4 Methods Used
 
-Table 3.145.4: Methods used by this function
+Table 3.195.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
 
 ---
 
-## 3.146 Auto-stop Overrun Session
+## 3.196 Auto-stop Overrun Session
 
 Hangfire job for a session that ran more than twice the planned time. It ends the session as AutoTimeout (not confirmed), sets the slot Done, derives the task status again and asks the user to confirm the real time.
 
-### 3.146.1 Class Diagram
+### 3.196.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -27611,12 +41012,12 @@ classDiagram
   }
   class INotificationService {
     <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
   }
   class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId) void
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
     -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings) void
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
   }
   class INotificationRepository {
     <<interface>>
@@ -27658,6 +41059,8 @@ classDiagram
     -Guid Id
     -Guid UserId
     -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
     -string Type
     -string Title
     -string Message
@@ -27692,9 +41095,9 @@ classDiagram
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.146.1 Class Diagram
+Figure 3.196.1 Class Diagram
 
-### 3.146.2 Sequence Diagram
+### 3.196.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27713,10 +41116,10 @@ sequenceDiagram
   TaskProgressService-->>SlotBackgroundJobs: ProgressResult
   SlotBackgroundJobs->>AppDbContext: SaveChanges()
   SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
       NotificationService->>NotificationRepository: Add(notification)
       NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings)
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
         NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
         UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
         loop each subscription in subscriptions
@@ -27729,13 +41132,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.146.2 Sequence Diagram
+Figure 3.196.2 Sequence Diagram
 
-### 3.146.3 Class Specification
+### 3.196.3 Class Specification
 
-#### 3.146.3.a SlotBackgroundJobs
+#### 3.196.3.a SlotBackgroundJobs
 
-Table 3.146.3.a: SlotBackgroundJobs Description Table
+Table 3.196.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27744,17 +41147,17 @@ Table 3.146.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.146.3.b AppDbContext
+#### 3.196.3.b AppDbContext
 
-Table 3.146.3.b: AppDbContext Description Table
+Table 3.196.3.b: AppDbContext Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
 
-#### 3.146.3.c TaskProgressService
+#### 3.196.3.c TaskProgressService
 
-Table 3.146.3.c: TaskProgressService Description Table
+Table 3.196.3.c: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -27765,44 +41168,44 @@ Table 3.146.3.c: TaskProgressService Description Table
 | 5 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 6 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.146.3.d NotificationService
+#### 3.196.3.d NotificationService
 
-Table 3.146.3.d: NotificationService Description Table
+Table 3.196.3.d: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.146.3.e NotificationRepository
+#### 3.196.3.e NotificationRepository
 
-Table 3.146.3.e: NotificationRepository Description Table
+Table 3.196.3.e: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.146.3.f UnitOfWork
+#### 3.196.3.f UnitOfWork
 
-Table 3.146.3.f: UnitOfWork Description Table
+Table 3.196.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.146.3.g UserPushSubscriptionRepository
+#### 3.196.3.g UserPushSubscriptionRepository
 
-Table 3.146.3.g: UserPushSubscriptionRepository Description Table
+Table 3.196.3.g: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.146.4 Methods Used
+### 3.196.4 Methods Used
 
-Table 3.146.4: Methods used by this function
+Table 3.196.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -27819,11 +41222,11 @@ Entities used: ScheduleChangeLog, Notification, UserPushSubscription.
 
 ---
 
-## 3.147 Log Unconfirmed Sessions of a Slot
+## 3.197 Log Unconfirmed Sessions of a Slot
 
 Hangfire job that runs 24 hours after the planned end. When the slot still has unconfirmed AutoTimeout sessions it only logs that the result is unknown (such sessions are not used for learning); no data is changed.
 
-### 3.147.1 Class Diagram
+### 3.197.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -27833,9 +41236,9 @@ classDiagram
   }
 ```
 
-Figure 3.147.1 Class Diagram
+Figure 3.197.1 Class Diagram
 
-### 3.147.2 Sequence Diagram
+### 3.197.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -27845,21 +41248,21 @@ sequenceDiagram
   Hangfire->>SlotBackgroundJobs: MarkUnknown(slotId)
 ```
 
-Figure 3.147.2 Sequence Diagram
+Figure 3.197.2 Sequence Diagram
 
-### 3.147.3 Class Specification
+### 3.197.3 Class Specification
 
-#### 3.147.3.a SlotBackgroundJobs
+#### 3.197.3.a SlotBackgroundJobs
 
-Table 3.147.3.a: SlotBackgroundJobs Description Table
+Table 3.197.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `MarkUnknown(Guid slotId)` | Hangfire job that runs 24 hours after the planned end. When the slot still has unconfirmed AutoTimeout sessions it only logs that the result is unknown (such sessions are not used for learning); no data is changed. |
 
-### 3.147.4 Methods Used
+### 3.197.4 Methods Used
 
-Table 3.147.4: Methods used by this function
+Table 3.197.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -27872,10 +41275,14 @@ Table 3.147.4: Methods used by this function
 |---|---|
 | IUnitOfWork / UnitOfWork | `SaveChanges()` writes every pending change of the request in one database transaction; `ExecuteInTransaction(action)` runs several saves in one transaction (used by first sign-in and by the status workflow). |
 | AppDbContext | EF Core context for PostgreSQL (database-first, no migrations). Repositories wrap it; a few services use it directly. |
-| GlobalExceptionHandlerMiddleware | Converts exceptions into HTTP responses: `UserFriendlyException` 400, `InvalidRefreshTokenException` 401, `FocusForbiddenException` 403, `NotFoundException` 404, conflicts 409, `GoogleApiFailureException` 502, `PaymentGatewayException` 503, anything else 500. |
+| GlobalExceptionHandlerMiddleware | Converts exceptions into HTTP responses: `UserFriendlyException` 400, `InvalidRefreshTokenException` 401, `FocusForbiddenException` 403, `GroupForbiddenException` 403 (`GROUP_FORBIDDEN`), `NotFoundException` 404, conflicts 409 (including `GroupAssigneeBusyException`, `GROUP_ASSIGNEE_BUSY`), `GoogleApiFailureException` 502, `PaymentGatewayException` 503, anything else 500. |
 | AdminAuditFilter / AdminAuditSaveChangesInterceptor | Mark admin write requests and write one `AdminActionLog` row per changed entity, using the reason from `X-Admin-Reason`. |
 | StatusRules | Transition tables and helpers for Task, Sub-task, Milestone and Schedule slot statuses. |
 | UtcTime | Converts between UTC and the time zone sent to the API (`ToApi`) and computes remaining days of a plan. |
+| GroupAccessService / GroupAccess | The only place that decides what a user may do in a group: loads the group and the caller's membership (404 for a non-member) and offers `RequireLeader`, `RequireCanWork` (Leader or Member) and `RequireActive` (the group is not archived). |
+| GroupRules | Transition tables of group task and sub-task statuses, the derived status of a task from its sub-tasks, closing a task by hand (unfinished sub-tasks become Skipped) and creating activity-log rows. |
+| GroupTaskProgress | Shared by the task service and the focus service: derives the task status again after a sub-task changed and starts a Planned milestone when work begins. |
+| GroupNotifier | Sends an in-app notification with a link to the group and task (stored in the existing `Notification` table) plus a web push, in its own scope so a failure never breaks the request. |
 
 # Appendix B. External systems
 

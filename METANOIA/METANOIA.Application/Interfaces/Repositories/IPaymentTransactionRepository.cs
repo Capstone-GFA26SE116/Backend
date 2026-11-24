@@ -30,11 +30,8 @@ namespace METANOIA.Application.Interfaces.Repositories
         // Pending tạo trước thời điểm `createdBefore`: webhook có thể đã bị lỡ, cần hỏi PayOS
         Task<IReadOnlyList<Guid>> GetStalePendingIdsAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default);
 
-        // Đã Succeeded nhưng thiếu gói đăng ký (và chưa có yêu cầu hoàn tiền) hoặc thiếu hóa đơn: lỡ ghi giữa chừng, hoặc giao dịch cũ trước khi có hóa đơn tự động
-        // refundsEnabled = false: không truy vấn bảng PaymentRefund (bảng có thể chưa được tạo)
-        Task<IReadOnlyList<Guid>> GetSucceededNeedingFulfillmentIdsAsync(int take, bool refundsEnabled, CancellationToken cancellationToken = default);
-
-        Task<bool> HasRefundAsync(Guid paymentId, CancellationToken cancellationToken = default);
+        // Đã Succeeded nhưng thiếu gói đăng ký hoặc thiếu hóa đơn: lỡ ghi giữa chừng, hoặc giao dịch cũ trước khi có hóa đơn tự động
+        Task<IReadOnlyList<Guid>> GetSucceededNeedingFulfillmentIdsAsync(int take, CancellationToken cancellationToken = default);
 
         Task<bool> HasInvoiceAsync(Guid paymentId, CancellationToken cancellationToken = default);
 

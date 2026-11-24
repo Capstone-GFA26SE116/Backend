@@ -92,30 +92,20 @@ namespace METANOIA.Infrastructure.Repositories
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Guid>> GetSucceededNeedingFulfillmentIdsAsync(int take, bool refundsEnabled, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Guid>> GetSucceededNeedingFulfillmentIdsAsync(int take, CancellationToken cancellationToken = default)
         {
             var succeeded = _context.PaymentTransactions.Where(p => p.Status == "Succeeded");
 
-            // Thiếu gói đăng ký, hoặc thiếu hóa đơn. Khi hoàn tiền đang bật thì giao dịch đang có yêu cầu hoàn tiền không cần cấp gói
-            var query = refundsEnabled
-                ? succeeded.Where(p =>
-                    (!_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
-                        && !_context.PaymentRefunds.Any(r => r.PaymentTransactionId == p.Id && r.Status != "Rejected"))
-                    || !_context.Invoices.Any(i => i.PaymentTransactionId == p.Id))
-                : succeeded.Where(p =>
-                    !_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
-                    || !_context.Invoices.Any(i => i.PaymentTransactionId == p.Id));
+            // Thiếu gói đăng ký, hoặc thiếu hóa đơn
+            var query = succeeded.Where(p =>
+                !_context.UserSubscriptions.Any(s => s.PaymentTransactionId == p.Id)
+                || !_context.Invoices.Any(i => i.PaymentTransactionId == p.Id));
 
             return await query
                 .OrderBy(p => p.CreatedAt)
                 .Select(p => p.Id)
                 .Take(take)
                 .ToListAsync(cancellationToken);
-        }
-
-        public Task<bool> HasRefundAsync(Guid paymentId, CancellationToken cancellationToken = default)
-        {
-            return _context.PaymentRefunds.AnyAsync(r => r.PaymentTransactionId == paymentId, cancellationToken);
         }
 
         public Task<bool> HasInvoiceAsync(Guid paymentId, CancellationToken cancellationToken = default)

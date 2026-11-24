@@ -148,7 +148,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 var app = builder.Build();
 
 // Lệnh chạy một lần cho user cũ: dotnet run --project METANOIA/METANOIA -- --backfill-user-data
-// Bù project "Cá nhân", gói Miễn phí và 24 dòng circadian còn thiếu rồi thoát (không khởi động web server).
+// Bù gói Miễn phí và 24 dòng circadian còn thiếu rồi thoát (không khởi động web server).
 if (args.Contains(UserBackfillRunner.CommandLineFlag))
 {
     var result = await UserBackfillRunner.RunAsync(app.Services);

@@ -77,6 +77,75 @@ namespace METANOIA.Controllers
         }
     }
 
+    // Quản trị nhóm (nhánh Group): xem, thống kê, lưu trữ và khôi phục. Chưa có đổi Leader hay xóa hẳn nhóm.
+    // Admin chỉ thấy thông tin cấp nhóm (thành viên, tiến độ, nhật ký), không thấy bình luận hay lịch cá nhân
+    [Authorize(Roles = "Admin")]
+    [Route("api/admin/groups")]
+    [ApiController]
+    public class AdminGroupsController : ControllerBase
+    {
+        private readonly IAdminGroupService _service;
+        private readonly IAdminAuditContext _audit;
+
+        public AdminGroupsController(IAdminGroupService service, IAdminAuditContext audit)
+        {
+            _service = service;
+            _audit = audit;
+        }
+
+        // search: tên nhóm hoặc email/họ tên chủ nhóm. status: Active | Archived. ownerId: lọc theo người tạo
+        [HttpGet]
+        public async Task<ActionResult<PagedResultDto<AdminGroupListItemDto>>> Search(
+            [FromQuery] string? search,
+            [FromQuery] string? status,
+            [FromQuery] Guid? ownerId,
+            CancellationToken cancellationToken,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            return Ok(await _service.SearchAsync(search, status, ownerId, page, pageSize, cancellationToken));
+        }
+
+        // Số liệu tổng: nhóm, thành viên, việc theo trạng thái, lời mời đang chờ, phiên bấm giờ đang chạy
+        [HttpGet("stats")]
+        public async Task<ActionResult<AdminGroupStatsDto>> GetStats(CancellationToken cancellationToken)
+        {
+            return Ok(await _service.GetStatsAsync(cancellationToken));
+        }
+
+        // Chi tiết một nhóm: chủ nhóm, thành viên, báo cáo tiến độ
+        [HttpGet("{groupId:guid}")]
+        public async Task<ActionResult<AdminGroupDetailDto>> Get(Guid groupId, CancellationToken cancellationToken)
+        {
+            return Ok(await _service.GetAsync(groupId, cancellationToken));
+        }
+
+        // Nhật ký hoạt động của nhóm, mới nhất trước
+        [HttpGet("{groupId:guid}/activity")]
+        public async Task<ActionResult<IReadOnlyList<GroupActivityDto>>> GetActivity(
+            Guid groupId, CancellationToken cancellationToken, [FromQuery] int skip = 0, [FromQuery] int take = 50)
+        {
+            return Ok(await _service.GetActivityAsync(groupId, skip, take, cancellationToken));
+        }
+
+        // Bắt buộc gửi header X-Admin-Reason. Lý do được ghi vào AdminActionLog, vào nhật ký nhóm và gửi thông báo cho Leader
+        [RequireAdminReason]
+        [HttpPost("{groupId:guid}/archive")]
+        public async Task<ActionResult<AdminGroupDetailDto>> Archive(Guid groupId, CancellationToken cancellationToken)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            return Ok(await _service.ArchiveAsync(adminId, groupId, _audit.Reason, cancellationToken));
+        }
+
+        [RequireAdminReason]
+        [HttpPost("{groupId:guid}/restore")]
+        public async Task<ActionResult<AdminGroupDetailDto>> Restore(Guid groupId, CancellationToken cancellationToken)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            return Ok(await _service.RestoreAsync(adminId, groupId, _audit.Reason, cancellationToken));
+        }
+    }
+
     // Chi phí AI gộp theo feature, model hoặc ngày
     [Authorize(Roles = "Admin")]
     [Route("api/admin/ai-usage")]
@@ -124,48 +193,6 @@ namespace METANOIA.Controllers
             CancellationToken cancellationToken)
         {
             return Ok(await _service.GetReportAsync(groupBy, from, to, cancellationToken));
-        }
-    }
-
-    // Thư viện nhạc tập trung. Không có DELETE vì bài đã được dùng trong FocusSession: hãy tắt bằng IsActive = false
-    [Authorize(Roles = "Admin")]
-    [Route("api/admin/focus-tracks")]
-    [ApiController]
-    public class AdminFocusTracksController : ControllerBase
-    {
-        private readonly IFocusTrackService _service;
-
-        public AdminFocusTracksController(IFocusTrackService service)
-        {
-            _service = service;
-        }
-
-        [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<FocusTrackDto>>> GetTracks([FromQuery] bool? isActive, CancellationToken cancellationToken)
-        {
-            return Ok(await _service.GetTracksAsync(isActive, cancellationToken));
-        }
-
-        [HttpGet("{trackId:guid}")]
-        public async Task<ActionResult<FocusTrackDto>> GetTrack(Guid trackId, CancellationToken cancellationToken)
-        {
-            return Ok(await _service.GetTrackAsync(trackId, cancellationToken));
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<FocusTrackDto>> CreateTrack([FromBody] FocusTrackRequestDto request, CancellationToken cancellationToken)
-        {
-            var created = await _service.CreateTrackAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetTrack), new { trackId = created.Id }, created);
-        }
-
-        [HttpPut("{trackId:guid}")]
-        public async Task<ActionResult<FocusTrackDto>> UpdateTrack(
-            Guid trackId,
-            [FromBody] FocusTrackRequestDto request,
-            CancellationToken cancellationToken)
-        {
-            return Ok(await _service.UpdateTrackAsync(trackId, request, cancellationToken));
         }
     }
 

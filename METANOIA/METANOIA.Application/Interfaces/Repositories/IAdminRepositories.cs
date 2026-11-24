@@ -26,15 +26,6 @@ namespace METANOIA.Application.Interfaces.Repositories
         Task<AiUsageRowDto> TotalAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
     }
 
-    public interface IFocusTrackRepository
-    {
-        Task<IReadOnlyList<FocusTrack>> GetAsync(bool? isActive, CancellationToken cancellationToken = default);
-
-        Task<FocusTrack?> GetByIdAsync(Guid trackId, CancellationToken cancellationToken = default);
-
-        Task AddAsync(FocusTrack track, CancellationToken cancellationToken = default);
-    }
-
     public interface IAdminAuditLogRepository
     {
         Task<(IReadOnlyList<(AdminActionLog Log, string AdminEmail)> Items, int TotalCount)> SearchAsync(

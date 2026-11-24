@@ -217,14 +217,12 @@ namespace METANOIA.Test
         }
 
         [Fact]
-        public async Task Start_WithUnknownSlotOrTrack_IsRejected()
+        public async Task Start_WithUnknownSlot_IsRejected()
         {
             using var factory = new ApiFactory();
             var s = await SetupAsync(factory);
 
             Assert.Equal(HttpStatusCode.NotFound, (await StartAsync(s.Client, s.TaskId, Guid.NewGuid())).StatusCode);
-            var withTrack = await s.Client.PostAsJsonAsync("/api/focus/start", new { taskId = s.TaskId, focusTrackId = Guid.NewGuid() });
-            Assert.Equal(HttpStatusCode.BadRequest, withTrack.StatusCode);
             Assert.Equal(0, await QueryAsync(factory, db => db.FocusSessions.CountAsync()));
         }
 

@@ -29,6 +29,11 @@ namespace METANOIA.Application.Interfaces.Repositories
             IReadOnlyCollection<string> liveStatuses, IReadOnlyCollection<string> removedStatuses,
             CancellationToken cancellationToken = default);
 
+        // Slot đang chiếm giờ của người dùng (Approved, Due, InProgress, Overrun) giao với [startUtc, endUtc) (chạm đầu mút không tính),
+        // trừ slot excludeSlotId. Kèm Task để biết tiêu đề. Không theo dõi
+        Task<IReadOnlyList<ScheduleSlot>> GetLiveSlotsOverlappingAsync(
+            Guid userId, DateTime startUtc, DateTime endUtc, Guid? excludeSlotId, CancellationToken cancellationToken = default);
+
         // Slot Approved chưa tới giờ của người dùng (hẹn lại nhắc việc khi họ đổi số phút nhắc trước)
         Task<IReadOnlyList<ScheduleSlot>> GetUpcomingApprovedByUserAsync(Guid userId, DateTime nowUtc, CancellationToken cancellationToken = default);
     }

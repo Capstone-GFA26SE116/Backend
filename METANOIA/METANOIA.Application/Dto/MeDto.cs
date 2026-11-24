@@ -78,13 +78,23 @@ namespace METANOIA.Application.Dto
 
         public bool WorksOnWeekend { get; set; }
 
-        // Các loại việc hay làm; phải là Domain đang IsActive
+        // BẮT BUỘC, người dùng tự chọn: múi giờ IANA, ví dụ Asia/Ho_Chi_Minh (FE gợi ý bằng Intl.DateTimeFormat().resolvedOptions().timeZone)
+        public string? TimeZone { get; set; }
+
+        // BẮT BUỘC, 0 đến 120 phút: thời gian đệm mặc định giữa hai việc
+        public int? DefaultBufferMinutes { get; set; }
+
+        // BẮT BUỘC, 0 đến 120 phút: nhắc trước giờ làm bao nhiêu phút
+        public int? ReminderLeadMinutes { get; set; }
+
+        // Tùy chọn. Các loại việc hay làm; phải là Domain đang IsActive
         public List<Guid> DomainIds { get; set; } = new();
 
-        // Giờ làm hiệu quả, mỗi giá trị 0-23
+        // Tùy chọn (để trống được). Giờ làm hiệu quả, mỗi giá trị 0-23
         public List<int> ProductiveHours { get; set; } = new();
 
-        // Rarely | Sometimes | Often | Always
-        public string OverrunLevel { get; set; } = null!;
+        // Tùy chọn: Rarely | Sometimes | Often | Always. Bỏ trống thì dùng Sometimes. Không có cột riêng: được quy thành hệ số KBias
+        // và chỉ lưu cho từng loại việc trong DomainIds (không chọn loại việc nào thì không lưu gì)
+        public string? OverrunLevel { get; set; }
     }
 }

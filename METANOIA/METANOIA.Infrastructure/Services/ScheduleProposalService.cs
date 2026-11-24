@@ -112,6 +112,9 @@ namespace METANOIA.Infrastructure.Services
                 ? new List<SlotConflictDto>()
                 : await FindConflictsAsync(userId, proposedSlots, cancellationToken);
 
+            // Slot đề xuất không được chồng lên slot đang hoạt động khác của người dùng (xem SlotOverlap)
+            var overlaps = await FindOverlapsAsync(userId, proposedSlots, cancellationToken);
+
             if (conflicts.Count > 0 && !skipConflicts)
             {
                 throw new ScheduleConflictException(
@@ -120,11 +123,20 @@ namespace METANOIA.Infrastructure.Services
                     new { conflicts });
             }
 
+            if (overlaps.Count > 0 && !skipConflicts)
+            {
+                throw new SlotOverlapException(
+                    $"{overlaps.Count} slot đề xuất chồng giờ lên slot đang có. Hãy sửa giờ hoặc từ chối các slot đó, " +
+                    "hoặc duyệt với skipConflicts=true để bỏ các slot chồng giờ và duyệt phần còn lại.",
+                    new { overlaps });
+            }
+
             var conflictIds = conflicts.Select(c => c.SlotId).ToHashSet();
-            var toApprove = proposedSlots.Where(s => !conflictIds.Contains(s.Id)).ToList();
+            var overlapIds = overlaps.Select(o => o.SlotId).ToHashSet();
+            var toApprove = proposedSlots.Where(s => !conflictIds.Contains(s.Id) && !overlapIds.Contains(s.Id)).ToList();
             if (toApprove.Count == 0)
             {
-                throw new UserFriendlyException("Mọi slot còn lại đều trùng Google Calendar nên không còn slot nào để duyệt. Hãy sửa giờ các slot đó trước.");
+                throw new UserFriendlyException("Mọi slot còn lại đều trùng Google Calendar hoặc chồng giờ lên slot đang có nên không còn slot nào để duyệt. Hãy sửa giờ các slot đó trước.");
             }
 
             proposal.Status = ApprovedStatus;
@@ -137,6 +149,15 @@ namespace METANOIA.Infrastructure.Services
                 var oldEnd = slot.EndTime;
                 slot.Status = CancelledSlotStatus;
                 _context.ScheduleChangeLogs.Add(NewLog(slot.Id, "Deleted", "GoogleSync", oldStart, oldEnd, null, null, now));
+            }
+
+            // Slot chồng giờ lên slot đang có (khi người dùng chọn bỏ): chuyển Cancelled (slot đã trùng Google ở trên thì giữ nguyên)
+            foreach (var slot in proposedSlots.Where(s => overlapIds.Contains(s.Id) && !conflictIds.Contains(s.Id)))
+            {
+                var oldStart = slot.StartTime;
+                var oldEnd = slot.EndTime;
+                slot.Status = CancelledSlotStatus;
+                _context.ScheduleChangeLogs.Add(NewLog(slot.Id, "Deleted", "Manual", oldStart, oldEnd, null, null, now));
             }
 
             foreach (var slot in toApprove)
@@ -170,6 +191,7 @@ namespace METANOIA.Infrastructure.Services
             var dto = ToDto(proposal);
             dto.GoogleCheck = googleCheck;
             dto.SkippedConflicts = conflicts;
+            dto.SkippedOverlaps = overlaps;
             return dto;
         }
 
@@ -237,17 +259,57 @@ namespace METANOIA.Infrastructure.Services
         public async Task<ProposalConflictsDto> GetConflictsAsync(Guid userId, Guid proposalId, CancellationToken cancellationToken = default)
         {
             var proposal = await LoadProposalAsync(userId, proposalId, cancellationToken);
+            var proposedSlots = proposal.ScheduleSlots.Where(s => s.Status == ProposedSlotStatus).ToList();
+            var overlaps = await FindOverlapsAsync(userId, proposedSlots, cancellationToken);
 
             if (!await HasActiveGoogleConnectionAsync(userId, cancellationToken))
             {
-                return new ProposalConflictsDto { GoogleCheck = "NotConnected" };
+                return new ProposalConflictsDto { GoogleCheck = "NotConnected", Overlaps = overlaps };
             }
 
             return new ProposalConflictsDto
             {
                 GoogleCheck = "Cached",
-                Conflicts = await FindConflictsAsync(userId, proposal.ScheduleSlots.Where(s => s.Status == ProposedSlotStatus).ToList(), cancellationToken)
+                Conflicts = await FindConflictsAsync(userId, proposedSlots, cancellationToken),
+                Overlaps = overlaps
             };
+        }
+
+        // Slot đề xuất giao với slot đang chiếm giờ (Approved, Due, InProgress, Overrun) của người dùng. Slot Proposed của đề xuất chưa chiếm giờ
+        // nên không tự chặn nhau; chạm đầu mút không tính
+        private async Task<List<ProposalSlotOverlapDto>> FindOverlapsAsync(Guid userId, IReadOnlyCollection<ScheduleSlot> slots, CancellationToken cancellationToken)
+        {
+            if (slots.Count == 0)
+            {
+                return new List<ProposalSlotOverlapDto>();
+            }
+
+            var from = slots.Min(s => s.StartTime);
+            var to = slots.Max(s => s.EndTime);
+            var liveStatuses = new[] { "Approved", "Due", "InProgress", "Overrun" };
+            var existing = await _context.ScheduleSlots
+                .AsNoTracking()
+                .Include(s => s.Task)
+                .Where(s => s.Task.Project.UserId == userId
+                    && liveStatuses.Contains(s.Status)
+                    && s.StartTime < to
+                    && s.EndTime > from)
+                .ToListAsync(cancellationToken);
+
+            var result = new List<ProposalSlotOverlapDto>();
+            foreach (var slot in slots.OrderBy(s => s.StartTime))
+            {
+                var hit = existing.Where(e => e.StartTime < slot.EndTime && e.EndTime > slot.StartTime).OrderBy(e => e.StartTime).FirstOrDefault();
+                if (hit is null)
+                {
+                    continue;
+                }
+
+                result.Add(new ProposalSlotOverlapDto(
+                    slot.Id, slot.TaskId, slot.Task?.Title ?? string.Empty, UtcTime.ToApi(slot.StartTime), UtcTime.ToApi(slot.EndTime), SlotOverlap.ToDto(hit)));
+            }
+
+            return result;
         }
 
         // ---------------------------------------------------------------- Dùng chung

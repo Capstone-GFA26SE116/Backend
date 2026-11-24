@@ -29,8 +29,6 @@ public partial class PaymentTransaction
 
     public virtual Invoice? Invoice { get; set; }
 
-    public virtual ICollection<PaymentRefund> PaymentRefunds { get; set; } = new List<PaymentRefund>();
-
     public virtual SubscriptionPlan Plan { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;

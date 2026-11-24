@@ -23,7 +23,17 @@ namespace METANOIA.Infrastructure.Services
         public async Task<GroupProgressDto> GetProgressAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default)
         {
             await _access.GetAccessAsync(groupId, userId, cancellationToken);
+            return await BuildProgressAsync(groupId, cancellationToken);
+        }
 
+        // Admin xem tiến độ của mọi nhóm: không kiểm tra thành viên (quyền Admin đã được kiểm ở controller)
+        public Task<GroupProgressDto> GetProgressForAdminAsync(Guid groupId, CancellationToken cancellationToken = default)
+        {
+            return BuildProgressAsync(groupId, cancellationToken);
+        }
+
+        private async Task<GroupProgressDto> BuildProgressAsync(Guid groupId, CancellationToken cancellationToken)
+        {
             var tasks = await _work.GetTasksForProgressAsync(groupId, cancellationToken);
             var members = await _groups.GetMembersAsync(groupId, cancellationToken);
             var milestones = await _work.GetMilestonesAsync(groupId, cancellationToken);

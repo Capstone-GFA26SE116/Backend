@@ -2,6 +2,12 @@ namespace METANOIA.Application.Dto
 {
     public record GoogleEventBriefDto(string Title, DateTimeOffset Start, DateTimeOffset End);
 
+    // Một slot đang chiếm giờ (Approved, Due, InProgress hoặc Overrun) của chính người dùng
+    public record SlotOverlapDto(Guid SlotId, Guid TaskId, string TaskTitle, string Status, DateTimeOffset Start, DateTimeOffset End);
+
+    // Một slot đề xuất chồng giờ lên slot đang hoạt động đã có
+    public record ProposalSlotOverlapDto(Guid SlotId, Guid TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, SlotOverlapDto With);
+
     // Một slot đề xuất trùng với sự kiện trên Google Calendar của người dùng
     public record SlotConflictDto(
         Guid SlotId, Guid TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, GoogleEventBriefDto Event);
@@ -28,5 +34,8 @@ namespace METANOIA.Application.Dto
         public string GoogleCheck { get; set; } = "NotConnected";
 
         public List<SlotConflictDto> Conflicts { get; set; } = new();
+
+        // Slot đề xuất chồng giờ lên slot đang hoạt động đã có (không cần kết nối Google). Duyệt sẽ trả 409 SLOT_OVERLAP nếu còn
+        public List<ProposalSlotOverlapDto> Overlaps { get; set; } = new();
     }
 }

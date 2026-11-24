@@ -9,8 +9,6 @@ public partial class ScheduleProposal
 
     public Guid UserId { get; set; }
 
-    public Guid? BlindTestSessionId { get; set; }
-
     public short Level { get; set; }
 
     public string Status { get; set; } = null!;
@@ -21,13 +19,7 @@ public partial class ScheduleProposal
 
     public string Explanation { get; set; } = null!;
 
-    public short? DisplayPosition { get; set; }
-
-    public bool? IsChosen { get; set; }
-
     public DateTime CreatedAt { get; set; }
-
-    public virtual BlindTestSession? BlindTestSession { get; set; }
 
     public virtual ICollection<ScheduleSlot> ScheduleSlots { get; set; } = new List<ScheduleSlot>();
 

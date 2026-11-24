@@ -168,7 +168,6 @@
         </select>
       </label>
       <label>Ghi chú (note) <input id="stopNote" placeholder="bắt buộc khi Blocked hoặc Other" /></label>
-      <label>Bài nhạc (focusTrackId) <input id="trackId" placeholder="tùy chọn, GUID" /></label>
     </div>
     <div id="reasonHint" class="note-hint"></div>
     <label><input id="sendSubTask" type="checkbox" checked />Gửi kèm <code>subTaskId</code> (subtask đang chọn ở mục 2) khi Start</label>
@@ -758,8 +757,6 @@
       if (!state.slotId) return notify('Chưa chọn slot. Dùng "Start (không gắn slot)" nếu muốn làm ngoài lịch.', 'error');
       body.scheduleSlotId = state.slotId;
     }
-    const track = $('trackId').value.trim();
-    if (track) body.focusTrackId = track;
     if ($('sendSubTask').checked && state.subTaskId) body.subTaskId = state.subTaskId;
 
     const result = await api('POST', '/api/focus/start', body);
