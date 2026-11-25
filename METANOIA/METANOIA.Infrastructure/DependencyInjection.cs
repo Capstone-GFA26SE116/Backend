@@ -119,6 +119,10 @@ namespace METANOIA.Infrastructure
             services.AddScoped<IGroupFocusService, GroupFocusService>();
             services.AddScoped<IGroupAvailabilityService, GroupAvailabilityService>();
             services.AddScoped<IGroupChangeRequestService, GroupChangeRequestService>();
+
+            // Member tự xếp lịch cho việc nhóm (dùng chung ScheduleSlot) và dọn slot khi việc đổi người hoặc thành viên rời nhóm
+            services.AddScoped<IGroupScheduleService, GroupScheduleService>();
+            services.AddScoped<GroupSlotCleanup>();
             services.AddHttpClient();
 
             return services;

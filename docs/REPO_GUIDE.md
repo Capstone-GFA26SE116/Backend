@@ -460,7 +460,7 @@ Hủy:      DELETE /disconnect  → xóa GoogleConnection + sự kiện đã cac
 
 ### 7.6 Lịch, task, slot và AI
 **Dữ liệu cơ bản:** Project → (Milestone) → **Task** (Flexible: Deadline + EstimatedMinutes; Fixed: FixedStart/FixedEnd) → **SubTask** →
-**ScheduleSlot** (khung giờ làm việc, tùy chọn gắn SubTask). Mỗi lần slot bị tạo/dời/đổi độ dài bằng tay, `ScheduleSlotService` ghi một dòng
+**ScheduleSlot** (khung giờ làm việc, tùy chọn gắn SubTask; từ đợt 3 của nhánh Group cũng chứa slot của việc nhóm, xem BR-158 đến BR-163). Mỗi lần slot bị tạo/dời/đổi độ dài bằng tay, `ScheduleSlotService` ghi một dòng
 `ScheduleChangeLog` (`Source = Manual`). `ChangeType` chỉ nhận `Created/Moved/Resized/Deleted`, `Source` chỉ nhận `Manual/AI/GoogleSync`.
 
 **Lịch gộp `GET /api/calendar?from=&to=`** ([CalendarViewService](../METANOIA/METANOIA.Infrastructure/Services/CalendarViewService.cs)):
@@ -1130,6 +1130,10 @@ classDiagram
     }
     class ScheduleSlot {
         +Guid Id
+        +Guid TaskId  (null với slot nhóm)
+        +Guid UserId  (chỉ slot nhóm)
+        +Guid GroupTaskId  (chỉ slot nhóm)
+        +Guid GroupSubTaskId  (chỉ slot nhóm)
         +DateTime StartTime
         +DateTime EndTime
         +int ProposedMinutes
@@ -2357,3 +2361,10 @@ Mã nguồn: `GroupAccessService` (một chỗ kiểm quyền), `GroupService`, 
 | BR-155 | Admin xem mọi nhóm: `GET /api/admin/groups` (lọc tên nhóm hoặc email/họ tên chủ nhóm, `status`, `ownerId`, phân trang), `GET /api/admin/groups/{id}` (chủ nhóm, thành viên, báo cáo tiến độ), `GET /api/admin/groups/{id}/activity` (nhật ký hoạt động), `GET /api/admin/groups/stats` (số liệu tổng). Admin không cần là thành viên. Admin **không** thấy nội dung bình luận, tiêu đề việc hay lịch cá nhân của thành viên | người không phải Admin nhận 403, chưa đăng nhập 401, nhóm không tồn tại 404 |
 | BR-156 | Admin lưu trữ hoặc khôi phục nhóm: `POST /api/admin/groups/{id}/archive` và `/restore`. Bắt buộc header `X-Admin-Reason`. Mỗi lần đổi ghi `AdminActionLog` (`WorkGroup.Update`, giá trị cũ/mới, lý do), ghi vào nhật ký của nhóm (`AdminArchived` hoặc `AdminRestored`, người thực hiện là Admin, kèm lý do) và gửi thông báo `GroupStatusChanged` cho mọi Leader. Không cần đổi database | thiếu lý do 400 và không đổi gì; nhóm đã lưu trữ mà lưu trữ lần nữa, hoặc đang hoạt động mà khôi phục, 400 |
 | BR-157 | Đổi Leader bằng quyền Admin và xóa hẳn nhóm **chưa làm** (để sau). Luật nhóm không đổi: Leader vẫn khôi phục được nhóm bằng API thường, và thao tác của Leader không ghi `AdminActionLog` | không áp dụng |
+| BR-158 | **Slot nhóm** dùng chung `ScheduleSlot`: có `GroupTaskId` (và tùy chọn `GroupSubTaskId`) thay cho `TaskId`, và `UserId` là người xếp slot. CHECK trong DB: đúng một trong `TaskId` hoặc `GroupTaskId`; việc con đi đúng loại; slot nhóm bắt buộc có `UserId`. `UserId` của slot cá nhân để NULL vì dịch vụ AI ghi slot trực tiếp vào DB. Chủ slot tính bằng `ScheduleSlotQueries.OwnedBy(userId)` |
+| BR-159 | Tạo slot nhóm (`POST /api/group-tasks/{id}/schedule-slots`): chỉ người được giao (việc hoặc việc con); Leader và Member (Viewer `403`); việc có việc con phải chọn việc con; việc hoặc việc con đã `Done`/`Skipped` và nhóm lưu trữ thì `400`. Mọi thành viên xem được danh sách slot của việc. Sửa và hủy qua `PUT`, `DELETE /api/schedule-slots/{id}` (chỉ người xếp slot) |
+| BR-160 | Slot nhóm cũng tuân luật không chồng giờ (`409 SLOT_OVERLAP`) với mọi slot chiếm giờ của chính người đó, kể cả slot cá nhân. Slot nhóm **không đổi status của việc nhóm** và không gọi `TaskProgressService` |
+| BR-161 | Nhắc việc, `SlotEnded`, Google push chạy cho slot nhóm: người nhận là `slot.UserId`; bỏ qua khi nhóm lưu trữ hoặc việc không còn giao cho chủ slot; không có AutoTimeout; sự kiện Google có tiêu đề việc (và việc con), mô tả `Nhóm: tên nhóm` |
+| BR-162 | Bấm giờ nhóm nhận `scheduleSlotId` (slot của mình, đúng việc, đang `Approved`/`Due`/`InProgress`/`Missed`/`Postponed`): Start đưa slot sang `InProgress`; Stop `Completed` làm slot `Done`, `Blocked` làm `Postponed`, lý do khác làm `Due` |
+| BR-163 | Khi việc hoặc việc con giao cho người khác, thành viên bị xóa, hạ xuống Viewer hoặc tự rời: phiên đang chạy của người cũ dừng (lý do `Other`, giờ vẫn tính), slot `Proposed`/`Approved`/`Due`/`InProgress`/`Overrun` thành `Cancelled` (qua `Due` nếu đang chạy), ghi `ScheduleChangeLog`, hủy job nhắc, thông báo `GroupStatusChanged` cho người cũ (trừ khi tự rời). Slot đã xong hoặc lỡ giữ nguyên. Xóa việc nhóm thì xóa slot |
+| BR-164 | Báo cáo tiến độ nhóm có `signals` (không lưu DB): quá hạn, chưa có lịch, nguy cơ trễ (deadline trong 3 ngày, phút còn lại lớn hơn phút đã xếp), đứng yên (3 ngày không hoạt động); chỉ việc đang mở đã có người được giao. Ngưỡng trong `GroupRules`. Admin chỉ thấy số đếm, không thấy danh sách việc |

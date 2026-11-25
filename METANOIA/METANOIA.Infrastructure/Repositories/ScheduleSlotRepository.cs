@@ -31,7 +31,9 @@ namespace METANOIA.Infrastructure.Repositories
         public Task<ScheduleSlot?> GetByIdForUserAsync(Guid slotId, Guid userId, CancellationToken cancellationToken = default)
         {
             return _context.ScheduleSlots
-                .FirstOrDefaultAsync(s => s.Id == slotId && s.Task.Project.UserId == userId, cancellationToken);
+                .Include(s => s.GroupTask)
+                .OwnedBy(userId)
+                .FirstOrDefaultAsync(s => s.Id == slotId, cancellationToken);
         }
 
         private static readonly string[] LiveStatuses = { "Approved", "Due", "InProgress", "Overrun" };
@@ -42,8 +44,9 @@ namespace METANOIA.Infrastructure.Repositories
             return await _context.ScheduleSlots
                 .AsNoTracking()
                 .Include(s => s.Task)
-                .Where(s => s.Task.Project.UserId == userId
-                    && LiveStatuses.Contains(s.Status)
+                .Include(s => s.GroupTask)
+                .OwnedBy(userId)
+                .Where(s => LiveStatuses.Contains(s.Status)
                     && s.StartTime < endUtc
                     && s.EndTime > startUtc
                     && (excludeSlotId == null || s.Id != excludeSlotId))
@@ -77,10 +80,12 @@ namespace METANOIA.Infrastructure.Repositories
             CancellationToken cancellationToken = default)
         {
             var query = _context.ScheduleSlots
-                .Include(s => s.Task).ThenInclude(t => t.Project)
+                .Include(s => s.Task).ThenInclude(t => t!.Project)
                 .Include(s => s.SubTask)
-                .Where(s => s.Task.Project.UserId == userId
-                    && (liveStatuses.Contains(s.Status) || (s.GoogleEventId != null && removedStatuses.Contains(s.Status))));
+                .Include(s => s.GroupTask).ThenInclude(t => t!.Group)
+                .Include(s => s.GroupSubTask)
+                .OwnedBy(userId)
+                .Where(s => liveStatuses.Contains(s.Status) || (s.GoogleEventId != null && removedStatuses.Contains(s.Status)));
 
             if (fromUtc is { } from) query = query.Where(s => s.StartTime >= from);
             if (toUtc is { } to) query = query.Where(s => s.StartTime < to);
@@ -88,10 +93,62 @@ namespace METANOIA.Infrastructure.Repositories
             return await query.OrderBy(s => s.StartTime).ToListAsync(cancellationToken);
         }
 
+        // Slot nhóm "chưa xong": còn trên lịch hoặc đang làm (Proposed, Approved, Due, InProgress, Overrun)
+        private static readonly string[] OpenGroupSlotStatuses = { "Proposed", "Approved", "Due", "InProgress", "Overrun" };
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetByGroupTaskIdAsync(Guid groupTaskId, bool includeCancelled, CancellationToken cancellationToken = default)
+        {
+            var query = _context.ScheduleSlots
+                .AsNoTracking()
+                .Include(s => s.User)
+                .Include(s => s.GroupTask)
+                .Include(s => s.GroupSubTask)
+                .Where(s => s.GroupTaskId == groupTaskId);
+
+            if (!includeCancelled)
+            {
+                query = query.Where(s => s.Status != "Cancelled");
+            }
+
+            return await query.OrderBy(s => s.StartTime).ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsWithLogsOfGroupTaskAsync(Guid groupTaskId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .Include(s => s.ScheduleChangeLogs)
+                .Where(s => s.GroupTaskId == groupTaskId)
+                .ToListAsync(cancellationToken);
+        }
+
+        public void Remove(ScheduleSlot slot)
+        {
+            _context.ScheduleSlots.Remove(slot);
+        }
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetOpenSlotsOfGroupTaskAsync(Guid groupTaskId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .Include(s => s.GroupTask).ThenInclude(t => t!.Group)
+                .Include(s => s.GroupSubTask)
+                .Where(s => s.GroupTaskId == groupTaskId && OpenGroupSlotStatuses.Contains(s.Status))
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetOpenSlotsOfUserInGroupAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .Include(s => s.GroupTask).ThenInclude(t => t!.Group)
+                .Include(s => s.GroupSubTask)
+                .Where(s => s.UserId == userId && s.GroupTask != null && s.GroupTask.GroupId == groupId && OpenGroupSlotStatuses.Contains(s.Status))
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<IReadOnlyList<ScheduleSlot>> GetUpcomingApprovedByUserAsync(Guid userId, DateTime nowUtc, CancellationToken cancellationToken = default)
         {
             return await _context.ScheduleSlots
-                .Where(s => s.Task.Project.UserId == userId && s.Status == "Approved" && s.StartTime > nowUtc)
+                .OwnedBy(userId)
+                .Where(s => s.Status == "Approved" && s.StartTime > nowUtc)
                 .ToListAsync(cancellationToken);
         }
 
@@ -99,7 +156,8 @@ namespace METANOIA.Infrastructure.Repositories
         {
             return await _context.ScheduleSlots
                 .Include(s => s.FocusSessions)
-                .FirstOrDefaultAsync(s => s.Id == slotId && s.Task.Project.UserId == userId);
+                .OwnedBy(userId)
+                .FirstOrDefaultAsync(s => s.Id == slotId);
         }
 
         public async Task<string?> GetTaskStatusAsync(Guid taskId, CancellationToken cancellationToken = default)

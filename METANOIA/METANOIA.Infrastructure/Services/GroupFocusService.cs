@@ -25,6 +25,14 @@ namespace METANOIA.Infrastructure.Services
         private readonly GroupTaskProgress _progress;
         private readonly IUnitOfWork _unitOfWork;
         private readonly TimeProvider _timeProvider;
+        private readonly IScheduleSlotRepository _slots;
+        private readonly IScheduleJobService _jobs;
+
+        // Slot ở các trạng thái này mới bắt đầu làm được (giống nhánh cá nhân)
+        private static readonly HashSet<string> StartableSlotStatuses = new()
+        {
+            "Approved", "Due", "InProgress", "Missed", "Postponed"
+        };
 
         public GroupFocusService(
             IGroupWorkRepository work,
@@ -32,7 +40,9 @@ namespace METANOIA.Infrastructure.Services
             IGroupAccessService access,
             GroupTaskProgress progress,
             IUnitOfWork unitOfWork,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider,
+            IScheduleSlotRepository slots,
+            IScheduleJobService jobs)
         {
             _work = work;
             _personalSessions = personalSessions;
@@ -40,6 +50,8 @@ namespace METANOIA.Infrastructure.Services
             _progress = progress;
             _unitOfWork = unitOfWork;
             _timeProvider = timeProvider;
+            _slots = slots;
+            _jobs = jobs;
         }
 
         public async Task<GroupFocusStartResponseDto> StartAsync(
@@ -83,6 +95,8 @@ namespace METANOIA.Infrastructure.Services
 
             await EnsureNothingRunningAsync(userId, cancellationToken);
 
+            var slot = request.ScheduleSlotId is { } slotId ? await GetStartableSlotAsync(userId, task, subTask, slotId, cancellationToken) : null;
+
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             var session = new GroupFocusSession
             {
@@ -91,11 +105,18 @@ namespace METANOIA.Infrastructure.Services
                 GroupSubTaskId = subTask?.Id,
                 UserId = userId,
                 StartedAt = now,
-                CaptureMethod = "Timer"
+                CaptureMethod = "Timer",
+                ScheduleSlotId = slot?.Id
             };
 
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                if (slot is not null)
+                {
+                    StatusRules.EnsureSlot(slot.Status, "InProgress");
+                    slot.Status = "InProgress";
+                }
+
                 if (subTask is not null && subTask.Status == GroupWorkStatuses.ToDo)
                 {
                     GroupRules.EnsureSubTask(subTask.Status, GroupWorkStatuses.InProgress);
@@ -124,8 +145,15 @@ namespace METANOIA.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
+            // Bấm theo slot: hẹn lại job nhắc theo giờ bắt đầu thật (sau khi đã lưu)
+            if (slot is not null)
+            {
+                _jobs.RescheduleSlotJobs(slot.Id, _timeProvider.GetUtcNow());
+            }
+
             return new GroupFocusStartResponseDto
             {
+                ScheduleSlotId = slot?.Id,
                 SessionId = session.Id,
                 GroupTaskId = task.Id,
                 SubTaskId = subTask?.Id,
@@ -177,8 +205,33 @@ namespace METANOIA.Infrastructure.Services
                 : request.Note;
 
             var subTask = session.GroupSubTask;
+
+            // Slot theo lý do dừng: xong thì Done; kẹt (Blocked) thì Postponed; gián đoạn hoặc lý do khác thì Due (làm tiếp được).
+            // Slot đã bị hủy (ví dụ việc đã giao lại) hoặc không còn đang chạy thì để nguyên
+            ScheduleSlot? slot = null;
+            string? slotTarget = null;
+            if (session.ScheduleSlotId is { } linkedSlotId)
+            {
+                slot = await _slots.GetByIdAsync(linkedSlotId);
+                if (slot is { Status: "InProgress" or "Overrun" })
+                {
+                    slotTarget = request.StopReason switch
+                    {
+                        FocusStopReason.Completed => "Done",
+                        FocusStopReason.Blocked => "Postponed",
+                        _ => "Due"
+                    };
+                }
+            }
+
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                if (slot is not null && slotTarget is not null)
+                {
+                    StatusRules.EnsureSlot(slot.Status, slotTarget);
+                    slot.Status = slotTarget;
+                }
+
                 await _work.AddActivityAsync(GroupRules.Log(task.GroupId, userId, GroupEntityTypes.FocusSession, session.Id,
                     "Stopped", session.StartedAt.ToString("O"), $"{request.StopReason}, {Round(Minutes(session, now))} phút"), cancellationToken);
 
@@ -214,6 +267,19 @@ namespace METANOIA.Infrastructure.Services
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
+
+            if (slot is not null && slotTarget is not null)
+            {
+                // Xong hoặc đang chờ: không còn nhắc gì cho slot này. Gián đoạn: bỏ nhắc "sắp hết giờ", "quá giờ" (job SlotEnded giữ để biết Missed)
+                if (slotTarget is "Done" or "Postponed")
+                {
+                    _jobs.CancelAllJobs(slot.Id);
+                }
+                else
+                {
+                    _jobs.CancelOverrunJobs(slot.Id);
+                }
+            }
 
             var sessions = await _work.GetFocusSessionsOfTaskAsync(task.Id, cancellationToken);
             var finished = sessions.Where(s => s.EndedAt is not null).ToList();
@@ -290,9 +356,35 @@ namespace METANOIA.Infrastructure.Services
                     Minutes = Round(Minutes(s, now)),
                     IsRunning = s.EndedAt is null,
                     StopReason = s.StopReason,
-                    Note = s.Note
+                    Note = s.Note,
+                    ScheduleSlotId = s.ScheduleSlotId
                 }).ToList()
             };
+        }
+
+        // Slot (nếu có) phải của người bấm, đúng việc (và việc con) và đang ở trạng thái làm được
+        private async Task<ScheduleSlot> GetStartableSlotAsync(Guid userId, GroupTask task, GroupSubTask? subTask, Guid slotId, CancellationToken cancellationToken)
+        {
+            var slot = await _slots.GetByIdForUserAsync(slotId, userId, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy slot.");
+
+            if (slot.GroupTaskId != task.Id)
+            {
+                throw new UserFriendlyException("Slot không thuộc việc này.");
+            }
+
+            if (slot.GroupSubTaskId is not null && slot.GroupSubTaskId != subTask?.Id)
+            {
+                throw new UserFriendlyException("Slot không thuộc việc con này.");
+            }
+
+            if (!StartableSlotStatuses.Contains(slot.Status))
+            {
+                throw new UserFriendlyException(
+                    $"Slot đang ở trạng thái '{slot.Status}' nên không thể làm việc trên đó. Hãy duyệt slot (Approved) trước, hoặc bấm giờ không gắn slot.");
+            }
+
+            return slot;
         }
 
         // Mỗi người một phiên chạy một lúc, tính cả phiên cá nhân (chỉ đọc). 409 kèm phiên đang chạy để FE đưa người dùng tới đó
@@ -328,7 +420,8 @@ namespace METANOIA.Infrastructure.Services
                 StartedAt = started,
                 ElapsedSeconds = (long)Math.Max(0, (now - started).TotalSeconds),
                 ServerTime = now,
-                EstimatedMinutes = session.GroupTask.EstimatedMinutes
+                EstimatedMinutes = session.GroupTask.EstimatedMinutes,
+                ScheduleSlotId = session.ScheduleSlotId
             };
         }
 

@@ -127,6 +127,10 @@ namespace METANOIA.Infrastructure.Services
             var group = await _adminGroups.GetGroupWithOwnerAsync(groupId, cancellationToken)
                 ?? throw new NotFoundException("Không tìm thấy nhóm.");
 
+            // Admin chỉ thấy số đếm của các tín hiệu, không thấy tiêu đề từng việc (quyền riêng tư của nhóm)
+            var progress = await _progress.GetProgressForAdminAsync(groupId, cancellationToken);
+            progress.Signals.Tasks = new List<GroupTaskSignalDto>();
+
             return new AdminGroupDetailDto
             {
                 Id = group.Id,
@@ -140,7 +144,7 @@ namespace METANOIA.Infrastructure.Services
                 Deadline = group.Deadline,
                 CreatedAt = group.CreatedAt,
                 Members = (await _groups.GetMembersAsync(groupId, cancellationToken)).ToList(),
-                Progress = await _progress.GetProgressForAdminAsync(groupId, cancellationToken)
+                Progress = progress
             };
         }
     }

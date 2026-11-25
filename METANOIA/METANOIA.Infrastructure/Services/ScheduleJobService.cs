@@ -95,7 +95,7 @@ public sealed class ScheduleJobService(
     {
         return dbContext.ScheduleSlots
             .Where(s => s.Id == slotId)
-            .Select(s => (int?)s.Task.Project.User.ReminderLeadMinutes)
+            .Select(s => (int?)(s.User != null ? s.User.ReminderLeadMinutes : s.Task!.Project.User.ReminderLeadMinutes))
             .FirstOrDefault() ?? DefaultReminderLeadMinutes;
     }
 

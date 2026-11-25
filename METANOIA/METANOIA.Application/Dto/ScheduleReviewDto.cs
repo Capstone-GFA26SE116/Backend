@@ -3,14 +3,15 @@ namespace METANOIA.Application.Dto
     public record GoogleEventBriefDto(string Title, DateTimeOffset Start, DateTimeOffset End);
 
     // Một slot đang chiếm giờ (Approved, Due, InProgress hoặc Overrun) của chính người dùng
-    public record SlotOverlapDto(Guid SlotId, Guid TaskId, string TaskTitle, string Status, DateTimeOffset Start, DateTimeOffset End);
+    // TaskId rỗng với slot nhóm (khi đó có GroupTaskId); TaskTitle là tên việc cá nhân hoặc việc nhóm
+    public record SlotOverlapDto(Guid SlotId, Guid? TaskId, string TaskTitle, string Status, DateTimeOffset Start, DateTimeOffset End, Guid? GroupTaskId = null);
 
     // Một slot đề xuất chồng giờ lên slot đang hoạt động đã có
-    public record ProposalSlotOverlapDto(Guid SlotId, Guid TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, SlotOverlapDto With);
+    public record ProposalSlotOverlapDto(Guid SlotId, Guid? TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, SlotOverlapDto With);
 
     // Một slot đề xuất trùng với sự kiện trên Google Calendar của người dùng
     public record SlotConflictDto(
-        Guid SlotId, Guid TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, GoogleEventBriefDto Event);
+        Guid SlotId, Guid? TaskId, string TaskTitle, DateTimeOffset Start, DateTimeOffset End, GoogleEventBriefDto Event);
 
     // Sửa giờ của một slot đề xuất (PUT /api/schedule/proposals/{proposalId}/slots/{slotId})
     public class ProposedSlotUpdateRequest

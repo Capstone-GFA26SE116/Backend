@@ -9,7 +9,7 @@ Bộ kịch bản tự động đã được chạy thử trên backend thật (
 ## A. Chuẩn bị (làm một lần)
 
 ### A1. Chạy SQL (đã chạy thì bỏ qua) và kiểm tra
-Đã chạy `docs/sql/005_group_tables.sql` và `docs/sql/006_group_phase2.sql` (đủ các bước). Kiểm tra nhanh trên Supabase (chỉ đọc):
+Đã chạy `docs/sql/005_group_tables.sql`, `docs/sql/006_group_phase2.sql` (đủ các bước) và **`docs/sql/009_group_schedule_slot.sql` (bắt buộc chạy trước backend mới, vì backend đọc cột mới của `ScheduleSlot`)**. Kiểm tra nhanh trên Supabase (chỉ đọc):
 
 ```sql
 SELECT 'bảng nhóm' AS muc, count(*) AS so FROM information_schema.tables
@@ -20,10 +20,14 @@ WHERE table_name = 'Notification' AND column_name IN ('GroupId','GroupTaskId')
 UNION ALL SELECT 'cột GroupTask (FixedStart, FixedEnd)', count(*) FROM information_schema.columns
 WHERE table_name = 'GroupTask' AND column_name IN ('FixedStart','FixedEnd')
 UNION ALL SELECT 'CHECK Notification có GroupChangeRequested', count(*) FROM pg_constraint
-WHERE conname = 'Notification_Type_check' AND pg_get_constraintdef(oid) LIKE '%GroupChangeRequested%';
+WHERE conname = 'Notification_Type_check' AND pg_get_constraintdef(oid) LIKE '%GroupChangeRequested%'
+UNION ALL SELECT 'cột ScheduleSlot (UserId, GroupTaskId, GroupSubTaskId)', count(*) FROM information_schema.columns
+WHERE table_name = 'ScheduleSlot' AND column_name IN ('UserId','GroupTaskId','GroupSubTaskId')
+UNION ALL SELECT 'cột GroupFocusSession.ScheduleSlotId', count(*) FROM information_schema.columns
+WHERE table_name = 'GroupFocusSession' AND column_name = 'ScheduleSlotId';
 ```
 
-Kết quả đúng: **10, 2, 2, 1**.
+Kết quả đúng: **10, 2, 2, 1, 3, 1**.
 
 ### A2. Chạy backend
 Mở terminal:
@@ -275,6 +279,27 @@ Cột **Ai** là tài khoản bạn chọn ở thanh trên. "Nhận 403/404/400/
 | 11.12 | Người đề xuất | Rút lại đề xuất Pending; người khác rút | Cancelled; người khác 403; sau khi rút gửi đề xuất mới được | changereq |
 | 11.13 | Người được giao | Đề xuất cho việc đã Done/Skipped | 400 | |
 | 11.14 | Leader | Nhật ký ghi `ChangeRequested`, `ChangeApproved`, `ChangeRejected`, `ChangeCancelled` | có | changereq |
+
+### D13. Lên lịch cho việc nhóm (mục 8, khối "Lên lịch") và tín hiệu (mục 10)
+| # | Ai | Thao tác | Kết quả đúng |
+|---|---|---|---|
+| 13.1 | Member được giao | Chọn việc của mình, nhập giờ, bấm **Tạo slot** | 201; slot `Approved` hiện trong bảng; có trong `GET /api/calendar` với `groupName` |
+| 13.2 | Member khác (không được giao) | Tạo slot cho việc đó | 403 `GROUP_FORBIDDEN` |
+| 13.3 | Viewer / Người ngoài | Tạo slot / xem danh sách | 403 / 404; Viewer vẫn **xem** được danh sách slot |
+| 13.4 | Member | Việc có việc con mà không chọn việc con | 400 |
+| 13.5 | Member | Tạo slot chồng giờ slot khác của mình (kể cả slot cá nhân), ví dụ 7-8h và 7:30-9h | 409 `SLOT_OVERLAP` |
+| 13.6 | Member | Tạo slot `Proposed` chồng giờ | được (Proposed không chặn) |
+| 13.7 | Member | Bấm **Hủy** một slot | slot `Cancelled` |
+| 13.8 | Member | Chọn slot ở ô "Gắn slot" rồi Start | slot sang `InProgress`; Stop **Completed** thì slot `Done`; **Blocked** thì `Postponed`; **Interrupted** thì `Due` |
+| 13.9 | Member | Start với slot của người khác hoặc sai việc | 404 / 400 |
+| 13.10 | Leader | Giao lại việc cho người khác khi người cũ còn slot chưa bắt đầu | slot của người cũ `Cancelled`, người cũ có thông báo, người mới không có slot |
+| 13.11 | Leader | Giao lại việc khi người cũ đang chạy (có slot) | phiên dừng (lý do `Other`), giờ vẫn tính, slot `Cancelled` |
+| 13.12 | Leader | Xóa Member hoặc hạ xuống Viewer | slot chưa bắt đầu của họ trong nhóm bị hủy |
+| 13.13 | Leader | Xóa việc | slot của việc bị xóa |
+| 13.14 | Leader | Mở mục 10 khi có việc quá hạn / chưa có lịch / hạn trong 3 ngày mà chưa xếp đủ giờ / 3 ngày không hoạt động | bảng **Tín hiệu** liệt kê đúng cờ; thành viên có bộ đếm tương ứng |
+| 13.15 | Admin | `GET /api/admin/groups/{id}` | có bộ đếm tín hiệu, `signals.tasks` rỗng |
+
+Ca 13.14 cần đổi thời gian: tạo việc có deadline gần hoặc đã qua (sửa deadline trong mục 5), hoặc sửa `CreatedAt` việc trong DB để thử "đứng yên".
 
 ### D12. Nhánh cá nhân không bị ảnh hưởng
 | # | Ai | Thao tác | Kết quả đúng |

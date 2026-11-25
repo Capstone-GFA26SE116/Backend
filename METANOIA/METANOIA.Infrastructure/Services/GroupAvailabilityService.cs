@@ -48,9 +48,11 @@ namespace METANOIA.Infrastructure.Services
             if (fixedStartUtc is { } start && fixedEndUtc is { } end)
             {
                 var slots = await _calendar.GetSlotsAsync(assigneeId, start, end, false, cancellationToken);
-                foreach (var slot in slots.Where(s => StatusRules.IsLiveSlot(s.Status) && s.StartTime < end && s.EndTime > start))
+                // Slot nhóm của chính việc đang kiểm tra không tính là bận (người này đang xếp lịch cho đúng việc đó)
+                foreach (var slot in slots.Where(s => StatusRules.IsLiveSlot(s.Status) && s.StartTime < end && s.EndTime > start
+                                                      && (s.GroupTaskId is null || s.GroupTaskId != excludeTaskId)))
                 {
-                    result.Conflicts.Add(Period(slot.StartTime, slot.EndTime, "PersonalSchedule"));
+                    result.Conflicts.Add(Period(slot.StartTime, slot.EndTime, slot.GroupTaskId is null ? "PersonalSchedule" : "GroupSchedule"));
                 }
 
                 var events = await _calendar.GetGoogleEventsAsync(assigneeId, start, end, cancellationToken);

@@ -8,9 +8,18 @@ namespace METANOIA.Application.Interfaces.Repositories
     {
         public Guid Id { get; set; }
 
-        public Guid TaskId { get; set; }
+        // Slot nhóm: TaskId, ProjectId, ProjectName, TaskType, DomainName rỗng; có GroupId, GroupName, GroupTaskId
+        public Guid? TaskId { get; set; }
 
         public Guid? SubTaskId { get; set; }
+
+        public Guid? GroupId { get; set; }
+
+        public string? GroupName { get; set; }
+
+        public Guid? GroupTaskId { get; set; }
+
+        public Guid? GroupSubTaskId { get; set; }
 
         public DateTime StartTime { get; set; }
 
@@ -28,7 +37,7 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         public string TaskTitle { get; set; } = null!;
 
-        public string TaskType { get; set; } = null!;
+        public string? TaskType { get; set; }
 
         public string TaskStatus { get; set; } = null!;
 
@@ -36,13 +45,13 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         public string? SubTaskTitle { get; set; }
 
-        public Guid ProjectId { get; set; }
+        public Guid? ProjectId { get; set; }
 
-        public string ProjectName { get; set; } = null!;
+        public string? ProjectName { get; set; }
 
         public string? ClientName { get; set; }
 
-        public string DomainName { get; set; } = null!;
+        public string? DomainName { get; set; }
     }
 
     public class CalendarWorkingHours

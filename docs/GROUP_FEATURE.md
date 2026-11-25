@@ -1,6 +1,6 @@
 # Nhánh Group (làm việc nhóm): thiết kế đợt 1
 
-Trạng thái: **đợt 1 và đợt 2 (trừ AI gợi ý người nhận việc) đã có code và test** (toàn bộ 447 test đạt, gồm 9 test cho phần admin nhóm). Trang thử trên trình duyệt: `wwwroot/group-test.html`, hướng dẫn từng bước và danh sách ca thử: [GROUP_TEST_GUIDE.md](GROUP_TEST_GUIDE.md). Kèm file SQL: [sql/005_group_tables.sql](sql/005_group_tables.sql) (đợt 1) và [sql/006_group_phase2.sql](sql/006_group_phase2.sql) (đợt 2), **bạn tự chạy**, chạy trước khi dùng bản backend mới. Hướng dẫn cho FE: [GROUP_FE.md](GROUP_FE.md). Business rule: BR-130 đến BR-157 trong [REPO_GUIDE.md](REPO_GUIDE.md).
+Trạng thái: **đợt 1 và đợt 2 (trừ AI gợi ý người nhận việc) đã có code và test** (toàn bộ 496 test đạt, gồm 9 test cho phần admin nhóm và 20 test cho lên lịch và tín hiệu). Trang thử trên trình duyệt: `wwwroot/group-test.html`, hướng dẫn từng bước và danh sách ca thử: [GROUP_TEST_GUIDE.md](GROUP_TEST_GUIDE.md). Kèm file SQL: [sql/005_group_tables.sql](sql/005_group_tables.sql) (đợt 1) và [sql/006_group_phase2.sql](sql/006_group_phase2.sql) (đợt 2), **bạn tự chạy**, chạy trước khi dùng bản backend mới. Hướng dẫn cho FE: [GROUP_FE.md](GROUP_FE.md). Business rule: BR-130 đến BR-157 trong [REPO_GUIDE.md](REPO_GUIDE.md).
 
 ## 1. Mục tiêu và nguyên tắc
 - Nhiều người cùng làm một dự án, luật lấy theo Jira: vai trò, giao việc, trạng thái việc, bình luận, nhật ký hoạt động.
@@ -143,3 +143,19 @@ API (chỉ role Admin) dưới `/api/admin/groups`: `GET` (danh sách có lọc 
 - Quyền riêng tư: Admin chỉ thấy thông tin cấp nhóm (chủ nhóm, thành viên, báo cáo tiến độ, nhật ký). Không có nội dung bình luận, tiêu đề việc hay lịch cá nhân.
 - **Chưa làm:** đổi Leader bằng quyền Admin, xóa hẳn nhóm.
 - Mã: `AdminGroupsController` (trong `AdminController.cs`), `AdminGroupService`, `AdminGroupRepository`, `AdminGroupDto.cs`. Test: `AdminGroupTests.cs` (9 test).
+
+## 14. Đợt 3: lên lịch cho việc nhóm và tín hiệu tiến độ (đã làm)
+
+SQL: [sql/009_group_schedule_slot.sql](sql/009_group_schedule_slot.sql) (chạy trước backend mới). Hướng dẫn FE: [GROUP_FE.md](GROUP_FE.md) mục 11 và 12.
+
+**Cách làm: Leader giao việc, member tự xếp giờ vào lịch của mình** (không làm Leader xếp hộ, không AI gợi ý, không tự nhận việc, chưa có "trả việc").
+
+- **Dùng chung `ScheduleSlot`.** Thêm `UserId` (chỉ slot nhóm, **cho phép NULL** vì dịch vụ AI Python ghi slot cá nhân thẳng vào DB và không gửi `UserId`), `GroupTaskId`, `GroupSubTaskId`; `TaskId` cho phép NULL. CHECK trong DB: đúng một trong `TaskId` hoặc `GroupTaskId`; việc con đi đúng loại; slot nhóm bắt buộc có `UserId`. `GroupFocusSession` thêm `ScheduleSlotId`.
+- **Chủ slot:** slot cá nhân vẫn suy qua `Task.Project.UserId`; slot nhóm lưu `UserId`. Một hàm dùng chung `ScheduleSlotQueries.OwnedBy(userId)` gom cả hai đường và thay cho các truy vấn cũ (repository slot, lịch, lịch sử đổi giờ, kiểm tra chồng giờ, nhắc việc).
+- **Luật tạo slot:** chỉ người được giao, việc có việc con phải chọn việc con, việc chưa đóng, nhóm đang hoạt động, không chồng giờ (`409 SLOT_OVERLAP`, tính cả slot cá nhân). Slot nhóm không đổi status việc nhóm.
+- **Nhắc việc và Google:** job nhắc gửi cho người xếp slot; bỏ qua khi nhóm lưu trữ hoặc việc không còn giao cho người đó; slot nhóm không có AutoTimeout. Sự kiện Google có tiêu đề việc và mô tả `Nhóm: ...`.
+- **Bấm giờ theo slot** (tùy chọn): Start gắn slot sang `InProgress`; Stop đổi slot theo lý do dừng.
+- **Giao lại việc, hạ xuống Viewer, xóa hoặc rời nhóm (phương án A):** `GroupSlotCleanup` dừng phiên đang chạy của người cũ (lý do `Other`, giờ vẫn tính), hủy slot chưa bắt đầu (qua `Due` nếu đang chạy), ghi `ScheduleChangeLog`, hủy job nhắc, gửi thông báo cho người cũ. Slot đã xong hoặc đã lỡ giữ làm lịch sử. Người mới tự xếp lịch.
+- **Tín hiệu (không đổi DB):** `GroupProgressService` tính quá hạn, chưa có lịch, nguy cơ trễ (deadline trong 3 ngày và phút còn lại lớn hơn phút đã xếp), đứng yên (3 ngày không hoạt động). Ngưỡng là hằng số trong `GroupRules`. Admin chỉ thấy số đếm.
+- **Chưa làm:** AI gợi ý giờ cho việc nhóm, tự nhận việc, "trả việc" có Leader xác nhận (đã thiết kế, cần bảng `GroupTaskReleaseRequest`), chặn bắt đầu việc cá nhân khi đang chạy việc nhóm.
+- Mã mới: `GroupScheduleService`, `GroupSlotCleanup`, `SlotMapper`, `SlotOverlap`, `ScheduleSlotQueries`, `GroupScheduleDto.cs`. Test: `GroupScheduleTests.cs` (20 test).

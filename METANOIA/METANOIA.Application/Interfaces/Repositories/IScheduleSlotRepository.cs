@@ -34,6 +34,21 @@ namespace METANOIA.Application.Interfaces.Repositories
         Task<IReadOnlyList<ScheduleSlot>> GetLiveSlotsOverlappingAsync(
             Guid userId, DateTime startUtc, DateTime endUtc, Guid? excludeSlotId, CancellationToken cancellationToken = default);
 
+        // ---- Slot nhóm
+        // Slot của một việc nhóm (và các việc con), kèm người xếp, việc và việc con. Không theo dõi
+        Task<IReadOnlyList<ScheduleSlot>> GetByGroupTaskIdAsync(Guid groupTaskId, bool includeCancelled, CancellationToken cancellationToken = default);
+
+        // Mọi slot của một việc nhóm kèm lịch sử đổi giờ, theo dõi để xóa khi xóa việc
+        Task<IReadOnlyList<ScheduleSlot>> GetSlotsWithLogsOfGroupTaskAsync(Guid groupTaskId, CancellationToken cancellationToken = default);
+
+        void Remove(ScheduleSlot slot);
+
+        // Slot nhóm chưa xong (Proposed, Approved, Due, InProgress, Overrun) của một việc, theo dõi để sửa; kèm việc, việc con và nhóm
+        Task<IReadOnlyList<ScheduleSlot>> GetOpenSlotsOfGroupTaskAsync(Guid groupTaskId, CancellationToken cancellationToken = default);
+
+        // Slot nhóm chưa xong của một người trong một nhóm, theo dõi để sửa
+        Task<IReadOnlyList<ScheduleSlot>> GetOpenSlotsOfUserInGroupAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default);
+
         // Slot Approved chưa tới giờ của người dùng (hẹn lại nhắc việc khi họ đổi số phút nhắc trước)
         Task<IReadOnlyList<ScheduleSlot>> GetUpcomingApprovedByUserAsync(Guid userId, DateTime nowUtc, CancellationToken cancellationToken = default);
     }

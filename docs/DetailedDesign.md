@@ -224,31 +224,34 @@ This document describes the detailed design of every backend function of METANOI
 | 3.173 | Stop Group Focus Session |
 | 3.174 | View My Running Group Session |
 | 3.175 | View Task Time per Person |
+| | **Group: Schedule Slots** |
+| 3.176 | Create Group Schedule Slot |
+| 3.177 | View Group Schedule Slots |
 | | **Group: Assignee Availability and Change Requests** |
-| 3.176 | Check Assignee Availability |
-| 3.177 | Propose Time Change |
-| 3.178 | View Task Change Requests |
-| 3.179 | View Group Change Requests |
-| 3.180 | Approve Change Request |
-| 3.181 | Reject Change Request |
-| 3.182 | Withdraw Change Request |
+| 3.178 | Check Assignee Availability |
+| 3.179 | Propose Time Change |
+| 3.180 | View Task Change Requests |
+| 3.181 | View Group Change Requests |
+| 3.182 | Approve Change Request |
+| 3.183 | Reject Change Request |
+| 3.184 | Withdraw Change Request |
 | | **Administration: Groups** |
-| 3.183 | Admin: Search Groups |
-| 3.184 | Admin: View Group Statistics |
-| 3.185 | Admin: View Group Detail |
-| 3.186 | Admin: View Group Activity |
-| 3.187 | Admin: Archive Group |
-| 3.188 | Admin: Restore Group |
+| 3.185 | Admin: Search Groups |
+| 3.186 | Admin: View Group Statistics |
+| 3.187 | Admin: View Group Detail |
+| 3.188 | Admin: View Group Activity |
+| 3.189 | Admin: Archive Group |
+| 3.190 | Admin: Restore Group |
 | | **Background Jobs** |
-| 3.189 | Remind Before Slot Starts |
-| 3.190 | Mark Slot Due and Prompt Start |
-| 3.191 | Nudge Not-started Slot |
-| 3.192 | Remind Slot Is Ending |
-| 3.193 | Handle Slot End |
-| 3.194 | Remind Overrun |
-| 3.195 | Retry Check-in (placeholder) |
-| 3.196 | Auto-stop Overrun Session |
-| 3.197 | Log Unconfirmed Sessions of a Slot |
+| 3.191 | Remind Before Slot Starts |
+| 3.192 | Mark Slot Due and Prompt Start |
+| 3.193 | Nudge Not-started Slot |
+| 3.194 | Remind Slot Is Ending |
+| 3.195 | Handle Slot End |
+| 3.196 | Remind Overrun |
+| 3.197 | Retry Check-in (placeholder) |
+| 3.198 | Auto-stop Overrun Session |
+| 3.199 | Log Unconfirmed Sessions of a Slot |
 
 ---
 
@@ -1675,6 +1678,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -1738,6 +1744,7 @@ classDiagram
   Role "1" --> "0..*" User
   User "1" --> "0..1" GoogleConnection
   User "1" --> "0..1" UserSubscription
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.7.1 Class Diagram
@@ -1991,6 +1998,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -2060,6 +2070,7 @@ classDiagram
   Role "1" --> "0..*" User
   User "1" --> "0..1" GoogleConnection
   User "1" --> "0..1" UserSubscription
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.8.1 Class Diagram
@@ -3275,6 +3286,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -3306,6 +3320,7 @@ classDiagram
   ScheduleSlotRepository ..> ScheduleSlot
   GoogleConnection "1" --> "0..*" GoogleCalendarEvent
   GoogleConnection "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.15.1 Class Diagram
@@ -11516,6 +11531,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -11707,6 +11725,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -12038,6 +12059,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -12128,7 +12152,7 @@ Entities used: ScheduleSlot.
 
 ## 3.68 Update Schedule Slot
 
-Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again.
+Validates and updates a slot of the user (a group slot is handled by the group schedule service: only the person who made it, who must still be the assignee). When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again.
 
 - **Endpoint:** `PUT /api/schedule-slots/{slotId}`  
 - **Access:** Signed-in user
@@ -12159,15 +12183,52 @@ classDiagram
   class IScheduleSlotRepository {
     <<interface>>
     +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
-    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
   }
   class ScheduleSlotRepository {
     +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
     +SubTaskBelongsToTask(Guid subTaskId, Guid taskId) bool
     +ProposalOwnedByUser(Guid proposalId, Guid userId) bool
-    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
+  }
+  class IGroupScheduleService {
+    <<interface>>
+    +UpdateSlot(Guid userId, ScheduleSlot slot, ScheduleSlotRequestDto request) ScheduleSlotDto
+  }
+  class GroupScheduleService {
+    +UpdateSlot(Guid userId, ScheduleSlot slot, ScheduleSlotRequestDto request) ScheduleSlotDto
+    -LoadItem(ScheduleSlot slot) Tuple
+    -GetTask(Guid taskId) GroupTask
+    -ValidateTimes(DateTimeOffset start, DateTimeOffset end, string explanation) void
+    -Minutes(DateTimeOffset start, DateTimeOffset end) int
+    -EnsureNoOverlap(Guid userId, ScheduleSlot slot) void
+    -AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd) void
+    -SyncJobs(ScheduleSlot slot) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
   }
   class IScheduleChangeLogRepository {
     <<interface>>
@@ -12178,12 +12239,21 @@ classDiagram
   }
   class IUnitOfWork {
     <<interface>>
-    +ExecuteInTransaction(Func~void~ action) void
     +SaveChanges() int
+    +ExecuteInTransaction(Func~void~ action) void
   }
   class UnitOfWork {
-    +ExecuteInTransaction(Func~void~ action) void
     +SaveChanges() int
+    +ExecuteInTransaction(Func~void~ action) void
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
+    +CancelAllJobs(Guid slotId) void
   }
   class ITaskProgressService {
     <<interface>>
@@ -12199,15 +12269,6 @@ classDiagram
     -RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted) void
     +AfterCommit(ProgressResult result) void
   }
-  class IScheduleJobService {
-    <<interface>>
-    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
-    +CancelAllJobs(Guid slotId) void
-  }
-  class ScheduleJobService {
-    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
-    +CancelAllJobs(Guid slotId) void
-  }
   class IAiServiceClient {
     <<interface>>
     +RecordTaskCompletion(Guid taskId) AiLearningResponseDto
@@ -12220,6 +12281,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -12232,6 +12296,23 @@ classDiagram
     -string GoogleEventId
     -bool SyncFailed
   }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
   class SubTask {
     <<Entity>>
     -Guid Id
@@ -12241,15 +12322,23 @@ classDiagram
     -int OrderIndex
     -string Status
   }
-  class ScheduleProposal {
+  class GroupMember {
     <<Entity>>
     -Guid Id
+    -Guid GroupId
     -Guid UserId
-    -short Level
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
     -string Status
-    -bool IsFeasible
-    -int MissingMinutes
-    -string Explanation
     -DateTime CreatedAt
   }
   class ScheduleChangeLog {
@@ -12264,8 +12353,27 @@ classDiagram
     -DateTime NewEnd
     -DateTime ChangedAt
   }
+  class ScheduleProposal {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -short Level
+    -string Status
+    -bool IsFeasible
+    -int MissingMinutes
+    -string Explanation
+    -DateTime CreatedAt
+  }
   ScheduleSlotsController ..> IScheduleSlotService : uses
   ScheduleSlotService ..> IScheduleSlotRepository : uses
+  ScheduleSlotService ..> IGroupScheduleService : uses
+  GroupScheduleService ..> IGroupWorkRepository : uses
+  GroupScheduleService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupScheduleService ..> IScheduleSlotRepository : uses
+  GroupScheduleService ..> IScheduleChangeLogRepository : uses
+  GroupScheduleService ..> IUnitOfWork : uses
+  GroupScheduleService ..> IScheduleJobService : uses
   ScheduleSlotService ..> IScheduleChangeLogRepository : uses
   ScheduleSlotService ..> IUnitOfWork : uses
   ScheduleSlotService ..> ITaskProgressService : uses
@@ -12274,20 +12382,32 @@ classDiagram
   TaskProgressService ..> IAiServiceClient : uses
   IScheduleSlotService <|.. ScheduleSlotService : implements
   IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IGroupScheduleService <|.. GroupScheduleService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
   IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
-  ITaskProgressService <|.. TaskProgressService : implements
   IScheduleJobService <|.. ScheduleJobService : implements
+  ITaskProgressService <|.. TaskProgressService : implements
   IAiServiceClient <|.. AiServiceClient : implements
   ScheduleSlotRepository ..> ScheduleSlot
   ScheduleSlotRepository ..> SubTask
   ScheduleSlotRepository ..> ScheduleProposal
-  ScheduleSlotService ..> ScheduleChangeLog
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupScheduleService ..> ScheduleChangeLog
   ScheduleChangeLogRepository ..> ScheduleChangeLog
+  ScheduleSlotService ..> ScheduleChangeLog
   TaskProgressService ..> ScheduleChangeLog
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
   SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
   ScheduleProposal "1" --> "0..*" ScheduleSlot
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
 Figure 3.68.1 Class Diagram
@@ -12302,10 +12422,14 @@ sequenceDiagram
   participant ScheduleSlotsController
   participant ScheduleSlotService
   participant ScheduleSlotRepository
+  participant GroupScheduleService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
   participant ScheduleChangeLogRepository
   participant UnitOfWork
-  participant TaskProgressService
   participant ScheduleJobService
+  participant TaskProgressService
   participant AiServiceClient
   User->>UI: Update Schedule Slot
   UI->>ScheduleSlotsController: PUT /api/schedule-slots/(slotId)
@@ -12316,6 +12440,54 @@ sequenceDiagram
       opt value is missing
         ScheduleSlotService-->>ScheduleSlotsController: throw NotFoundException (404)
       end
+    opt slot.GroupTaskId != null
+      ScheduleSlotService->>GroupScheduleService: UpdateSlot(userId, slot, request)
+        GroupScheduleService->>GroupScheduleService: LoadItem(slot)
+          GroupScheduleService->>GroupScheduleService: GetTask(taskId)
+            GroupScheduleService->>GroupWorkRepository: GetTask(taskId)
+            GroupWorkRepository-->>GroupScheduleService: GroupTask
+            opt value is missing
+              GroupScheduleService-->>ScheduleSlotService: throw NotFoundException (404)
+            end
+        GroupScheduleService->>GroupAccessService: GetAccess(groupId, userId)
+          GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+          GroupRepository-->>GroupAccessService: GroupMember
+          GroupAccessService->>GroupRepository: GetGroup(groupId)
+          GroupRepository-->>GroupAccessService: WorkGroup
+          opt member == null || group == null
+            GroupAccessService-->>GroupScheduleService: throw NotFoundException (404)
+          end
+        GroupAccessService-->>GroupScheduleService: GroupAccess
+        opt !GroupRules.IsAssignedTo(task, subTask, userId)
+          GroupScheduleService-->>ScheduleSlotService: throw UserFriendlyException (400)
+        end
+        GroupScheduleService->>GroupScheduleService: ValidateTimes(start, end, explanation)
+          opt end <= start
+            GroupScheduleService-->>ScheduleSlotService: throw UserFriendlyException (400)
+          end
+          opt explanation?.Length > MaxExplanationLength
+            GroupScheduleService-->>ScheduleSlotService: throw UserFriendlyException (400)
+          end
+        opt request.Status != null && !AllowedStatuses.Contains(request.Status)
+          GroupScheduleService-->>ScheduleSlotService: throw UserFriendlyException (400)
+        end
+        opt startChanged || endChanged || !wasLive
+          GroupScheduleService->>GroupScheduleService: EnsureNoOverlap(userId, slot)
+            GroupScheduleService->>ScheduleSlotRepository: GetLiveSlotsOverlapping(userId, startUtc, endUtc, excludeSlotId)
+            ScheduleSlotRepository-->>GroupScheduleService: ScheduleSlot list
+            opt overlaps.Count > 0
+            end
+        end
+        opt startChanged || endChanged
+          GroupScheduleService->>GroupScheduleService: AddLog(slotId, changeType, oldStart, oldEnd, newStart, newEnd)
+            GroupScheduleService->>ScheduleChangeLogRepository: Add(log)
+        end
+        GroupScheduleService->>UnitOfWork: SaveChanges()
+        GroupScheduleService->>GroupScheduleService: SyncJobs(slot)
+          GroupScheduleService->>ScheduleJobService: ScheduleAllJobsForSlot(slot)
+          GroupScheduleService->>ScheduleJobService: CancelAllJobs(slotId)
+      GroupScheduleService-->>ScheduleSlotService: ScheduleSlotDto
+    end
     ScheduleSlotService->>ScheduleSlotService: ValidateRequest(request)
       opt request.EndTime <= request.StartTime
         ScheduleSlotService-->>ScheduleSlotsController: throw UserFriendlyException (400)
@@ -12382,7 +12554,7 @@ Table 3.68.3.a: ScheduleSlotsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSlot(Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `PUT /api/schedule-slots/{slotId}`. Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. Requires a signed-in user. |
+| 1 | `UpdateSlot(Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | `PUT /api/schedule-slots/{slotId}`. Validates and updates a slot of the user (a group slot is handled by the group schedule service: only the person who made it, who must still be the assignee). When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. Requires a signed-in user. |
 
 #### 3.68.3.b ScheduleSlotService
 
@@ -12390,7 +12562,7 @@ Table 3.68.3.b: ScheduleSlotService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `UpdateSlot(Guid userId, Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates and updates a slot of the user. When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. |
+| 1 | `UpdateSlot(Guid userId, Guid slotId, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Validates and updates a slot of the user (a group slot is handled by the group schedule service: only the person who made it, who must still be the assignee). When the slot is active and its time changed, or it just became active (for example Proposed to Approved), it may not overlap another active slot of the same user (409 SLOT_OVERLAP). A change of start or end is written to the change log; the task status is derived again and the Hangfire jobs are scheduled again. |
 | 2 | `private GetOwnedSlot(Guid userId, Guid slotId) : ScheduleSlot` | Loads the slot of the user or raises NotFoundException. |
 | 3 | `private ValidateRequest(ScheduleSlotRequestDto request)` | Checks that the end is after the start, the status is allowed, the explanation is not too long and K-bias is within range. |
 | 4 | `private ValidateReferences(Guid userId, Guid taskId, ScheduleSlotRequestDto request)` | Checks that the sub-task belongs to the task and that the referenced proposal exists. |
@@ -12407,30 +12579,79 @@ Table 3.68.3.c: ScheduleSlotRepository Description Table
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByIdForUser(Guid slotId, Guid userId) : ScheduleSlot` | Finds the ScheduleSlot by id only when its task belongs to the user. |
-| 2 | `SubTaskBelongsToTask(Guid subTaskId, Guid taskId) : bool` | True when the SubTask belongs to the given Task. |
-| 3 | `ProposalOwnedByUser(Guid proposalId, Guid userId) : bool` | True when the ScheduleProposal belongs to the user. |
-| 4 | `GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, startUtc, endUtc, excludeSlotId); returns nothing or an empty list when there is no match. |
+| 2 | `GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, startUtc, endUtc, excludeSlotId); returns nothing or an empty list when there is no match. |
+| 3 | `SubTaskBelongsToTask(Guid subTaskId, Guid taskId) : bool` | True when the SubTask belongs to the given Task. |
+| 4 | `ProposalOwnedByUser(Guid proposalId, Guid userId) : bool` | True when the ScheduleProposal belongs to the user. |
 
-#### 3.68.3.d ScheduleChangeLogRepository
+#### 3.68.3.d GroupScheduleService
 
-Table 3.68.3.d: ScheduleChangeLogRepository Description Table
+Table 3.68.3.d: GroupScheduleService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `UpdateSlot(Guid userId, ScheduleSlot slot, ScheduleSlotRequestDto request) : ScheduleSlotDto` | Called by the shared slot service for a group slot: only the person who made the slot, who must still be the assignee, may change its time or status. The same overlap rule applies, the change is logged and the reminder jobs are scheduled again. |
+| 2 | `private LoadItem(ScheduleSlot slot) : Tuple` | Loads the group slot, its task and the caller's access to the group, or raises 404. |
+| 3 | `private GetTask(Guid taskId) : GroupTask` | Loads a group task or raises 404. |
+| 4 | `private ValidateTimes(DateTimeOffset start, DateTimeOffset end, string explanation)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 5 | `private Minutes(DateTimeOffset start, DateTimeOffset end) : int` | Length of the slot in whole minutes (the proposed minutes). |
+| 6 | `private EnsureNoOverlap(Guid userId, ScheduleSlot slot)` | For an active slot, asks the repository for the person's other active slots (group or personal) that intersect its time and raises 409 SLOT_OVERLAP with the conflicting slots; touching ends are allowed and Proposed slots never block. |
+| 7 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (Created, Moved, Resized or Deleted, source Manual) for the slot. |
+| 8 | `private SyncJobs(ScheduleSlot slot)` | After the save: schedules the reminder jobs of an Approved slot, or cancels every job of a slot that is not active any more. |
+
+#### 3.68.3.e GroupWorkRepository
+
+Table 3.68.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.68.3.f GroupAccessService
+
+Table 3.68.3.f: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.68.3.g GroupRepository
+
+Table 3.68.3.g: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.68.3.h ScheduleChangeLogRepository
+
+Table 3.68.3.h: ScheduleChangeLogRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
 
-#### 3.68.3.e UnitOfWork
+#### 3.68.3.i UnitOfWork
 
-Table 3.68.3.e: UnitOfWork Description Table
+Table 3.68.3.i: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
-| 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+| 2 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
 
-#### 3.68.3.f TaskProgressService
+#### 3.68.3.j ScheduleJobService
 
-Table 3.68.3.f: TaskProgressService Description Table
+Table 3.68.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ScheduleAllJobsForSlot(ScheduleSlot slot)` | Removes the old Hangfire jobs of the slot and schedules all of its reminder and status jobs again from the current StartTime and EndTime. |
+| 2 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.68.3.k TaskProgressService
+
+Table 3.68.3.k: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -12442,18 +12663,9 @@ Table 3.68.3.f: TaskProgressService Description Table
 | 6 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 7 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.68.3.g ScheduleJobService
+#### 3.68.3.l AiServiceClient
 
-Table 3.68.3.g: ScheduleJobService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `ScheduleAllJobsForSlot(ScheduleSlot slot)` | Removes the old Hangfire jobs of the slot and schedules all of its reminder and status jobs again from the current StartTime and EndTime. |
-| 2 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
-
-#### 3.68.3.h AiServiceClient
-
-Table 3.68.3.h: AiServiceClient Description Table
+Table 3.68.3.l: AiServiceClient Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -12467,26 +12679,36 @@ Table 3.68.4: Methods used by this function
 |---|---|---|---|
 | 1 | ScheduleSlotsController.UpdateSlot | IScheduleSlotService.UpdateSlot | ScheduleSlotService |
 | 2 | ScheduleSlotService.GetOwnedSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
-| 3 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.SubTaskBelongsToTask | ScheduleSlotRepository |
-| 4 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.ProposalOwnedByUser | ScheduleSlotRepository |
-| 5 | ScheduleSlotService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
-| 6 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
-| 7 | ScheduleSlotService.UpdateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 8 | ScheduleSlotService.UpdateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
-| 9 | ScheduleSlotService.UpdateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
-| 10 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
-| 11 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 12 | ScheduleSlotService.UpdateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
-| 13 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 14 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
+| 3 | ScheduleSlotService.UpdateSlot | IGroupScheduleService.UpdateSlot | GroupScheduleService |
+| 4 | GroupScheduleService.GetTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 5 | GroupScheduleService.UpdateSlot | IGroupAccessService.GetAccess | GroupAccessService |
+| 6 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 8 | GroupScheduleService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
+| 9 | GroupScheduleService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 10 | GroupScheduleService.UpdateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 11 | GroupScheduleService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 12 | GroupScheduleService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 13 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.SubTaskBelongsToTask | ScheduleSlotRepository |
+| 14 | ScheduleSlotService.ValidateReferences | IScheduleSlotRepository.ProposalOwnedByUser | ScheduleSlotRepository |
+| 15 | ScheduleSlotService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
+| 16 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 17 | ScheduleSlotService.UpdateSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 18 | ScheduleSlotService.UpdateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 19 | ScheduleSlotService.UpdateSlot | ITaskProgressService.RefreshTask | TaskProgressService |
+| 20 | ScheduleSlotService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 21 | ScheduleSlotService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 22 | ScheduleSlotService.UpdateSlot | ITaskProgressService.AfterCommit | TaskProgressService |
+| 23 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 24 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
 
-Entities used: ScheduleSlot, SubTask, ScheduleProposal, ScheduleChangeLog.
+Entities used: ScheduleSlot, GroupTask, SubTask, GroupMember, WorkGroup, ScheduleChangeLog, ScheduleProposal.
 
 ---
 
 ## 3.69 Cancel Schedule Slot
 
-Marks the slot Cancelled (it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs.
+Marks the slot Cancelled (a group slot goes through the group schedule service; it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs.
 
 - **Endpoint:** `DELETE /api/schedule-slots/{slotId}`  
 - **Access:** Signed-in user
@@ -12516,14 +12738,38 @@ classDiagram
   class ScheduleSlotRepository {
     +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
   }
-  class IUnitOfWork {
+  class IGroupScheduleService {
     <<interface>>
-    +ExecuteInTransaction(Func~void~ action) void
-    +SaveChanges() int
+    +CancelSlot(Guid userId, ScheduleSlot slot) ScheduleSlotDto
   }
-  class UnitOfWork {
-    +ExecuteInTransaction(Func~void~ action) void
-    +SaveChanges() int
+  class GroupScheduleService {
+    +CancelSlot(Guid userId, ScheduleSlot slot) ScheduleSlotDto
+    -LoadItem(ScheduleSlot slot) Tuple
+    -GetTask(Guid taskId) GroupTask
+    -AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd) void
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
   }
   class IScheduleChangeLogRepository {
     <<interface>>
@@ -12531,6 +12777,22 @@ classDiagram
   }
   class ScheduleChangeLogRepository {
     +Add(ScheduleChangeLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+    +ExecuteInTransaction(Func~void~ action) void
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+    +ExecuteInTransaction(Func~void~ action) void
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
   }
   class ITaskProgressService {
     <<interface>>
@@ -12546,13 +12808,6 @@ classDiagram
     -RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted) void
     +AfterCommit(ProgressResult result) void
   }
-  class IScheduleJobService {
-    <<interface>>
-    +CancelAllJobs(Guid slotId) void
-  }
-  class ScheduleJobService {
-    +CancelAllJobs(Guid slotId) void
-  }
   class IAiServiceClient {
     <<interface>>
     +RecordTaskCompletion(Guid taskId) AiLearningResponseDto
@@ -12565,6 +12820,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -12576,6 +12834,51 @@ classDiagram
     -string Status
     -string GoogleEventId
     -bool SyncFailed
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
   }
   class ScheduleChangeLog {
     <<Entity>>
@@ -12591,6 +12894,13 @@ classDiagram
   }
   ScheduleSlotsController ..> IScheduleSlotService : uses
   ScheduleSlotService ..> IScheduleSlotRepository : uses
+  ScheduleSlotService ..> IGroupScheduleService : uses
+  GroupScheduleService ..> IGroupWorkRepository : uses
+  GroupScheduleService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupScheduleService ..> IScheduleChangeLogRepository : uses
+  GroupScheduleService ..> IUnitOfWork : uses
+  GroupScheduleService ..> IScheduleJobService : uses
   ScheduleSlotService ..> IUnitOfWork : uses
   ScheduleSlotService ..> IScheduleChangeLogRepository : uses
   ScheduleSlotService ..> ITaskProgressService : uses
@@ -12599,16 +12909,29 @@ classDiagram
   TaskProgressService ..> IAiServiceClient : uses
   IScheduleSlotService <|.. ScheduleSlotService : implements
   IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
+  IGroupScheduleService <|.. GroupScheduleService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
   IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
-  ITaskProgressService <|.. TaskProgressService : implements
+  IUnitOfWork <|.. UnitOfWork : implements
   IScheduleJobService <|.. ScheduleJobService : implements
+  ITaskProgressService <|.. TaskProgressService : implements
   IAiServiceClient <|.. AiServiceClient : implements
   ScheduleSlotRepository ..> ScheduleSlot
-  ScheduleSlotService ..> ScheduleChangeLog
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  GroupScheduleService ..> ScheduleChangeLog
   ScheduleChangeLogRepository ..> ScheduleChangeLog
+  ScheduleSlotService ..> ScheduleChangeLog
   TaskProgressService ..> ScheduleChangeLog
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
 Figure 3.69.1 Class Diagram
@@ -12623,10 +12946,14 @@ sequenceDiagram
   participant ScheduleSlotsController
   participant ScheduleSlotService
   participant ScheduleSlotRepository
-  participant UnitOfWork
+  participant GroupScheduleService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
   participant ScheduleChangeLogRepository
-  participant TaskProgressService
+  participant UnitOfWork
   participant ScheduleJobService
+  participant TaskProgressService
   participant AiServiceClient
   User->>UI: Cancel Schedule Slot
   UI->>ScheduleSlotsController: DELETE /api/schedule-slots/(slotId)
@@ -12637,6 +12964,33 @@ sequenceDiagram
       opt value is missing
         ScheduleSlotService-->>ScheduleSlotsController: throw NotFoundException (404)
       end
+    opt slot.GroupTaskId != null
+      ScheduleSlotService->>GroupScheduleService: CancelSlot(userId, slot)
+        GroupScheduleService->>GroupScheduleService: LoadItem(slot)
+          GroupScheduleService->>GroupScheduleService: GetTask(taskId)
+            GroupScheduleService->>GroupWorkRepository: GetTask(taskId)
+            GroupWorkRepository-->>GroupScheduleService: GroupTask
+            opt value is missing
+              GroupScheduleService-->>ScheduleSlotService: throw NotFoundException (404)
+            end
+        GroupScheduleService->>GroupAccessService: GetAccess(groupId, userId)
+          GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+          GroupRepository-->>GroupAccessService: GroupMember
+          GroupAccessService->>GroupRepository: GetGroup(groupId)
+          GroupRepository-->>GroupAccessService: WorkGroup
+          opt member == null || group == null
+            GroupAccessService-->>GroupScheduleService: throw NotFoundException (404)
+          end
+        GroupAccessService-->>GroupScheduleService: GroupAccess
+        opt slot.Status == CancelledStatus
+          GroupScheduleService-->>ScheduleSlotService: throw UserFriendlyException (400)
+        end
+        GroupScheduleService->>GroupScheduleService: AddLog(slotId, changeType, oldStart, oldEnd, newStart, newEnd)
+          GroupScheduleService->>ScheduleChangeLogRepository: Add(log)
+        GroupScheduleService->>UnitOfWork: SaveChanges()
+        GroupScheduleService->>ScheduleJobService: CancelAllJobs(slotId)
+      GroupScheduleService-->>ScheduleSlotService: ScheduleSlotDto
+    end
     opt slot.Status == CancelledStatus
       ScheduleSlotService-->>ScheduleSlotsController: throw UserFriendlyException (400)
     end
@@ -12671,7 +13025,7 @@ Table 3.69.3.a: ScheduleSlotsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CancelSlot(Guid slotId) : ScheduleSlotDto` | `DELETE /api/schedule-slots/{slotId}`. Marks the slot Cancelled (it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs. Requires a signed-in user. |
+| 1 | `CancelSlot(Guid slotId) : ScheduleSlotDto` | `DELETE /api/schedule-slots/{slotId}`. Marks the slot Cancelled (a group slot goes through the group schedule service; it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs. Requires a signed-in user. |
 
 #### 3.69.3.b ScheduleSlotService
 
@@ -12679,7 +13033,7 @@ Table 3.69.3.b: ScheduleSlotService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CancelSlot(Guid userId, Guid slotId) : ScheduleSlotDto` | Marks the slot Cancelled (it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs. |
+| 1 | `CancelSlot(Guid userId, Guid slotId) : ScheduleSlotDto` | Marks the slot Cancelled (a group slot goes through the group schedule service; it is not deleted, so the history stays; an already Cancelled slot is refused), writes a change log row and cancels all of its jobs. |
 | 2 | `private GetOwnedSlot(Guid userId, Guid slotId) : ScheduleSlot` | Loads the slot of the user or raises NotFoundException. |
 | 3 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (change type, old and new times, source Manual) for the slot. |
 | 4 | `private ToDto(ScheduleSlot slot) : ScheduleSlotDto` | Maps the entity to the DTO returned by the API. |
@@ -12692,26 +13046,70 @@ Table 3.69.3.c: ScheduleSlotRepository Description Table
 |---|---|---|
 | 1 | `GetByIdForUser(Guid slotId, Guid userId) : ScheduleSlot` | Finds the ScheduleSlot by id only when its task belongs to the user. |
 
-#### 3.69.3.d UnitOfWork
+#### 3.69.3.d GroupScheduleService
 
-Table 3.69.3.d: UnitOfWork Description Table
+Table 3.69.3.d: GroupScheduleService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
-| 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+| 1 | `CancelSlot(Guid userId, ScheduleSlot slot) : ScheduleSlotDto` | Called by the shared slot service for a group slot: marks the slot Cancelled (an in-progress slot cannot be cancelled directly), logs it, writes the activity row and cancels its jobs. |
+| 2 | `private LoadItem(ScheduleSlot slot) : Tuple` | Loads the group slot, its task and the caller's access to the group, or raises 404. |
+| 3 | `private GetTask(Guid taskId) : GroupTask` | Loads a group task or raises 404. |
+| 4 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (Created, Moved, Resized or Deleted, source Manual) for the slot. |
 
-#### 3.69.3.e ScheduleChangeLogRepository
+#### 3.69.3.e GroupWorkRepository
 
-Table 3.69.3.e: ScheduleChangeLogRepository Description Table
+Table 3.69.3.e: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.69.3.f GroupAccessService
+
+Table 3.69.3.f: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.69.3.g GroupRepository
+
+Table 3.69.3.g: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.69.3.h ScheduleChangeLogRepository
+
+Table 3.69.3.h: ScheduleChangeLogRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
 
-#### 3.69.3.f TaskProgressService
+#### 3.69.3.i UnitOfWork
 
-Table 3.69.3.f: TaskProgressService Description Table
+Table 3.69.3.i: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+| 2 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
+
+#### 3.69.3.j ScheduleJobService
+
+Table 3.69.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.69.3.k TaskProgressService
+
+Table 3.69.3.k: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -12723,17 +13121,9 @@ Table 3.69.3.f: TaskProgressService Description Table
 | 6 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 7 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.69.3.g ScheduleJobService
+#### 3.69.3.l AiServiceClient
 
-Table 3.69.3.g: ScheduleJobService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
-
-#### 3.69.3.h AiServiceClient
-
-Table 3.69.3.h: AiServiceClient Description Table
+Table 3.69.3.l: AiServiceClient Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -12747,16 +13137,24 @@ Table 3.69.4: Methods used by this function
 |---|---|---|---|
 | 1 | ScheduleSlotsController.CancelSlot | IScheduleSlotService.CancelSlot | ScheduleSlotService |
 | 2 | ScheduleSlotService.GetOwnedSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
-| 3 | ScheduleSlotService.CancelSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 4 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
-| 5 | ScheduleSlotService.CancelSlot | IUnitOfWork.SaveChanges | UnitOfWork |
-| 6 | ScheduleSlotService.CancelSlot | ITaskProgressService.RefreshTask | TaskProgressService |
-| 7 | ScheduleSlotService.CancelSlot | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 8 | ScheduleSlotService.CancelSlot | ITaskProgressService.AfterCommit | TaskProgressService |
-| 9 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
-| 10 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
+| 3 | ScheduleSlotService.CancelSlot | IGroupScheduleService.CancelSlot | GroupScheduleService |
+| 4 | GroupScheduleService.GetTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 5 | GroupScheduleService.CancelSlot | IGroupAccessService.GetAccess | GroupAccessService |
+| 6 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 7 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 8 | GroupScheduleService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 9 | GroupScheduleService.CancelSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 10 | GroupScheduleService.CancelSlot | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 11 | ScheduleSlotService.CancelSlot | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 12 | ScheduleSlotService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 13 | ScheduleSlotService.CancelSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | ScheduleSlotService.CancelSlot | ITaskProgressService.RefreshTask | TaskProgressService |
+| 15 | ScheduleSlotService.CancelSlot | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 16 | ScheduleSlotService.CancelSlot | ITaskProgressService.AfterCommit | TaskProgressService |
+| 17 | TaskProgressService.AfterCommit | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 18 | TaskProgressService.AfterCommit | IAiServiceClient.RecordTaskCompletion | AiServiceClient |
 
-Entities used: ScheduleSlot, ScheduleChangeLog.
+Entities used: ScheduleSlot, GroupTask, SubTask, GroupMember, WorkGroup, ScheduleChangeLog.
 
 ---
 
@@ -12802,6 +13200,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -12979,6 +13380,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -13578,7 +13982,7 @@ sequenceDiagram
     end
     ScheduleProposalService->>UnitOfWork: ExecuteInTransaction(action)
     ScheduleProposalService->>UnitOfWork: SaveChanges()
-    loop each taskId in toApprove.Select(s => s.TaskId).Distinct()
+    loop each taskId in toApprove.Where(s => s.TaskId != null).Select(s => s...
       ScheduleProposalService->>TaskProgressService: RefreshTask(taskId)
       TaskProgressService-->>ScheduleProposalService: ProgressResult
     end
@@ -14153,7 +14557,7 @@ Entities used: GoogleCalendarEvent.
 
 ## 3.79 View Calendar
 
-Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status.
+Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots (personal and group slots; a group slot has no task and carries the group and group task instead) and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status.
 
 - **Endpoint:** `GET /api/calendar`  
 - **Access:** Signed-in user
@@ -14213,6 +14617,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -14264,6 +14671,7 @@ classDiagram
   UserSetupRepository ..> GoogleConnection
   GoogleConnection "1" --> "0..*" GoogleCalendarEvent
   User "1" --> "0..1" GoogleConnection
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.79.1 Class Diagram
@@ -14314,7 +14722,7 @@ Table 3.79.3.a: CalendarController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetCalendar(DateTimeOffset from, DateTimeOffset to, bool includeCancelled) : CalendarDto` | `GET /api/calendar`. Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status. Requires a signed-in user. |
+| 1 | `GetCalendar(DateTimeOffset from, DateTimeOffset to, bool includeCancelled) : CalendarDto` | `GET /api/calendar`. Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots (personal and group slots; a group slot has no task and carries the group and group task instead) and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status. Requires a signed-in user. |
 
 #### 3.79.3.b CalendarViewService
 
@@ -14322,7 +14730,7 @@ Table 3.79.3.b: CalendarViewService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetCalendar(Guid userId, DateTimeOffset from, DateTimeOffset to, bool includeCancelled) : CalendarDto` | Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status. |
+| 1 | `GetCalendar(Guid userId, DateTimeOffset from, DateTimeOffset to, bool includeCancelled) : CalendarDto` | Checks the range (end after start, at most the maximum number of days), then merges the user's METANOIA slots (personal and group slots; a group slot has no task and carries the group and group task instead) and the cached Google events into one list ordered by start time, together with the working hours and the Google connection status. |
 
 #### 3.79.3.c CalendarRepository
 
@@ -14497,6 +14905,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -14571,6 +14982,7 @@ classDiagram
   SubTask "1" --> "0..*" ScheduleSlot
   ScheduleSlot "1" --> "0..*" FocusSession
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.80.1 Class Diagram
@@ -14876,6 +15288,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -14952,6 +15367,7 @@ classDiagram
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
   SubTask "1" --> "0..*" FocusSession
   SubTask "1" --> "0..*" ScheduleSlot
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.81.1 Class Diagram
@@ -15686,6 +16102,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -15747,6 +16166,7 @@ classDiagram
   FocusSessionController ..> User
   ScheduleSlot "1" --> "0..*" FocusSession
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.85.1 Class Diagram
@@ -16041,6 +16461,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -16109,6 +16532,7 @@ classDiagram
   Task "1" --> "0..*" ScheduleSlot
   ScheduleSlot "1" --> "0..*" FocusSession
   ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.86.1 Class Diagram
@@ -16333,6 +16757,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -16383,6 +16810,7 @@ classDiagram
   ScheduleSlotRepository ..> FocusSession
   FocusSessionController ..> User
   ScheduleSlot "1" --> "0..*" FocusSession
+  ScheduleSlot "*" --> "1" User
 ```
 
 Figure 3.87.1 Class Diagram
@@ -24463,6 +24891,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -25936,7 +26367,7 @@ Entities used: GroupMember, WorkGroup.
 
 ## 3.136 Change Member Role
 
-Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned).
+Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned), their running focus session in the group is stopped, and the schedule slots they had not started on that work are cancelled and they are notified.
 
 - **Endpoint:** `PUT /api/groups/{groupId}/members/{userId}`  
 - **Access:** Signed-in user
@@ -25978,12 +26409,34 @@ classDiagram
     +ClearAssignments(Guid groupId, Guid userId) int
     +GetMembers(Guid groupId) GroupMemberDto[]
   }
+  class GroupSlotCleanup {
+    +StageAllOfUserInGroup(Guid groupId, Guid userId) Result
+    -StopSession(GroupFocusSession session, DateTime now, string note) void
+    -Cancel(ScheduleSlot slot, Result result, DateTime now) void
+    +Finish(Result result, string reasonText) void
+  }
   class IGroupWorkRepository {
     <<interface>>
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
     +AddActivity(GroupActivityLog log) void
   }
   class GroupWorkRepository {
+    +GetRunningFocusSession(Guid userId) GroupFocusSession
     +AddActivity(GroupActivityLog log) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
   }
   class IUnitOfWork {
     <<interface>>
@@ -25991,6 +26444,20 @@ classDiagram
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
   }
   class GroupMember {
     <<Entity>>
@@ -26011,6 +26478,51 @@ classDiagram
     -string Status
     -DateTime CreatedAt
   }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
   class GroupActivityLog {
     <<Entity>>
     -Guid Id
@@ -26027,18 +26539,34 @@ classDiagram
   GroupService ..> IGroupAccessService : uses
   GroupAccessService ..> IGroupRepository : uses
   GroupService ..> IGroupRepository : uses
+  GroupService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IGroupWorkRepository : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
+  GroupSlotCleanup ..> IScheduleChangeLogRepository : uses
   GroupService ..> IGroupWorkRepository : uses
   GroupService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
+  GroupSlotCleanup ..> IGroupNotifier : uses
   IGroupService <|.. GroupService : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
+  IGroupNotifier <|.. GroupNotifier : implements
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
+  GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> GroupActivityLog
+  ScheduleSlotRepository ..> ScheduleSlot
+  GroupSlotCleanup ..> ScheduleChangeLog
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  GroupFocusSession "*" --> "1" ScheduleSlot
 ```
 
 Figure 3.136.1 Class Diagram
@@ -26054,8 +26582,13 @@ sequenceDiagram
   participant GroupService
   participant GroupAccessService
   participant GroupRepository
+  participant GroupSlotCleanup
   participant GroupWorkRepository
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
   participant UnitOfWork
+  participant ScheduleJobService
+  participant GroupNotifier
   Group Leader->>UI: Change Member Role
   UI->>GroupsController: PUT /api/groups/(groupId)/members/(userId)
   GroupsController->>GroupService: ChangeMemberRole(userId, groupId, memberUserId, request)
@@ -26085,9 +26618,28 @@ sequenceDiagram
       opt request.Role == GroupRoles.Viewer
         GroupService->>GroupRepository: ClearAssignments(groupId, userId)
         GroupRepository-->>GroupService: int
+        GroupService->>GroupSlotCleanup: StageAllOfUserInGroup(groupId, userId)
+          GroupSlotCleanup->>GroupWorkRepository: GetRunningFocusSession(userId)
+          GroupWorkRepository-->>GroupSlotCleanup: GroupFocusSession
+          GroupSlotCleanup->>ScheduleSlotRepository: GetOpenSlotsOfUserInGroup(userId, groupId)
+          ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+          loop each slot in slots.GetOpenSlotsOfUserInGroup(userId, groupId)
+            GroupSlotCleanup->>GroupSlotCleanup: Cancel(slot, result, now)
+              GroupSlotCleanup->>ScheduleChangeLogRepository: Add(log)
+          end
+        GroupSlotCleanup-->>GroupService: Result
       end
       GroupService->>GroupWorkRepository: AddActivity(log)
       GroupService->>UnitOfWork: SaveChanges()
+      opt cleanup != null
+        GroupService->>GroupSlotCleanup: Finish(result, reasonText)
+          loop each slot in result.Cancelled
+            GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+          end
+          loop each group in result.Cancelled.GroupBy(c => (c.UserId, c.GroupTaskId))
+            GroupSlotCleanup->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+          end
+      end
     end
     GroupService->>GroupRepository: GetMembers(groupId)
     GroupRepository-->>GroupService: GroupMemberDto list
@@ -26106,7 +26658,7 @@ Table 3.136.3.a: GroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ChangeMemberRole(Guid groupId, Guid userId, GroupMemberRoleRequestDto request) : GroupMemberDto` | `PUT /api/groups/{groupId}/members/{userId}`. Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned). Requires a signed-in user. |
+| 1 | `ChangeMemberRole(Guid groupId, Guid userId, GroupMemberRoleRequestDto request) : GroupMemberDto` | `PUT /api/groups/{groupId}/members/{userId}`. Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned), their running focus session in the group is stopped, and the schedule slots they had not started on that work are cancelled and they are notified. Requires a signed-in user. |
 
 #### 3.136.3.b GroupService
 
@@ -26114,7 +26666,7 @@ Table 3.136.3.b: GroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `ChangeMemberRole(Guid userId, Guid groupId, Guid memberUserId, GroupMemberRoleRequestDto request) : GroupMemberDto` | Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned). |
+| 1 | `ChangeMemberRole(Guid userId, Guid groupId, Guid memberUserId, GroupMemberRoleRequestDto request) : GroupMemberDto` | Leader only, active group only. Changes a member's role to Leader, Member or Viewer. The last Leader cannot be demoted, and a member who becomes a Viewer loses every task and sub-task assigned to them (they become unassigned), their running focus session in the group is stopped, and the schedule slots they had not started on that work are cancelled and they are notified. |
 
 #### 3.136.3.c GroupAccessService
 
@@ -26136,21 +26688,65 @@ Table 3.136.3.d: GroupRepository Description Table
 | 4 | `ClearAssignments(Guid groupId, Guid userId) : int` | Sets the assignee of every task and sub-task of the group that belongs to the user to null (unassigned) and returns how many rows were changed. |
 | 5 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.136.3.e GroupWorkRepository
+#### 3.136.3.e GroupSlotCleanup
 
-Table 3.136.3.e: GroupWorkRepository Description Table
+Table 3.136.3.e: GroupSlotCleanup Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 1 | `StageAllOfUserInGroup(Guid groupId, Guid userId) : Result` | Same as above for everything one person has in a group: used when a member is removed, leaves or becomes a Viewer. |
+| 2 | `Finish(Result result, string reasonText)` | After the save: cancels the reminder jobs of the cancelled slots and notifies each previous assignee how many of their slots were cancelled and why. |
+| 3 | `private StopSession(GroupFocusSession session, DateTime now, string note)` | Stops the person's running group session on the work with reason Other and a note that the work was given to someone else; the minutes stay with the person. |
+| 4 | `private Cancel(ScheduleSlot slot, Result result, DateTime now)` | Cancels one slot: an in-progress slot goes through Due first (the status rules do not allow a direct cancel), a change log row is added and the slot is remembered so that its jobs are cancelled after the save. |
 
-#### 3.136.3.f UnitOfWork
+#### 3.136.3.f GroupWorkRepository
 
-Table 3.136.3.f: UnitOfWork Description Table
+Table 3.136.3.f: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+
+#### 3.136.3.g ScheduleSlotRepository
+
+Table 3.136.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.136.3.h ScheduleChangeLogRepository
+
+Table 3.136.3.h: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.136.3.i UnitOfWork
+
+Table 3.136.3.i: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.136.3.j ScheduleJobService
+
+Table 3.136.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.136.3.k GroupNotifier
+
+Table 3.136.3.k: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
 ### 3.136.4 Methods Used
 
@@ -26165,17 +26761,24 @@ Table 3.136.4: Methods used by this function
 | 5 | GroupService.ChangeMemberRole | IGroupRepository.GetMember | GroupRepository |
 | 6 | GroupService.ChangeMemberRole | IGroupRepository.CountLeaders | GroupRepository |
 | 7 | GroupService.ChangeMemberRole | IGroupRepository.ClearAssignments | GroupRepository |
-| 8 | GroupService.ChangeMemberRole | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 9 | GroupService.ChangeMemberRole | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | GroupService.ChangeMemberRole | IGroupRepository.GetMembers | GroupRepository |
+| 8 | GroupService.ChangeMemberRole | GroupSlotCleanup.StageAllOfUserInGroup |  |
+| 9 | GroupSlotCleanup.StageAllOfUserInGroup | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 10 | GroupSlotCleanup.StageAllOfUserInGroup | IScheduleSlotRepository.GetOpenSlotsOfUserInGroup | ScheduleSlotRepository |
+| 11 | GroupSlotCleanup.Cancel | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 12 | GroupService.ChangeMemberRole | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupService.ChangeMemberRole | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | GroupService.ChangeMemberRole | GroupSlotCleanup.Finish |  |
+| 15 | GroupSlotCleanup.Finish | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 16 | GroupSlotCleanup.Finish | IGroupNotifier.Notify | GroupNotifier |
+| 17 | GroupService.ChangeMemberRole | IGroupRepository.GetMembers | GroupRepository |
 
-Entities used: GroupMember, WorkGroup, GroupActivityLog.
+Entities used: GroupMember, WorkGroup, GroupFocusSession, ScheduleSlot, ScheduleChangeLog, GroupActivityLog.
 
 ---
 
 ## 3.137 Remove Member
 
-Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped.
+Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned, a focus session they still have running in this group is stopped, and the schedule slots they had not started in this group are cancelled and they are notified.
 
 - **Endpoint:** `DELETE /api/groups/{groupId}/members/{userId}`  
 - **Access:** Signed-in user
@@ -26227,12 +26830,47 @@ classDiagram
     +GetRunningFocusSession(Guid userId) GroupFocusSession
     +AddActivity(GroupActivityLog log) void
   }
+  class GroupSlotCleanup {
+    +StageAllOfUserInGroup(Guid groupId, Guid userId) Result
+    -StopSession(GroupFocusSession session, DateTime now, string note) void
+    -Cancel(ScheduleSlot slot, Result result, DateTime now) void
+    +Finish(Result result, string reasonText) void
+    +FinishDeleted(Guid[] slotIds) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
+  }
   class IUnitOfWork {
     <<interface>>
     +SaveChanges() int
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
   }
   class GroupMember {
     <<Entity>>
@@ -26264,6 +26902,39 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
   }
   class GroupActivityLog {
     <<Entity>>
@@ -26282,18 +26953,33 @@ classDiagram
   GroupAccessService ..> IGroupRepository : uses
   GroupService ..> IGroupRepository : uses
   GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IGroupWorkRepository : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
+  GroupSlotCleanup ..> IScheduleChangeLogRepository : uses
   GroupService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
+  GroupSlotCleanup ..> IGroupNotifier : uses
   IGroupService <|.. GroupService : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
+  IGroupNotifier <|.. GroupNotifier : implements
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
   GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> GroupActivityLog
+  ScheduleSlotRepository ..> ScheduleSlot
+  GroupSlotCleanup ..> ScheduleChangeLog
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  GroupFocusSession "*" --> "1" ScheduleSlot
 ```
 
 Figure 3.137.1 Class Diagram
@@ -26310,7 +26996,12 @@ sequenceDiagram
   participant GroupAccessService
   participant GroupRepository
   participant GroupWorkRepository
+  participant GroupSlotCleanup
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
   participant UnitOfWork
+  participant ScheduleJobService
+  participant GroupNotifier
   Group Leader->>UI: Remove Member
   UI->>GroupsController: DELETE /api/groups/(groupId)/members/(userId)
   GroupsController->>GroupService: RemoveMember(userId, groupId, memberUserId)
@@ -26338,9 +27029,35 @@ sequenceDiagram
       GroupRepository-->>GroupService: int
       GroupService->>GroupWorkRepository: GetRunningFocusSession(userId)
       GroupWorkRepository-->>GroupService: GroupFocusSession
+      GroupService->>GroupSlotCleanup: StageAllOfUserInGroup(groupId, userId)
+        GroupSlotCleanup->>GroupWorkRepository: GetRunningFocusSession(userId)
+        GroupWorkRepository-->>GroupSlotCleanup: GroupFocusSession
+        GroupSlotCleanup->>ScheduleSlotRepository: GetOpenSlotsOfUserInGroup(userId, groupId)
+        ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+        loop each slot in slots.GetOpenSlotsOfUserInGroup(userId, groupId)
+          GroupSlotCleanup->>GroupSlotCleanup: Cancel(slot, result, now)
+            GroupSlotCleanup->>ScheduleChangeLogRepository: Add(log)
+        end
+      GroupSlotCleanup-->>GroupService: Result
       GroupService->>GroupRepository: RemoveMember(member)
       GroupService->>GroupWorkRepository: AddActivity(log)
       GroupService->>UnitOfWork: SaveChanges()
+      alt actorId != memberUserId
+        GroupService->>GroupSlotCleanup: Finish(result, reasonText)
+          loop each slot in result.Cancelled
+            GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+          end
+          loop each group in result.Cancelled.GroupBy(c => (c.UserId, c.GroupTaskId))
+            GroupSlotCleanup->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+          end
+      else
+        loop each slot in cleanup.Cancelled
+          GroupService->>GroupSlotCleanup: FinishDeleted(slotIds)
+            loop each slotId in slotIds
+              GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+            end
+        end
+      end
   GroupsController-->>UI: 204 No Content
   UI-->>Group Leader: Show result
 ```
@@ -26355,7 +27072,7 @@ Table 3.137.3.a: GroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `RemoveMember(Guid groupId, Guid userId) : IActionResult` | `DELETE /api/groups/{groupId}/members/{userId}`. Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped. Requires a signed-in user. |
+| 1 | `RemoveMember(Guid groupId, Guid userId) : IActionResult` | `DELETE /api/groups/{groupId}/members/{userId}`. Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned, a focus session they still have running in this group is stopped, and the schedule slots they had not started in this group are cancelled and they are notified. Requires a signed-in user. |
 
 #### 3.137.3.b GroupService
 
@@ -26363,7 +27080,7 @@ Table 3.137.3.b: GroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `RemoveMember(Guid userId, Guid groupId, Guid memberUserId)` | Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned and a focus session they still have running in this group is stopped. |
+| 1 | `RemoveMember(Guid userId, Guid groupId, Guid memberUserId)` | Leader only. Removes a member. The last Leader cannot be removed; the work assigned to the member becomes unassigned, a focus session they still have running in this group is stopped, and the schedule slots they had not started in this group are cancelled and they are notified. |
 | 2 | `private RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action)` | Shared by removing a member and by leaving a group: refuses to remove the last Leader, clears the member's assigned work, stops the member's running focus session of this group, removes the membership and writes the activity row. |
 
 #### 3.137.3.c GroupAccessService
@@ -26395,13 +27112,57 @@ Table 3.137.3.e: GroupWorkRepository Description Table
 | 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
 | 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
-#### 3.137.3.f UnitOfWork
+#### 3.137.3.f GroupSlotCleanup
 
-Table 3.137.3.f: UnitOfWork Description Table
+Table 3.137.3.f: GroupSlotCleanup Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StageAllOfUserInGroup(Guid groupId, Guid userId) : Result` | Same as above for everything one person has in a group: used when a member is removed, leaves or becomes a Viewer. |
+| 2 | `Finish(Result result, string reasonText)` | After the save: cancels the reminder jobs of the cancelled slots and notifies each previous assignee how many of their slots were cancelled and why. |
+| 3 | `FinishDeleted(Guid[] slotIds)` | After the save: cancels the reminder jobs of the slots that were removed with a deleted task. |
+| 4 | `private StopSession(GroupFocusSession session, DateTime now, string note)` | Stops the person's running group session on the work with reason Other and a note that the work was given to someone else; the minutes stay with the person. |
+| 5 | `private Cancel(ScheduleSlot slot, Result result, DateTime now)` | Cancels one slot: an in-progress slot goes through Due first (the status rules do not allow a direct cancel), a change log row is added and the slot is remembered so that its jobs are cancelled after the save. |
+
+#### 3.137.3.g ScheduleSlotRepository
+
+Table 3.137.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.137.3.h ScheduleChangeLogRepository
+
+Table 3.137.3.h: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.137.3.i UnitOfWork
+
+Table 3.137.3.i: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.137.3.j ScheduleJobService
+
+Table 3.137.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.137.3.k GroupNotifier
+
+Table 3.137.3.k: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
 ### 3.137.4 Methods Used
 
@@ -26417,17 +27178,26 @@ Table 3.137.4: Methods used by this function
 | 6 | GroupService.RemoveCore | IGroupRepository.CountLeaders | GroupRepository |
 | 7 | GroupService.RemoveCore | IGroupRepository.ClearAssignments | GroupRepository |
 | 8 | GroupService.RemoveCore | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
-| 9 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
-| 10 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 11 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | GroupService.RemoveCore | GroupSlotCleanup.StageAllOfUserInGroup |  |
+| 10 | GroupSlotCleanup.StageAllOfUserInGroup | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 11 | GroupSlotCleanup.StageAllOfUserInGroup | IScheduleSlotRepository.GetOpenSlotsOfUserInGroup | ScheduleSlotRepository |
+| 12 | GroupSlotCleanup.Cancel | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 13 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
+| 14 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 15 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | GroupService.RemoveCore | GroupSlotCleanup.Finish |  |
+| 17 | GroupSlotCleanup.Finish | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 18 | GroupSlotCleanup.Finish | IGroupNotifier.Notify | GroupNotifier |
+| 19 | GroupService.RemoveCore | GroupSlotCleanup.FinishDeleted |  |
+| 20 | GroupSlotCleanup.FinishDeleted | IScheduleJobService.CancelAllJobs | ScheduleJobService |
 
-Entities used: GroupMember, WorkGroup, GroupFocusSession, GroupActivityLog.
+Entities used: GroupMember, WorkGroup, GroupFocusSession, ScheduleSlot, ScheduleChangeLog, GroupActivityLog.
 
 ---
 
 ## 3.138 Leave Group
 
-Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped.
+Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned, a running focus session is stopped and the schedule slots they had not started in the group are cancelled.
 
 - **Endpoint:** `POST /api/groups/{groupId}/leave`  
 - **Access:** Signed-in user
@@ -26479,12 +27249,47 @@ classDiagram
     +GetRunningFocusSession(Guid userId) GroupFocusSession
     +AddActivity(GroupActivityLog log) void
   }
+  class GroupSlotCleanup {
+    +StageAllOfUserInGroup(Guid groupId, Guid userId) Result
+    -StopSession(GroupFocusSession session, DateTime now, string note) void
+    -Cancel(ScheduleSlot slot, Result result, DateTime now) void
+    +Finish(Result result, string reasonText) void
+    +FinishDeleted(Guid[] slotIds) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) ScheduleSlot[]
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
+  }
   class IUnitOfWork {
     <<interface>>
     +SaveChanges() int
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
+  }
+  class IGroupNotifier {
+    <<interface>>
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
+  }
+  class GroupNotifier {
+    +Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId) void
   }
   class GroupMember {
     <<Entity>>
@@ -26516,6 +27321,39 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
   }
   class GroupActivityLog {
     <<Entity>>
@@ -26534,18 +27372,33 @@ classDiagram
   GroupAccessService ..> IGroupRepository : uses
   GroupService ..> IGroupRepository : uses
   GroupService ..> IGroupWorkRepository : uses
+  GroupService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IGroupWorkRepository : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
+  GroupSlotCleanup ..> IScheduleChangeLogRepository : uses
   GroupService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
+  GroupSlotCleanup ..> IGroupNotifier : uses
   IGroupService <|.. GroupService : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
+  IGroupNotifier <|.. GroupNotifier : implements
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
   GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> GroupActivityLog
+  ScheduleSlotRepository ..> ScheduleSlot
+  GroupSlotCleanup ..> ScheduleChangeLog
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  GroupFocusSession "*" --> "1" ScheduleSlot
 ```
 
 Figure 3.138.1 Class Diagram
@@ -26562,7 +27415,12 @@ sequenceDiagram
   participant GroupAccessService
   participant GroupRepository
   participant GroupWorkRepository
+  participant GroupSlotCleanup
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
   participant UnitOfWork
+  participant ScheduleJobService
+  participant GroupNotifier
   User->>UI: Leave Group
   UI->>GroupsController: POST /api/groups/(groupId)/leave
   GroupsController->>GroupService: LeaveGroup(userId, groupId)
@@ -26590,9 +27448,35 @@ sequenceDiagram
       GroupRepository-->>GroupService: int
       GroupService->>GroupWorkRepository: GetRunningFocusSession(userId)
       GroupWorkRepository-->>GroupService: GroupFocusSession
+      GroupService->>GroupSlotCleanup: StageAllOfUserInGroup(groupId, userId)
+        GroupSlotCleanup->>GroupWorkRepository: GetRunningFocusSession(userId)
+        GroupWorkRepository-->>GroupSlotCleanup: GroupFocusSession
+        GroupSlotCleanup->>ScheduleSlotRepository: GetOpenSlotsOfUserInGroup(userId, groupId)
+        ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+        loop each slot in slots.GetOpenSlotsOfUserInGroup(userId, groupId)
+          GroupSlotCleanup->>GroupSlotCleanup: Cancel(slot, result, now)
+            GroupSlotCleanup->>ScheduleChangeLogRepository: Add(log)
+        end
+      GroupSlotCleanup-->>GroupService: Result
       GroupService->>GroupRepository: RemoveMember(member)
       GroupService->>GroupWorkRepository: AddActivity(log)
       GroupService->>UnitOfWork: SaveChanges()
+      alt actorId != memberUserId
+        GroupService->>GroupSlotCleanup: Finish(result, reasonText)
+          loop each slot in result.Cancelled
+            GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+          end
+          loop each group in result.Cancelled.GroupBy(c => (c.UserId, c.GroupTaskId))
+            GroupSlotCleanup->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+          end
+      else
+        loop each slot in cleanup.Cancelled
+          GroupService->>GroupSlotCleanup: FinishDeleted(slotIds)
+            loop each slotId in slotIds
+              GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+            end
+        end
+      end
   GroupsController-->>UI: 204 No Content
   UI-->>User: Show result
 ```
@@ -26607,7 +27491,7 @@ Table 3.138.3.a: GroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `LeaveGroup(Guid groupId) : IActionResult` | `POST /api/groups/{groupId}/leave`. Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped. Requires a signed-in user. |
+| 1 | `LeaveGroup(Guid groupId) : IActionResult` | `POST /api/groups/{groupId}/leave`. Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned, a running focus session is stopped and the schedule slots they had not started in the group are cancelled. Requires a signed-in user. |
 
 #### 3.138.3.b GroupService
 
@@ -26615,7 +27499,7 @@ Table 3.138.3.b: GroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `LeaveGroup(Guid userId, Guid groupId)` | Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned and a running focus session is stopped. |
+| 1 | `LeaveGroup(Guid userId, Guid groupId)` | Lets a member leave the group on their own. The same protections apply as for removal: the last Leader cannot leave, assigned work becomes unassigned, a running focus session is stopped and the schedule slots they had not started in the group are cancelled. |
 | 2 | `private RemoveCore(Guid groupId, Guid actorId, Guid memberUserId, string action)` | Shared by removing a member and by leaving a group: refuses to remove the last Leader, clears the member's assigned work, stops the member's running focus session of this group, removes the membership and writes the activity row. |
 
 #### 3.138.3.c GroupAccessService
@@ -26647,13 +27531,57 @@ Table 3.138.3.e: GroupWorkRepository Description Table
 | 1 | `GetRunningFocusSession(Guid userId) : GroupFocusSession` | Reads the GroupFocusSession matching (userId); returns nothing or an empty list when there is no match. |
 | 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
-#### 3.138.3.f UnitOfWork
+#### 3.138.3.f GroupSlotCleanup
 
-Table 3.138.3.f: UnitOfWork Description Table
+Table 3.138.3.f: GroupSlotCleanup Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StageAllOfUserInGroup(Guid groupId, Guid userId) : Result` | Same as above for everything one person has in a group: used when a member is removed, leaves or becomes a Viewer. |
+| 2 | `Finish(Result result, string reasonText)` | After the save: cancels the reminder jobs of the cancelled slots and notifies each previous assignee how many of their slots were cancelled and why. |
+| 3 | `FinishDeleted(Guid[] slotIds)` | After the save: cancels the reminder jobs of the slots that were removed with a deleted task. |
+| 4 | `private StopSession(GroupFocusSession session, DateTime now, string note)` | Stops the person's running group session on the work with reason Other and a note that the work was given to someone else; the minutes stay with the person. |
+| 5 | `private Cancel(ScheduleSlot slot, Result result, DateTime now)` | Cancels one slot: an in-progress slot goes through Due first (the status rules do not allow a direct cancel), a change log row is added and the slot is remembered so that its jobs are cancelled after the save. |
+
+#### 3.138.3.g ScheduleSlotRepository
+
+Table 3.138.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOpenSlotsOfUserInGroup(Guid userId, Guid groupId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.138.3.h ScheduleChangeLogRepository
+
+Table 3.138.3.h: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.138.3.i UnitOfWork
+
+Table 3.138.3.i: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.138.3.j ScheduleJobService
+
+Table 3.138.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.138.3.k GroupNotifier
+
+Table 3.138.3.k: GroupNotifier Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
 ### 3.138.4 Methods Used
 
@@ -26669,11 +27597,20 @@ Table 3.138.4: Methods used by this function
 | 6 | GroupService.RemoveCore | IGroupRepository.CountLeaders | GroupRepository |
 | 7 | GroupService.RemoveCore | IGroupRepository.ClearAssignments | GroupRepository |
 | 8 | GroupService.RemoveCore | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
-| 9 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
-| 10 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 11 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 9 | GroupService.RemoveCore | GroupSlotCleanup.StageAllOfUserInGroup |  |
+| 10 | GroupSlotCleanup.StageAllOfUserInGroup | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
+| 11 | GroupSlotCleanup.StageAllOfUserInGroup | IScheduleSlotRepository.GetOpenSlotsOfUserInGroup | ScheduleSlotRepository |
+| 12 | GroupSlotCleanup.Cancel | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 13 | GroupService.RemoveCore | IGroupRepository.RemoveMember | GroupRepository |
+| 14 | GroupService.RemoveCore | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 15 | GroupService.RemoveCore | IUnitOfWork.SaveChanges | UnitOfWork |
+| 16 | GroupService.RemoveCore | GroupSlotCleanup.Finish |  |
+| 17 | GroupSlotCleanup.Finish | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 18 | GroupSlotCleanup.Finish | IGroupNotifier.Notify | GroupNotifier |
+| 19 | GroupService.RemoveCore | GroupSlotCleanup.FinishDeleted |  |
+| 20 | GroupSlotCleanup.FinishDeleted | IScheduleJobService.CancelAllJobs | ScheduleJobService |
 
-Entities used: GroupMember, WorkGroup, GroupFocusSession, GroupActivityLog.
+Entities used: GroupMember, WorkGroup, GroupFocusSession, ScheduleSlot, ScheduleChangeLog, GroupActivityLog.
 
 ---
 
@@ -29813,6 +30750,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -29904,6 +30844,8 @@ classDiagram
   GroupTask "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
   GroupActivityLog "*" --> "1" User
 ```
 
@@ -30486,6 +31428,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -30574,6 +31519,8 @@ classDiagram
   GroupTask "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
   GroupActivityLog "*" --> "1" User
 ```
 
@@ -30778,7 +31725,7 @@ Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupMilestone, Sched
 
 ## 3.155 Delete Group Task
 
-Leader only. Deletes a task together with its sub-tasks and comments.
+Leader only. Deletes a task together with its sub-tasks, comments and the schedule slots members made for it (a running session on it is stopped and its slots' reminder jobs are cancelled).
 
 - **Endpoint:** `DELETE /api/group-tasks/{taskId}`  
 - **Access:** Signed-in user
@@ -30826,12 +31773,32 @@ classDiagram
     +GetMember(Guid groupId, Guid userId) GroupMember
     +GetGroup(Guid groupId) WorkGroup
   }
+  class GroupSlotCleanup {
+    +StageDeleteSlotsOfTask(Guid groupTaskId) Guid[]
+    +FinishDeleted(Guid[] slotIds) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetSlotsWithLogsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+    +Remove(ScheduleSlot slot) void
+  }
+  class ScheduleSlotRepository {
+    +GetSlotsWithLogsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+    +Remove(ScheduleSlot slot) void
+  }
   class IUnitOfWork {
     <<interface>>
     +SaveChanges() int
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
   }
   class GroupTask {
     <<Entity>>
@@ -30878,6 +31845,38 @@ classDiagram
     -string Status
     -DateTime CreatedAt
   }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
   class GroupActivityLog {
     <<Entity>>
     -Guid Id
@@ -30894,20 +31893,30 @@ classDiagram
   GroupTaskService ..> IGroupWorkRepository : uses
   GroupTaskService ..> IGroupAccessService : uses
   GroupAccessService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
   GroupTaskService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
   IGroupTaskService <|.. GroupTaskService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
   GroupWorkRepository ..> GroupTask
   GroupWorkRepository ..> SubTask
   GroupWorkRepository ..> GroupActivityLog
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
+  ScheduleSlotRepository ..> ScheduleSlot
+  ScheduleSlotRepository ..> ScheduleChangeLog
+  SubTask "1" --> "0..*" ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupTask
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
 Figure 3.155.1 Class Diagram
@@ -30924,7 +31933,10 @@ sequenceDiagram
   participant GroupWorkRepository
   participant GroupAccessService
   participant GroupRepository
+  participant GroupSlotCleanup
+  participant ScheduleSlotRepository
   participant UnitOfWork
+  participant ScheduleJobService
   Group Leader->>UI: Delete Group Task
   UI->>GroupWorkController: DELETE /api/group-tasks/(taskId)
   GroupWorkController->>GroupTaskService: DeleteTask(userId, taskId)
@@ -30943,9 +31955,20 @@ sequenceDiagram
         GroupAccessService-->>GroupTaskService: throw NotFoundException (404)
       end
     GroupAccessService-->>GroupTaskService: GroupAccess
+    GroupTaskService->>GroupSlotCleanup: StageDeleteSlotsOfTask(groupTaskId)
+      GroupSlotCleanup->>ScheduleSlotRepository: GetSlotsWithLogsOfGroupTask(groupTaskId)
+      ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+      loop each slot in slots
+        GroupSlotCleanup->>ScheduleSlotRepository: Remove(slot)
+      end
+    GroupSlotCleanup-->>GroupTaskService: Guid list
     GroupTaskService->>GroupWorkRepository: RemoveTask(task)
     GroupTaskService->>GroupWorkRepository: AddActivity(log)
     GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupSlotCleanup: FinishDeleted(slotIds)
+      loop each slotId in slotIds
+        GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+      end
   GroupWorkController-->>UI: 204 No Content
   UI-->>Group Leader: Show result
 ```
@@ -30960,7 +31983,7 @@ Table 3.155.3.a: GroupWorkController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `DeleteTask(Guid taskId) : IActionResult` | `DELETE /api/group-tasks/{taskId}`. Leader only. Deletes a task together with its sub-tasks and comments. Requires a signed-in user. |
+| 1 | `DeleteTask(Guid taskId) : IActionResult` | `DELETE /api/group-tasks/{taskId}`. Leader only. Deletes a task together with its sub-tasks, comments and the schedule slots members made for it (a running session on it is stopped and its slots' reminder jobs are cancelled). Requires a signed-in user. |
 
 #### 3.155.3.b GroupTaskService
 
@@ -30968,7 +31991,7 @@ Table 3.155.3.b: GroupTaskService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `DeleteTask(Guid userId, Guid taskId)` | Leader only. Deletes a task together with its sub-tasks and comments. |
+| 1 | `DeleteTask(Guid userId, Guid taskId)` | Leader only. Deletes a task together with its sub-tasks, comments and the schedule slots members made for it (a running session on it is stopped and its slots' reminder jobs are cancelled). |
 | 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
 
 #### 3.155.3.c GroupWorkRepository
@@ -30998,13 +32021,39 @@ Table 3.155.3.e: GroupRepository Description Table
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.155.3.f UnitOfWork
+#### 3.155.3.f GroupSlotCleanup
 
-Table 3.155.3.f: UnitOfWork Description Table
+Table 3.155.3.f: GroupSlotCleanup Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StageDeleteSlotsOfTask(Guid groupTaskId) : Guid[]` | Removes the slots of a task that is being deleted and returns the ids whose reminder jobs must be cancelled. |
+| 2 | `FinishDeleted(Guid[] slotIds)` | After the save: cancels the reminder jobs of the slots that were removed with a deleted task. |
+
+#### 3.155.3.g ScheduleSlotRepository
+
+Table 3.155.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlotsWithLogsOfGroupTask(Guid groupTaskId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupTaskId); returns nothing or an empty list when there is no match. |
+| 2 | `Remove(ScheduleSlot slot)` | Marks the ScheduleSlot for deletion; it is removed when the unit of work is saved. |
+
+#### 3.155.3.h UnitOfWork
+
+Table 3.155.3.h: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.155.3.i ScheduleJobService
+
+Table 3.155.3.i: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
 
 ### 3.155.4 Methods Used
 
@@ -31017,11 +32066,16 @@ Table 3.155.4: Methods used by this function
 | 3 | GroupTaskService.DeleteTask | IGroupAccessService.GetAccess | GroupAccessService |
 | 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
 | 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
-| 6 | GroupTaskService.DeleteTask | IGroupWorkRepository.RemoveTask | GroupWorkRepository |
-| 7 | GroupTaskService.DeleteTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 8 | GroupTaskService.DeleteTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 6 | GroupTaskService.DeleteTask | GroupSlotCleanup.StageDeleteSlotsOfTask |  |
+| 7 | GroupSlotCleanup.StageDeleteSlotsOfTask | IScheduleSlotRepository.GetSlotsWithLogsOfGroupTask | ScheduleSlotRepository |
+| 8 | GroupSlotCleanup.StageDeleteSlotsOfTask | IScheduleSlotRepository.Remove | ScheduleSlotRepository |
+| 9 | GroupTaskService.DeleteTask | IGroupWorkRepository.RemoveTask | GroupWorkRepository |
+| 10 | GroupTaskService.DeleteTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupTaskService.DeleteTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 12 | GroupTaskService.DeleteTask | GroupSlotCleanup.FinishDeleted |  |
+| 13 | GroupSlotCleanup.FinishDeleted | IScheduleJobService.CancelAllJobs | ScheduleJobService |
 
-Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupActivityLog.
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, ScheduleChangeLog, GroupActivityLog.
 
 ---
 
@@ -31376,7 +32430,7 @@ Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupMilestone, Group
 
 ## 3.157 Assign Group Task
 
-Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified.
+Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. When the work changes hands, the previous assignee's running session on it is stopped and their schedule slots that had not started are cancelled (they are notified); the new assignee schedules their own time.
 
 - **Endpoint:** `PUT /api/group-tasks/{taskId}/assignee`  
 - **Access:** Signed-in user
@@ -31399,6 +32453,7 @@ classDiagram
     -EnsureAssignable(Guid groupId, Guid assigneeId) void
     -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
     -NameOf(Dictionary~Guid,string~ names, Guid id) string
+    -ReassignedText(string newAssigneeName) string
     -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
   }
   class IGroupWorkRepository {
@@ -31406,6 +32461,7 @@ classDiagram
     +GetTask(Guid taskId) GroupTask
     +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
     +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +GetRunningFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
     +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
     +AddActivity(GroupActivityLog log) void
   }
@@ -31413,6 +32469,7 @@ classDiagram
     +GetTask(Guid taskId) GroupTask
     +GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) GroupTask[]
     +SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) int
+    +GetRunningFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
     +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
     +AddActivity(GroupActivityLog log) void
   }
@@ -31452,12 +32509,39 @@ classDiagram
     +GetGoogleEvents(Guid userId, DateTime from, DateTime to) GoogleCalendarEvent[]
     +GetWorkingHours(Guid userId) CalendarWorkingHours
   }
+  class GroupSlotCleanup {
+    +StageOrphanedOfTask(GroupTask task) Result
+    -StopSession(GroupFocusSession session, DateTime now, string note) void
+    -Cancel(ScheduleSlot slot, Result result, DateTime now) void
+    +Finish(Result result, string reasonText) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetOpenSlotsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetOpenSlotsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
+  }
   class IUnitOfWork {
     <<interface>>
     +SaveChanges() int
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
   }
   class IGroupNotifier {
     <<interface>>
@@ -31516,6 +32600,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -31559,6 +32646,31 @@ classDiagram
     -DateTime CreatedAt
     -DateTime DeletedAt
   }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
   class GroupActivityLog {
     <<Entity>>
     -Guid Id
@@ -31579,7 +32691,13 @@ classDiagram
   GroupTaskService ..> IGroupAvailabilityService : uses
   GroupAvailabilityService ..> ICalendarRepository : uses
   GroupAvailabilityService ..> IGroupWorkRepository : uses
+  GroupTaskService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IGroupWorkRepository : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
+  GroupSlotCleanup ..> IScheduleChangeLogRepository : uses
   GroupTaskService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
+  GroupSlotCleanup ..> IGroupNotifier : uses
   GroupTaskService ..> IGroupNotifier : uses
   IGroupTaskService <|.. GroupTaskService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
@@ -31587,10 +32705,14 @@ classDiagram
   IGroupRepository <|.. GroupRepository : implements
   IGroupAvailabilityService <|.. GroupAvailabilityService : implements
   ICalendarRepository <|.. CalendarRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
   IGroupNotifier <|.. GroupNotifier : implements
   GroupWorkRepository ..> GroupTask
   GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> User
   GroupWorkRepository ..> GroupActivityLog
   GroupRepository ..> GroupMember
@@ -31598,13 +32720,22 @@ classDiagram
   CalendarRepository ..> ScheduleSlot
   CalendarRepository ..> GoogleCalendarEvent
   CalendarRepository ..> User
+  ScheduleSlotRepository ..> ScheduleSlot
+  GroupSlotCleanup ..> ScheduleChangeLog
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
+  GroupTask "1" --> "0..*" GroupFocusSession
   SubTask "1" --> "0..*" ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupTask
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
   GroupTask "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
+  GroupFocusSession "*" --> "1" ScheduleSlot
+  GroupFocusSession "*" --> "1" User
   GroupActivityLog "*" --> "1" User
 ```
 
@@ -31624,7 +32755,11 @@ sequenceDiagram
   participant GroupRepository
   participant GroupAvailabilityService
   participant CalendarRepository
+  participant GroupSlotCleanup
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
   participant UnitOfWork
+  participant ScheduleJobService
   participant GroupNotifier
   Group Leader->>UI: Assign Group Task
   UI->>GroupWorkController: PUT /api/group-tasks/(taskId)/assignee
@@ -31672,10 +32807,29 @@ sequenceDiagram
           end
         GroupAvailabilityService-->>GroupTaskService: throw GroupAssigneeBusyException
     end
+    GroupTaskService->>GroupSlotCleanup: StageOrphanedOfTask(task)
+      GroupSlotCleanup->>GroupWorkRepository: GetRunningFocusSessionsOfTask(taskId)
+      GroupWorkRepository-->>GroupSlotCleanup: GroupFocusSession list
+      GroupSlotCleanup->>ScheduleSlotRepository: GetOpenSlotsOfGroupTask(groupTaskId)
+      ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+      loop each slot in slots.GetOpenSlotsOfGroupTask(task.Id)
+        opt slot.UserId is ( ) owner && !GroupRules.IsAssignedTo(task, subTask, owner)
+          GroupSlotCleanup->>GroupSlotCleanup: Cancel(slot, result, now)
+            GroupSlotCleanup->>ScheduleChangeLogRepository: Add(log)
+        end
+      end
+    GroupSlotCleanup-->>GroupTaskService: Result
     GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
     GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
     GroupTaskService->>GroupWorkRepository: AddActivity(log)
     GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupSlotCleanup: Finish(result, reasonText)
+      loop each slot in result.Cancelled
+        GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+      end
+      loop each group in result.Cancelled.GroupBy(c => (c.UserId, c.GroupTaskId))
+        GroupSlotCleanup->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+      end
     GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
       GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
       GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
@@ -31695,7 +32849,7 @@ Table 3.157.3.a: GroupWorkController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `AssignTask(Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | `PUT /api/group-tasks/{taskId}/assignee`. Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. Requires a signed-in user. |
+| 1 | `AssignTask(Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | `PUT /api/group-tasks/{taskId}/assignee`. Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. When the work changes hands, the previous assignee's running session on it is stopped and their schedule slots that had not started are cancelled (they are notified); the new assignee schedules their own time. Requires a signed-in user. |
 
 #### 3.157.3.b GroupTaskService
 
@@ -31703,12 +32857,13 @@ Table 3.157.3.b: GroupTaskService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `AssignTask(Guid userId, Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. |
+| 1 | `AssignTask(Guid userId, Guid taskId, GroupAssigneeRequestDto request) : GroupTaskDto` | Leader only. Assigns the task to a member (or clears the assignee). Viewers and non-members are refused; the availability of the new assignee is checked first (409 until confirmed) and the assignee is notified. When the work changes hands, the previous assignee's running session on it is stopped and their schedule slots that had not started are cancelled (they are notified); the new assignee schedules their own time. |
 | 2 | `private GetTaskOrThrow(Guid taskId) : GroupTask` | Loads a task with its sub-tasks or raises 404. |
 | 3 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
 | 4 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
 | 5 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
-| 6 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+| 6 | `private ReassignedText(string newAssigneeName) : string` | Builds the sentence for the previous assignee: the work was given to the new person (or left unassigned) and how many slots were cancelled. |
+| 7 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
 
 #### 3.157.3.c GroupWorkRepository
 
@@ -31719,8 +32874,9 @@ Table 3.157.3.c: GroupWorkRepository Description Table
 | 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
 | 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
 | 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
-| 4 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
-| 5 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 4 | `GetRunningFocusSessionsOfTask(Guid taskId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (taskId); returns nothing or an empty list when there is no match. |
+| 5 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+| 6 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
 #### 3.157.3.d GroupAccessService
 
@@ -31759,17 +32915,52 @@ Table 3.157.3.g: CalendarRepository Description Table
 | 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
 | 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
 
-#### 3.157.3.h UnitOfWork
+#### 3.157.3.h GroupSlotCleanup
 
-Table 3.157.3.h: UnitOfWork Description Table
+Table 3.157.3.h: GroupSlotCleanup Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StageOrphanedOfTask(GroupTask task) : Result` | Finds the slots of a task (and of its sub-tasks) whose owner is no longer the effective assignee, stops the owner's running session on the work and cancels the slots that had not started, in the current unit of work. |
+| 2 | `Finish(Result result, string reasonText)` | After the save: cancels the reminder jobs of the cancelled slots and notifies each previous assignee how many of their slots were cancelled and why. |
+| 3 | `private StopSession(GroupFocusSession session, DateTime now, string note)` | Stops the person's running group session on the work with reason Other and a note that the work was given to someone else; the minutes stay with the person. |
+| 4 | `private Cancel(ScheduleSlot slot, Result result, DateTime now)` | Cancels one slot: an in-progress slot goes through Due first (the status rules do not allow a direct cancel), a change log row is added and the slot is remembered so that its jobs are cancelled after the save. |
+
+#### 3.157.3.i ScheduleSlotRepository
+
+Table 3.157.3.i: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOpenSlotsOfGroupTask(Guid groupTaskId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupTaskId); returns nothing or an empty list when there is no match. |
+
+#### 3.157.3.j ScheduleChangeLogRepository
+
+Table 3.157.3.j: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.157.3.k UnitOfWork
+
+Table 3.157.3.k: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.157.3.i GroupNotifier
+#### 3.157.3.l ScheduleJobService
 
-Table 3.157.3.i: GroupNotifier Description Table
+Table 3.157.3.l: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.157.3.m GroupNotifier
+
+Table 3.157.3.m: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -31793,13 +32984,20 @@ Table 3.157.4: Methods used by this function
 | 10 | GroupAvailabilityService.Check | IGroupWorkRepository.GetFixedTasksOverlapping | GroupWorkRepository |
 | 11 | GroupAvailabilityService.Check | IGroupWorkRepository.SumOpenEstimatedMinutes | GroupWorkRepository |
 | 12 | GroupAvailabilityService.Check | ICalendarRepository.GetWorkingHours | CalendarRepository |
-| 13 | GroupTaskService.AssignTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
-| 14 | GroupTaskService.AssignTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 15 | GroupTaskService.AssignTask | IUnitOfWork.SaveChanges | UnitOfWork |
-| 16 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
-| 17 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+| 13 | GroupTaskService.AssignTask | GroupSlotCleanup.StageOrphanedOfTask |  |
+| 14 | GroupSlotCleanup.StageOrphanedOfTask | IGroupWorkRepository.GetRunningFocusSessionsOfTask | GroupWorkRepository |
+| 15 | GroupSlotCleanup.StageOrphanedOfTask | IScheduleSlotRepository.GetOpenSlotsOfGroupTask | ScheduleSlotRepository |
+| 16 | GroupSlotCleanup.Cancel | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 17 | GroupTaskService.AssignTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 18 | GroupTaskService.AssignTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 19 | GroupTaskService.AssignTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 20 | GroupTaskService.AssignTask | GroupSlotCleanup.Finish |  |
+| 21 | GroupSlotCleanup.Finish | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 22 | GroupSlotCleanup.Finish | IGroupNotifier.Notify | GroupNotifier |
+| 23 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 24 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
 
-Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleCalendarEvent, User, GroupActivityLog.
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleCalendarEvent, User, GroupFocusSession, ScheduleChangeLog, GroupActivityLog.
 
 ---
 
@@ -33566,7 +34764,7 @@ Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, GroupActivityLog, 
 
 ## 3.164 Assign Group Sub-task
 
-Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee.
+Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. The previous assignee's running session on the sub-task is stopped and their slots for it that had not started are cancelled (they are notified).
 
 - **Endpoint:** `PUT /api/group-subtasks/{subTaskId}/assignee`  
 - **Access:** Signed-in user
@@ -33589,16 +34787,19 @@ classDiagram
     -EnsureAssignable(Guid groupId, Guid assigneeId) void
     -ToDto(GroupSubTask subTask, string assigneeName) GroupSubTaskDto
     -NameOf(Dictionary~Guid,string~ names, Guid id) string
+    -ReassignedText(string newAssigneeName) string
     -NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId) void
   }
   class IGroupWorkRepository {
     <<interface>>
     +GetSubTask(Guid subTaskId) GroupSubTask
+    +GetRunningFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
     +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
     +AddActivity(GroupActivityLog log) void
   }
   class GroupWorkRepository {
     +GetSubTask(Guid subTaskId) GroupSubTask
+    +GetRunningFocusSessionsOfTask(Guid taskId) GroupFocusSession[]
     +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
     +AddActivity(GroupActivityLog log) void
   }
@@ -33618,12 +34819,39 @@ classDiagram
     +GetMember(Guid groupId, Guid userId) GroupMember
     +GetGroup(Guid groupId) WorkGroup
   }
+  class GroupSlotCleanup {
+    +StageOrphanedOfTask(GroupTask task) Result
+    -StopSession(GroupFocusSession session, DateTime now, string note) void
+    -Cancel(ScheduleSlot slot, Result result, DateTime now) void
+    +Finish(Result result, string reasonText) void
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetOpenSlotsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetOpenSlotsOfGroupTask(Guid groupTaskId) ScheduleSlot[]
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
+  }
   class IUnitOfWork {
     <<interface>>
     +SaveChanges() int
   }
   class UnitOfWork {
     +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
   }
   class IGroupNotifier {
     <<interface>>
@@ -33672,6 +34900,51 @@ classDiagram
     -string Status
     -DateTime CreatedAt
   }
+  class GroupFocusSession {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid UserId
+    -DateTime StartedAt
+    -DateTime EndedAt
+    -string StopReason
+    -string Note
+    -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
   class User {
     <<Entity>>
     -Guid Id
@@ -33706,25 +34979,45 @@ classDiagram
   GroupTaskService ..> IGroupAccessService : uses
   GroupAccessService ..> IGroupRepository : uses
   GroupTaskService ..> IGroupRepository : uses
+  GroupTaskService ..> GroupSlotCleanup : uses
+  GroupSlotCleanup ..> IGroupWorkRepository : uses
+  GroupSlotCleanup ..> IScheduleSlotRepository : uses
+  GroupSlotCleanup ..> IScheduleChangeLogRepository : uses
   GroupTaskService ..> IUnitOfWork : uses
+  GroupSlotCleanup ..> IScheduleJobService : uses
+  GroupSlotCleanup ..> IGroupNotifier : uses
   GroupTaskService ..> IGroupNotifier : uses
   IGroupTaskService <|.. GroupTaskService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
   IGroupNotifier <|.. GroupNotifier : implements
   GroupWorkRepository ..> GroupSubTask
   GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> User
   GroupWorkRepository ..> GroupActivityLog
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
+  ScheduleSlotRepository ..> ScheduleSlot
+  GroupSlotCleanup ..> ScheduleChangeLog
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
+  SubTask "1" --> "0..*" ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
   GroupSubTask "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  GroupFocusSession "*" --> "1" GroupSubTask
+  GroupFocusSession "*" --> "1" ScheduleSlot
+  GroupFocusSession "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupSubTask
   GroupActivityLog "*" --> "1" User
 ```
 
@@ -33742,7 +35035,11 @@ sequenceDiagram
   participant GroupWorkRepository
   participant GroupAccessService
   participant GroupRepository
+  participant GroupSlotCleanup
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
   participant UnitOfWork
+  participant ScheduleJobService
   participant GroupNotifier
   Group Leader->>UI: Assign Group Sub-task
   UI->>GroupWorkController: PUT /api/group-subtasks/(subTaskId)/assignee
@@ -33771,10 +35068,29 @@ sequenceDiagram
       opt member.Role == GroupRoles.Viewer
         GroupTaskService-->>GroupWorkController: throw UserFriendlyException (400)
       end
+    GroupTaskService->>GroupSlotCleanup: StageOrphanedOfTask(task)
+      GroupSlotCleanup->>GroupWorkRepository: GetRunningFocusSessionsOfTask(taskId)
+      GroupWorkRepository-->>GroupSlotCleanup: GroupFocusSession list
+      GroupSlotCleanup->>ScheduleSlotRepository: GetOpenSlotsOfGroupTask(groupTaskId)
+      ScheduleSlotRepository-->>GroupSlotCleanup: ScheduleSlot list
+      loop each slot in slots.GetOpenSlotsOfGroupTask(task.Id)
+        opt slot.UserId is ( ) owner && !GroupRules.IsAssignedTo(task, subTask, owner)
+          GroupSlotCleanup->>GroupSlotCleanup: Cancel(slot, result, now)
+            GroupSlotCleanup->>ScheduleChangeLogRepository: Add(log)
+        end
+      end
+    GroupSlotCleanup-->>GroupTaskService: Result
     GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
     GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
     GroupTaskService->>GroupWorkRepository: AddActivity(log)
     GroupTaskService->>UnitOfWork: SaveChanges()
+    GroupTaskService->>GroupSlotCleanup: Finish(result, reasonText)
+      loop each slot in result.Cancelled
+        GroupSlotCleanup->>ScheduleJobService: CancelAllJobs(slotId)
+      end
+      loop each group in result.Cancelled.GroupBy(c => (c.UserId, c.GroupTaskId))
+        GroupSlotCleanup->>GroupNotifier: Notify(userId, type, title, message, groupId, groupTaskId)
+      end
     GroupTaskService->>GroupTaskService: NotifyAssigned(access, assigneeId, what, taskId)
       GroupTaskService->>GroupWorkRepository: GetUserNames(userIds)
       GroupWorkRepository-->>GroupTaskService: Dictionary of Guid,string
@@ -33794,7 +35110,7 @@ Table 3.164.3.a: GroupWorkController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `AssignSubTask(Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | `PUT /api/group-subtasks/{subTaskId}/assignee`. Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. Requires a signed-in user. |
+| 1 | `AssignSubTask(Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | `PUT /api/group-subtasks/{subTaskId}/assignee`. Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. The previous assignee's running session on the sub-task is stopped and their slots for it that had not started are cancelled (they are notified). Requires a signed-in user. |
 
 #### 3.164.3.b GroupTaskService
 
@@ -33802,12 +35118,13 @@ Table 3.164.3.b: GroupTaskService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `AssignSubTask(Guid userId, Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. |
+| 1 | `AssignSubTask(Guid userId, Guid subTaskId, GroupAssigneeRequestDto request) : GroupSubTaskDto` | Leader only. Assigns a sub-task to a member of the group who is not a Viewer (or clears the assignee), logs it and notifies the assignee. The previous assignee's running session on the sub-task is stopped and their slots for it that had not started are cancelled (they are notified). |
 | 2 | `private GetSubTaskOrThrow(Guid subTaskId) : GroupSubTask` | Loads a sub-task with its parent task or raises 404. |
 | 3 | `private EnsureAssignable(Guid groupId, Guid assigneeId)` | Checks that the assignee is a member of the group and is not a Viewer; nothing is checked when there is no assignee. |
 | 4 | `private ToDto(GroupSubTask subTask, string assigneeName) : GroupSubTaskDto` | Maps the entity to the DTO returned by the API. |
 | 5 | `private NameOf(<> names, Guid id) : string` | Looks up the display name of a user in a name dictionary, or null. |
-| 6 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
+| 6 | `private ReassignedText(string newAssigneeName) : string` | Builds the sentence for the previous assignee: the work was given to the new person (or left unassigned) and how many slots were cancelled. |
+| 7 | `private NotifyAssigned(GroupAccess access, Guid assigneeId, string what, Guid taskId)` | Notifies the new assignee that they were given a task or sub-task (skipped when the assignee is the caller). |
 
 #### 3.164.3.c GroupWorkRepository
 
@@ -33816,8 +35133,9 @@ Table 3.164.3.c: GroupWorkRepository Description Table
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetSubTask(Guid subTaskId) : GroupSubTask` | Reads the GroupSubTask matching (subTaskId); returns nothing or an empty list when there is no match. |
-| 2 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
-| 3 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 2 | `GetRunningFocusSessionsOfTask(Guid taskId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (taskId); returns nothing or an empty list when there is no match. |
+| 3 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+| 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
 #### 3.164.3.d GroupAccessService
 
@@ -33836,17 +35154,52 @@ Table 3.164.3.e: GroupRepository Description Table
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.164.3.f UnitOfWork
+#### 3.164.3.f GroupSlotCleanup
 
-Table 3.164.3.f: UnitOfWork Description Table
+Table 3.164.3.f: GroupSlotCleanup Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `StageOrphanedOfTask(GroupTask task) : Result` | Finds the slots of a task (and of its sub-tasks) whose owner is no longer the effective assignee, stops the owner's running session on the work and cancels the slots that had not started, in the current unit of work. |
+| 2 | `Finish(Result result, string reasonText)` | After the save: cancels the reminder jobs of the cancelled slots and notifies each previous assignee how many of their slots were cancelled and why. |
+| 3 | `private StopSession(GroupFocusSession session, DateTime now, string note)` | Stops the person's running group session on the work with reason Other and a note that the work was given to someone else; the minutes stay with the person. |
+| 4 | `private Cancel(ScheduleSlot slot, Result result, DateTime now)` | Cancels one slot: an in-progress slot goes through Due first (the status rules do not allow a direct cancel), a change log row is added and the slot is remembered so that its jobs are cancelled after the save. |
+
+#### 3.164.3.g ScheduleSlotRepository
+
+Table 3.164.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetOpenSlotsOfGroupTask(Guid groupTaskId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupTaskId); returns nothing or an empty list when there is no match. |
+
+#### 3.164.3.h ScheduleChangeLogRepository
+
+Table 3.164.3.h: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.164.3.i UnitOfWork
+
+Table 3.164.3.i: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.164.3.g GroupNotifier
+#### 3.164.3.j ScheduleJobService
 
-Table 3.164.3.g: GroupNotifier Description Table
+Table 3.164.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+#### 3.164.3.k GroupNotifier
+
+Table 3.164.3.k: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -33864,13 +35217,20 @@ Table 3.164.4: Methods used by this function
 | 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
 | 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
 | 6 | GroupTaskService.EnsureAssignable | IGroupRepository.GetMember | GroupRepository |
-| 7 | GroupTaskService.AssignSubTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
-| 8 | GroupTaskService.AssignSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 9 | GroupTaskService.AssignSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
-| 10 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
-| 11 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
+| 7 | GroupTaskService.AssignSubTask | GroupSlotCleanup.StageOrphanedOfTask |  |
+| 8 | GroupSlotCleanup.StageOrphanedOfTask | IGroupWorkRepository.GetRunningFocusSessionsOfTask | GroupWorkRepository |
+| 9 | GroupSlotCleanup.StageOrphanedOfTask | IScheduleSlotRepository.GetOpenSlotsOfGroupTask | ScheduleSlotRepository |
+| 10 | GroupSlotCleanup.Cancel | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 11 | GroupTaskService.AssignSubTask | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 12 | GroupTaskService.AssignSubTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupTaskService.AssignSubTask | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | GroupTaskService.AssignSubTask | GroupSlotCleanup.Finish |  |
+| 15 | GroupSlotCleanup.Finish | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 16 | GroupSlotCleanup.Finish | IGroupNotifier.Notify | GroupNotifier |
+| 17 | GroupTaskService.NotifyAssigned | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+| 18 | GroupTaskService.NotifyAssigned | IGroupNotifier.Notify | GroupNotifier |
 
-Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, User, GroupActivityLog.
+Entities used: GroupSubTask, SubTask, GroupMember, WorkGroup, GroupFocusSession, ScheduleSlot, ScheduleChangeLog, User, GroupActivityLog.
 
 ---
 
@@ -35202,7 +36562,7 @@ Entities used: GroupMember, WorkGroup, GroupActivityLog.
 
 ## 3.171 View Group Progress
 
-Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone.
+Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. It also reports signals for the open tasks that have an assignee: overdue, not scheduled (no live slot), at risk of being late (deadline within 3 days and fewer scheduled minutes than the minutes still to do) and stale (no activity for 3 days), with counters for the group and for each member.
 
 - **Endpoint:** `GET /api/groups/{groupId}/progress`  
 - **Access:** Signed-in user
@@ -35222,6 +36582,7 @@ classDiagram
   class GroupProgressService {
     +GetProgress(Guid userId, Guid groupId) GroupProgressDto
     -BuildProgress(Guid groupId) GroupProgressDto
+    -BuildSignals(Guid groupId, GroupTask[] tasks, GroupMemberDto[] members, GroupFocusSession[] finishedSessions) SignalResult
   }
   class IGroupAccessService {
     <<interface>>
@@ -35246,11 +36607,15 @@ classDiagram
     +GetTasksForProgress(Guid groupId) GroupTask[]
     +GetMilestones(Guid groupId) GroupMilestone[]
     +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+    +GetLiveSlotsOfGroup(Guid groupId) ScheduleSlot[]
+    +GetLastActivityByTask(Guid groupId) Dictionary~Guid,DateTime~
   }
   class GroupWorkRepository {
     +GetTasksForProgress(Guid groupId) GroupTask[]
     +GetMilestones(Guid groupId) GroupMilestone[]
     +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+    +GetLiveSlotsOfGroup(Guid groupId) ScheduleSlot[]
+    +GetLastActivityByTask(Guid groupId) Dictionary~Guid,DateTime~
   }
   class GroupMember {
     <<Entity>>
@@ -35319,6 +36684,27 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
   }
   GroupsController ..> IGroupProgressService : uses
   GroupProgressService ..> IGroupAccessService : uses
@@ -35335,11 +36721,15 @@ classDiagram
   GroupWorkRepository ..> SubTask
   GroupWorkRepository ..> GroupMilestone
   GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupMilestone
   WorkGroup "1" --> "0..*" GroupTask
   GroupTask "1" --> "0..*" GroupFocusSession
+  SubTask "1" --> "0..*" ScheduleSlot
   GroupMilestone "1" --> "0..*" GroupTask
+  GroupFocusSession "*" --> "1" ScheduleSlot
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
 Figure 3.171.1 Class Diagram
@@ -35377,6 +36767,11 @@ sequenceDiagram
       GroupWorkRepository-->>GroupProgressService: GroupMilestone list
       GroupProgressService->>GroupWorkRepository: GetFinishedFocusSessionsOfGroup(groupId)
       GroupWorkRepository-->>GroupProgressService: GroupFocusSession list
+      GroupProgressService->>GroupProgressService: BuildSignals(groupId, tasks, members, finishedSessions)
+        GroupProgressService->>GroupWorkRepository: GetLiveSlotsOfGroup(groupId)
+        GroupWorkRepository-->>GroupProgressService: ScheduleSlot list
+        GroupProgressService->>GroupWorkRepository: GetLastActivityByTask(groupId)
+        GroupWorkRepository-->>GroupProgressService: Dictionary of Guid,DateTime
   GroupProgressService-->>GroupsController: GroupProgressDto
   GroupsController-->>UI: 200 OK (GroupProgressDto)
   UI-->>User: Show result
@@ -35392,7 +36787,7 @@ Table 3.171.3.a: GroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetProgress(Guid groupId) : GroupProgressDto` | `GET /api/groups/{groupId}/progress`. Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. Requires a signed-in user. |
+| 1 | `GetProgress(Guid groupId) : GroupProgressDto` | `GET /api/groups/{groupId}/progress`. Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. It also reports signals for the open tasks that have an assignee: overdue, not scheduled (no live slot), at risk of being late (deadline within 3 days and fewer scheduled minutes than the minutes still to do) and stale (no activity for 3 days), with counters for the group and for each member. Requires a signed-in user. |
 
 #### 3.171.3.b GroupProgressService
 
@@ -35400,8 +36795,9 @@ Table 3.171.3.b: GroupProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `GetProgress(Guid userId, Guid groupId) : GroupProgressDto` | Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. |
+| 1 | `GetProgress(Guid userId, Guid groupId) : GroupProgressDto` | Computes the progress report: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of every member and every milestone. It also reports signals for the open tasks that have an assignee: overdue, not scheduled (no live slot), at risk of being late (deadline within 3 days and fewer scheduled minutes than the minutes still to do) and stale (no activity for 3 days), with counters for the group and for each member. |
 | 2 | `private BuildProgress(Guid groupId) : GroupProgressDto` | Builds the progress report of a group: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of each member and milestone. Shared by the member view and the admin view. |
+| 3 | `private BuildSignals(Guid groupId, GroupTask[] tasks, GroupMemberDto[] members, GroupFocusSession[] finishedSessions) : SignalResult` | Computes the overdue, not-scheduled, at-risk and stale signals of the open tasks that have an assignee, with the counters per member. Nothing is stored. |
 
 #### 3.171.3.c GroupAccessService
 
@@ -35430,6 +36826,8 @@ Table 3.171.3.e: GroupWorkRepository Description Table
 | 1 | `GetTasksForProgress(Guid groupId) : GroupTask[]` | Reads the GroupTask list matching (groupId); returns nothing or an empty list when there is no match. |
 | 2 | `GetMilestones(Guid groupId) : GroupMilestone[]` | Reads the GroupMilestone list matching (groupId); returns nothing or an empty list when there is no match. |
 | 3 | `GetFinishedFocusSessionsOfGroup(Guid groupId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (groupId); returns nothing or an empty list when there is no match. |
+| 4 | `GetLiveSlotsOfGroup(Guid groupId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupId); returns nothing or an empty list when there is no match. |
+| 5 | `GetLastActivityByTask(Guid groupId) : <>` | Reads the Dictionary of Guid,DateTime matching (groupId); returns nothing or an empty list when there is no match. |
 
 ### 3.171.4 Methods Used
 
@@ -35445,8 +36843,10 @@ Table 3.171.4: Methods used by this function
 | 6 | GroupProgressService.BuildProgress | IGroupRepository.GetMembers | GroupRepository |
 | 7 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
 | 8 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetFinishedFocusSessionsOfGroup | GroupWorkRepository |
+| 9 | GroupProgressService.BuildSignals | IGroupWorkRepository.GetLiveSlotsOfGroup | GroupWorkRepository |
+| 10 | GroupProgressService.BuildSignals | IGroupWorkRepository.GetLastActivityByTask | GroupWorkRepository |
 
-Entities used: GroupMember, WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession.
+Entities used: GroupMember, WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession, ScheduleSlot.
 
 ---
 
@@ -35454,7 +36854,7 @@ Entities used: GroupMember, WorkGroup, GroupTask, SubTask, GroupMilestone, Group
 
 ## 3.172 Start Group Focus Session
 
-The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started.
+The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. The session may be linked to one of the user's own slots for the same task (and sub-task) that can be worked on (Approved, Due, InProgress, Missed or Postponed); that slot becomes InProgress and its reminder jobs are scheduled again.
 
 - **Endpoint:** `POST /api/group-tasks/{taskId}/focus/start`  
 - **Access:** Signed-in user
@@ -35474,6 +36874,7 @@ classDiagram
   class GroupFocusService {
     +Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) GroupFocusStartResponseDto
     -EnsureNothingRunning(Guid userId) void
+    -GetStartableSlot(Guid userId, GroupTask task, GroupSubTask subTask, Guid slotId) ScheduleSlot
   }
   class IGroupWorkRepository {
     <<interface>>
@@ -35513,6 +36914,13 @@ classDiagram
   class FocusSessionRepository {
     +GetRunningWithDetails(Guid userId) FocusSession
   }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
+  }
+  class ScheduleSlotRepository {
+    +GetByIdForUser(Guid slotId, Guid userId) ScheduleSlot
+  }
   class IUnitOfWork {
     <<interface>>
     +ExecuteInTransaction(Func~void~ action) void
@@ -35526,6 +36934,13 @@ classDiagram
     +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
     +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
     +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +RescheduleSlotJobs(Guid slotId, DateTimeOffset actualStartTime) void
+  }
+  class ScheduleJobService {
+    +RescheduleSlotJobs(Guid slotId, DateTimeOffset actualStartTime) void
   }
   class GroupSubTask {
     <<Entity>>
@@ -35550,6 +36965,7 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
   }
   class GroupTask {
     <<Entity>>
@@ -35609,6 +37025,26 @@ classDiagram
     -string CaptureMethod
     -bool IsConfirmed
   }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
   class GroupActivityLog {
     <<Entity>>
     -Guid Id
@@ -35637,15 +37073,19 @@ classDiagram
   GroupFocusService ..> IGroupAccessService : uses
   GroupAccessService ..> IGroupRepository : uses
   GroupFocusService ..> IFocusSessionRepository : uses
+  GroupFocusService ..> IScheduleSlotRepository : uses
   GroupFocusService ..> IUnitOfWork : uses
   GroupFocusService ..> GroupTaskProgress : uses
   GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupFocusService ..> IScheduleJobService : uses
   IGroupFocusService <|.. GroupFocusService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
   IFocusSessionRepository <|.. FocusSessionRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
   GroupFocusService ..> GroupSubTask
   GroupFocusService ..> GroupFocusSession
   GroupWorkRepository ..> GroupTask
@@ -35656,15 +37096,21 @@ classDiagram
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
   FocusSessionRepository ..> FocusSession
+  ScheduleSlotRepository ..> ScheduleSlot
   GroupTask "1" --> "0..*" GroupSubTask
   GroupTask "1" --> "0..*" GroupFocusSession
   SubTask "1" --> "0..*" FocusSession
+  SubTask "1" --> "0..*" ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupMilestone
   WorkGroup "1" --> "0..*" GroupTask
   WorkGroup "1" --> "0..*" GroupActivityLog
+  ScheduleSlot "1" --> "0..*" FocusSession
   GroupMilestone "1" --> "0..*" GroupTask
   GroupFocusSession "*" --> "1" GroupSubTask
+  GroupFocusSession "*" --> "1" ScheduleSlot
+  ScheduleSlot "*" --> "1" GroupTask
+  ScheduleSlot "*" --> "1" GroupSubTask
 ```
 
 Figure 3.172.1 Class Diagram
@@ -35682,8 +37128,10 @@ sequenceDiagram
   participant GroupAccessService
   participant GroupRepository
   participant FocusSessionRepository
+  participant ScheduleSlotRepository
   participant UnitOfWork
   participant GroupTaskProgress
+  participant ScheduleJobService
   Member->>UI: Start Group Focus Session
   UI->>GroupFocusController: POST /api/group-tasks/(taskId)/focus/start
   GroupFocusController->>GroupFocusService: Start(userId, taskId, request)
@@ -35730,6 +37178,21 @@ sequenceDiagram
       opt personal != null
         GroupFocusService-->>GroupFocusController: throw FocusConflictException (409)
       end
+    GroupFocusService->>GroupFocusService: GetStartableSlot(userId, task, subTask, slotId)
+      GroupFocusService->>ScheduleSlotRepository: GetByIdForUser(slotId, userId)
+      ScheduleSlotRepository-->>GroupFocusService: ScheduleSlot
+      opt value is missing
+        GroupFocusService-->>GroupFocusController: throw NotFoundException (404)
+      end
+      opt slot.GroupTaskId != task.Id
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
+      opt slot.GroupSubTaskId != null && slot.GroupSubTaskId != subTask?.Id
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
+      opt !StartableSlotStatuses.Contains(slot.Status)
+        GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
+      end
     GroupFocusService->>UnitOfWork: ExecuteInTransaction(action)
     alt subTask != null && subTask.Status == GroupWorkStatuses.ToDo
       GroupFocusService->>GroupWorkRepository: AddActivity(log)
@@ -35755,6 +37218,9 @@ sequenceDiagram
       GroupTaskProgress-->>GroupFocusService: bool
     end
     GroupFocusService->>UnitOfWork: SaveChanges()
+    opt slot != null
+      GroupFocusService->>ScheduleJobService: RescheduleSlotJobs(slotId, actualStartTime)
+    end
   GroupFocusService-->>GroupFocusController: GroupFocusStartResponseDto
   GroupFocusController-->>UI: 201 Created (GroupFocusStartResponseDto)
   UI-->>Member: Show result
@@ -35770,7 +37236,7 @@ Table 3.172.3.a: GroupFocusController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Start(Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | `POST /api/group-tasks/{taskId}/focus/start`. The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. Requires a signed-in user. |
+| 1 | `Start(Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | `POST /api/group-tasks/{taskId}/focus/start`. The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. The session may be linked to one of the user's own slots for the same task (and sub-task) that can be worked on (Approved, Due, InProgress, Missed or Postponed); that slot becomes InProgress and its reminder jobs are scheduled again. Requires a signed-in user. |
 
 #### 3.172.3.b GroupFocusService
 
@@ -35778,8 +37244,9 @@ Table 3.172.3.b: GroupFocusService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. |
+| 1 | `Start(Guid userId, Guid taskId, GroupFocusStartRequestDto request) : GroupFocusStartResponseDto` | The assignee starts timing a task (or one of its sub-tasks; a task that has sub-tasks needs one). Refused when the group is archived, the work is Done or Skipped, or the user already has a running session, in the group or in the personal branch (409). The sub-task and task move to InProgress and the milestone is started. The session may be linked to one of the user's own slots for the same task (and sub-task) that can be worked on (Approved, Due, InProgress, Missed or Postponed); that slot becomes InProgress and its reminder jobs are scheduled again. |
 | 2 | `private EnsureNothingRunning(Guid userId)` | Allows only one running session per person: it checks the group sessions and, read-only, the personal sessions. When one is running it raises FocusConflictException (409 FOCUS_SESSION_CONFLICT) that names the source (Group or Personal) so that the client can send the user there. |
+| 3 | `private GetStartableSlot(Guid userId, GroupTask task, GroupSubTask subTask, Guid slotId) : ScheduleSlot` | Loads the slot for the caller and checks that it belongs to the same task (and sub-task) and is in a status that can be worked on; otherwise 404 or UserFriendlyException. |
 
 #### 3.172.3.c GroupWorkRepository
 
@@ -35818,24 +37285,40 @@ Table 3.172.3.f: FocusSessionRepository Description Table
 |---|---|---|
 | 1 | `GetRunningWithDetails(Guid userId) : FocusSession` | Returns the user's running FocusSession (EndedAt is null) with its Task and ScheduleSlot; null when nothing runs. |
 
-#### 3.172.3.g UnitOfWork
+#### 3.172.3.g ScheduleSlotRepository
 
-Table 3.172.3.g: UnitOfWork Description Table
+Table 3.172.3.g: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByIdForUser(Guid slotId, Guid userId) : ScheduleSlot` | Finds the ScheduleSlot by id only when its task belongs to the user. |
+
+#### 3.172.3.h UnitOfWork
+
+Table 3.172.3.h: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
 | 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.172.3.h GroupTaskProgress
+#### 3.172.3.i GroupTaskProgress
 
-Table 3.172.3.h: GroupTaskProgress Description Table
+Table 3.172.3.i: GroupTaskProgress Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
 | 2 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
 | 3 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.172.3.j ScheduleJobService
+
+Table 3.172.3.j: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RescheduleSlotJobs(Guid slotId, DateTimeOffset actualStartTime)` | After the user presses Start, cancels the old jobs and re-creates only the closing jobs (near-end reminder, slot ended, overrun, auto timeout) counted from the real start time. The slot StartTime and EndTime are not changed. |
 
 ### 3.172.4 Methods Used
 
@@ -35850,23 +37333,25 @@ Table 3.172.4: Methods used by this function
 | 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
 | 6 | GroupFocusService.EnsureNothingRunning | IGroupWorkRepository.GetRunningFocusSession | GroupWorkRepository |
 | 7 | GroupFocusService.EnsureNothingRunning | IFocusSessionRepository.GetRunningWithDetails | FocusSessionRepository |
-| 8 | GroupFocusService.Start | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 9 | GroupFocusService.Start | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 10 | GroupFocusService.Start | GroupTaskProgress.StartMilestoneIfNeeded |  |
-| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
-| 12 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 13 | GroupFocusService.Start | IGroupWorkRepository.AddFocusSession | GroupWorkRepository |
-| 14 | GroupFocusService.Start | GroupTaskProgress.RefreshTask |  |
-| 15 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 16 | GroupFocusService.Start | IUnitOfWork.SaveChanges | UnitOfWork |
+| 8 | GroupFocusService.GetStartableSlot | IScheduleSlotRepository.GetByIdForUser | ScheduleSlotRepository |
+| 9 | GroupFocusService.Start | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 10 | GroupFocusService.Start | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupFocusService.Start | GroupTaskProgress.StartMilestoneIfNeeded |  |
+| 12 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 13 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 14 | GroupFocusService.Start | IGroupWorkRepository.AddFocusSession | GroupWorkRepository |
+| 15 | GroupFocusService.Start | GroupTaskProgress.RefreshTask |  |
+| 16 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 17 | GroupFocusService.Start | IUnitOfWork.SaveChanges | UnitOfWork |
+| 18 | GroupFocusService.Start | IScheduleJobService.RescheduleSlotJobs | ScheduleJobService |
 
-Entities used: GroupSubTask, GroupFocusSession, GroupTask, SubTask, GroupMember, WorkGroup, FocusSession, GroupActivityLog, GroupMilestone.
+Entities used: GroupSubTask, GroupFocusSession, GroupTask, SubTask, GroupMember, WorkGroup, FocusSession, ScheduleSlot, GroupActivityLog, GroupMilestone.
 
 ---
 
 ## 3.173 Stop Group Focus Session
 
-Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked.
+Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. A linked slot follows the stop reason: Completed makes it Done, Blocked makes it Postponed and any other reason makes it Due (so the person can continue).
 
 - **Endpoint:** `POST /api/group-focus/{sessionId}/stop`  
 - **Access:** Signed-in user
@@ -35917,6 +37402,13 @@ classDiagram
     +GetMember(Guid groupId, Guid userId) GroupMember
     +GetGroup(Guid groupId) WorkGroup
   }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetById(Guid slotId) ScheduleSlot
+  }
+  class ScheduleSlotRepository {
+    +GetById(Guid slotId) ScheduleSlot
+  }
   class IUnitOfWork {
     <<interface>>
     +ExecuteInTransaction(Func~void~ action) void
@@ -35930,6 +37422,35 @@ classDiagram
     +RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) bool
     +StartMilestoneIfNeeded(GroupTask task, Guid actorId) void
   }
+  class IScheduleJobService {
+    <<interface>>
+    +CancelAllJobs(Guid slotId) void
+    +CancelOverrunJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +CancelAllJobs(Guid slotId) void
+    +CancelOverrunJobs(Guid slotId) void
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
   class GroupFocusSession {
     <<Entity>>
     -Guid Id
@@ -35941,6 +37462,7 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
   }
   class SubTask {
     <<Entity>>
@@ -35997,23 +37519,31 @@ classDiagram
   GroupFocusService ..> IGroupWorkRepository : uses
   GroupFocusService ..> IGroupAccessService : uses
   GroupAccessService ..> IGroupRepository : uses
+  GroupFocusService ..> IScheduleSlotRepository : uses
   GroupFocusService ..> IUnitOfWork : uses
   GroupFocusService ..> GroupTaskProgress : uses
   GroupTaskProgress ..> IGroupWorkRepository : uses
+  GroupFocusService ..> IScheduleJobService : uses
   IGroupFocusService <|.. GroupFocusService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
   IGroupAccessService <|.. GroupAccessService : implements
   IGroupRepository <|.. GroupRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
+  GroupFocusService ..> ScheduleSlot
   GroupWorkRepository ..> GroupFocusSession
   GroupWorkRepository ..> SubTask
   GroupWorkRepository ..> GroupActivityLog
   GroupWorkRepository ..> GroupMilestone
   GroupRepository ..> GroupMember
   GroupRepository ..> WorkGroup
+  ScheduleSlotRepository ..> ScheduleSlot
+  SubTask "1" --> "0..*" ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMember
   WorkGroup "1" --> "0..*" GroupMilestone
   WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupFocusSession "*" --> "1" ScheduleSlot
 ```
 
 Figure 3.173.1 Class Diagram
@@ -36030,8 +37560,10 @@ sequenceDiagram
   participant GroupWorkRepository
   participant GroupAccessService
   participant GroupRepository
+  participant ScheduleSlotRepository
   participant UnitOfWork
   participant GroupTaskProgress
+  participant ScheduleJobService
   Member->>UI: Stop Group Focus Session
   UI->>GroupFocusController: POST /api/group-focus/(sessionId)/stop
   GroupFocusController->>GroupFocusService: Stop(userId, sessionId, request)
@@ -36055,6 +37587,10 @@ sequenceDiagram
     opt request.StopReason is FocusStopReason.Blocked or FocusStopReason.Other && str...
       GroupFocusService-->>GroupFocusController: throw UserFriendlyException (400)
     end
+    opt session.ScheduleSlotId is ( ) linkedSlotId
+      GroupFocusService->>ScheduleSlotRepository: GetById(slotId)
+      ScheduleSlotRepository-->>GroupFocusService: ScheduleSlot
+    end
     GroupFocusService->>UnitOfWork: ExecuteInTransaction(action)
     GroupFocusService->>GroupWorkRepository: AddActivity(log)
     opt request.StopReason == FocusStopReason.Completed && access.Group.Status == Gro...
@@ -36076,6 +37612,13 @@ sequenceDiagram
       end
     end
     GroupFocusService->>UnitOfWork: SaveChanges()
+    opt slot != null && slotTarget != null
+      alt slotTarget is 'Done' or 'Postponed'
+        GroupFocusService->>ScheduleJobService: CancelAllJobs(slotId)
+      else
+        GroupFocusService->>ScheduleJobService: CancelOverrunJobs(slotId)
+      end
+    end
     GroupFocusService->>GroupWorkRepository: GetFocusSessionsOfTask(taskId)
     GroupWorkRepository-->>GroupFocusService: GroupFocusSession list
   GroupFocusService-->>GroupFocusController: GroupFocusStopResponseDto
@@ -36093,7 +37636,7 @@ Table 3.173.3.a: GroupFocusController Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Stop(Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | `POST /api/group-focus/{sessionId}/stop`. Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. Requires a signed-in user. |
+| 1 | `Stop(Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | `POST /api/group-focus/{sessionId}/stop`. Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. A linked slot follows the stop reason: Completed makes it Done, Blocked makes it Postponed and any other reason makes it Due (so the person can continue). Requires a signed-in user. |
 
 #### 3.173.3.b GroupFocusService
 
@@ -36101,7 +37644,7 @@ Table 3.173.3.b: GroupFocusService Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `Stop(Guid userId, Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. |
+| 1 | `Stop(Guid userId, Guid sessionId, GroupFocusStopRequestDto request) : GroupFocusStopResponseDto` | Ends the running session with a reason; Blocked and Other need a note. A session longer than 12 hours is capped at 12 hours. In an active group, reason Completed marks the sub-task (or the task without sub-tasks) Done and the task status is derived again. The minutes stay with the person who worked. A linked slot follows the stop reason: Completed makes it Done, Blocked makes it Postponed and any other reason makes it Due (so the person can continue). |
 | 2 | `private Round(double minutes) : double` | Rounds minutes to 2 decimals. |
 | 3 | `private Minutes(GroupFocusSession session, DateTime nowUtc) : double` | Minutes of a session; a running session is counted up to the current time. |
 
@@ -36133,23 +37676,40 @@ Table 3.173.3.e: GroupRepository Description Table
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.173.3.f UnitOfWork
+#### 3.173.3.f ScheduleSlotRepository
 
-Table 3.173.3.f: UnitOfWork Description Table
+Table 3.173.3.f: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetById(Guid slotId) : ScheduleSlot` | Finds the ScheduleSlot by id. |
+
+#### 3.173.3.g UnitOfWork
+
+Table 3.173.3.g: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `ExecuteInTransaction(<> action)` | Runs the given action inside one database transaction (committed on success, rolled back on error). |
 | 2 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.173.3.g GroupTaskProgress
+#### 3.173.3.h GroupTaskProgress
 
-Table 3.173.3.g: GroupTaskProgress Description Table
+Table 3.173.3.h: GroupTaskProgress Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `RefreshTask(GroupTask task, GroupSubTask[] subTasks, Guid actorId) : bool` | Derives the status of the task from its sub-tasks (all handled and at least one Done means Done; any started or Done means InProgress), sets or clears the completion time, starts the milestone when needed and logs a change. Returns true when the task status changed. |
 | 2 | `private StartMilestoneIfNeeded(GroupTask task, Guid actorId)` | Moves a Planned milestone to InProgress when one of its tasks starts or is done and writes the activity row. Later steps (Delivered, InRevision, Approved) are never changed automatically. |
+
+#### 3.173.3.i ScheduleJobService
+
+Table 3.173.3.i: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+| 2 | `CancelOverrunJobs(Guid slotId)` | Cancels the NearEndReminder, OverrunReminder and AutoTimeout jobs of the slot. |
 
 ### 3.173.4 Methods Used
 
@@ -36162,16 +37722,19 @@ Table 3.173.4: Methods used by this function
 | 3 | GroupFocusService.Stop | IGroupAccessService.GetAccess | GroupAccessService |
 | 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
 | 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
-| 6 | GroupFocusService.Stop | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
-| 7 | GroupFocusService.Stop | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 8 | GroupFocusService.Stop | GroupTaskProgress.RefreshTask |  |
-| 9 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 10 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
-| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
-| 12 | GroupFocusService.Stop | IUnitOfWork.SaveChanges | UnitOfWork |
-| 13 | GroupFocusService.Stop | IGroupWorkRepository.GetFocusSessionsOfTask | GroupWorkRepository |
+| 6 | GroupFocusService.Stop | IScheduleSlotRepository.GetById | ScheduleSlotRepository |
+| 7 | GroupFocusService.Stop | IUnitOfWork.ExecuteInTransaction | UnitOfWork |
+| 8 | GroupFocusService.Stop | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 9 | GroupFocusService.Stop | GroupTaskProgress.RefreshTask |  |
+| 10 | GroupTaskProgress.RefreshTask | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 11 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.GetMilestone | GroupWorkRepository |
+| 12 | GroupTaskProgress.StartMilestoneIfNeeded | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 13 | GroupFocusService.Stop | IUnitOfWork.SaveChanges | UnitOfWork |
+| 14 | GroupFocusService.Stop | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 15 | GroupFocusService.Stop | IScheduleJobService.CancelOverrunJobs | ScheduleJobService |
+| 16 | GroupFocusService.Stop | IGroupWorkRepository.GetFocusSessionsOfTask | GroupWorkRepository |
 
-Entities used: GroupFocusSession, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone.
+Entities used: ScheduleSlot, GroupFocusSession, SubTask, GroupMember, WorkGroup, GroupActivityLog, GroupMilestone.
 
 ---
 
@@ -36216,6 +37779,7 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
   }
   GroupFocusController ..> IGroupFocusService : uses
   GroupFocusService ..> IGroupWorkRepository : uses
@@ -36393,6 +37957,7 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
   }
   GroupFocusController ..> IGroupFocusService : uses
   GroupFocusService ..> IGroupWorkRepository : uses
@@ -36515,16 +38080,715 @@ Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupFocusSession.
 
 ---
 
+# Group: Schedule Slots
+
+## 3.176 Create Group Schedule Slot
+
+The assignee plans their own time for a group task (or sub-task) in their personal calendar. Leader or Member only; the work must be assigned to the caller (the task, the sub-task, or the unassigned sub-task of a task assigned to the caller), the group must be active, the task or sub-task must not be Done or Skipped, and a task that has sub-tasks needs one to be chosen. The end must be after the start and the status is Approved (default) or Proposed. An active slot may not overlap another active slot of the same person, group or personal (409 SLOT_OVERLAP). The slot is stored in the shared ScheduleSlot table with the person as its owner, a change log row and a group activity row are written and its reminder jobs are scheduled. The status of the group task is not changed.
+
+- **Endpoint:** `POST /api/group-tasks/{taskId}/schedule-slots`  
+- **Access:** Signed-in user
+
+### 3.176.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +CreateSlot(Guid taskId, GroupSlotRequestDto request) GroupSlotDto
+  }
+  class IGroupScheduleService {
+    <<interface>>
+    +CreateSlot(Guid userId, Guid taskId, GroupSlotRequestDto request) GroupSlotDto
+  }
+  class GroupScheduleService {
+    +CreateSlot(Guid userId, Guid taskId, GroupSlotRequestDto request) GroupSlotDto
+    -GetTask(Guid taskId) GroupTask
+    -ValidateTimes(DateTimeOffset start, DateTimeOffset end, string explanation) void
+    -Minutes(DateTimeOffset start, DateTimeOffset end) int
+    -EnsureNoOverlap(Guid userId, ScheduleSlot slot) void
+    -AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd) void
+    -SyncJobs(ScheduleSlot slot) void
+    -ToGroupDto(ScheduleSlot slot, GroupTask task, GroupSubTask subTask, string userName) GroupSlotDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+    +AddActivity(GroupActivityLog log) void
+    +GetUserNames(Guid[] userIds) Dictionary~Guid,string~
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
+    +Add(ScheduleSlot slot) void
+  }
+  class ScheduleSlotRepository {
+    +GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) ScheduleSlot[]
+    +Add(ScheduleSlot slot) void
+  }
+  class IScheduleChangeLogRepository {
+    <<interface>>
+    +Add(ScheduleChangeLog log) void
+  }
+  class ScheduleChangeLogRepository {
+    +Add(ScheduleChangeLog log) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IScheduleJobService {
+    <<interface>>
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
+    +CancelAllJobs(Guid slotId) void
+  }
+  class ScheduleJobService {
+    +ScheduleAllJobsForSlot(ScheduleSlot slot) void
+    +CancelAllJobs(Guid slotId) void
+  }
+  class GroupSubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupTaskId
+    -Guid AssigneeId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+    -Guid CompletedById
+    -DateTime CompletedAt
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
+  class GroupActivityLog {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid ActorId
+    -string EntityType
+    -Guid EntityId
+    -string Action
+    -string OldValue
+    -string NewValue
+    -DateTime CreatedAt
+  }
+  class User {
+    <<Entity>>
+    -Guid Id
+    -Guid RoleId
+    -string Email
+    -string FullName
+    -string GoogleSubjectId
+    -string TimeZone
+    -TimeOnly WorkDayStart
+    -TimeOnly WorkDayEnd
+    -bool WorksOnWeekend
+    -int DefaultBufferMinutes
+    -int ReminderLeadMinutes
+    -bool OnboardingCompleted
+    -DateTime CreatedAt
+    -DateTime DeletedAt
+  }
+  GroupWorkController ..> IGroupScheduleService : uses
+  GroupScheduleService ..> IGroupWorkRepository : uses
+  GroupScheduleService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupScheduleService ..> IScheduleSlotRepository : uses
+  GroupScheduleService ..> IScheduleChangeLogRepository : uses
+  GroupScheduleService ..> IUnitOfWork : uses
+  GroupScheduleService ..> IScheduleJobService : uses
+  IGroupScheduleService <|.. GroupScheduleService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  IScheduleChangeLogRepository <|.. ScheduleChangeLogRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IScheduleJobService <|.. ScheduleJobService : implements
+  GroupScheduleService ..> GroupSubTask
+  GroupScheduleService ..> ScheduleSlot
+  GroupScheduleService ..> ScheduleChangeLog
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupWorkRepository ..> GroupActivityLog
+  GroupWorkRepository ..> User
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  ScheduleSlotRepository ..> ScheduleSlot
+  ScheduleChangeLogRepository ..> ScheduleChangeLog
+  ScheduleSlot "1" --> "0..*" ScheduleChangeLog
+  GroupTask "1" --> "0..*" GroupSubTask
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  WorkGroup "1" --> "0..*" GroupActivityLog
+  GroupSubTask "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
+  ScheduleSlot "*" --> "1" GroupSubTask
+  GroupTask "*" --> "1" User
+  GroupMember "*" --> "1" User
+  WorkGroup "*" --> "1" User
+  GroupActivityLog "*" --> "1" User
+```
+
+Figure 3.176.1 Class Diagram
+
+### 3.176.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Member
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupScheduleService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant ScheduleSlotRepository
+  participant ScheduleChangeLogRepository
+  participant UnitOfWork
+  participant ScheduleJobService
+  Member->>UI: Create Group Schedule Slot
+  UI->>GroupWorkController: POST /api/group-tasks/(taskId)/schedule-slots
+  GroupWorkController->>GroupScheduleService: CreateSlot(userId, taskId, request)
+    GroupScheduleService->>GroupScheduleService: GetTask(taskId)
+      GroupScheduleService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupScheduleService: GroupTask
+      opt value is missing
+        GroupScheduleService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupScheduleService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupScheduleService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupScheduleService: GroupAccess
+    opt GroupRules.IsClosed(task.Status)
+      GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    alt request.SubTaskId is ( ) subTaskId
+      opt value is missing
+        GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt GroupRules.IsClosed(subTask.Status)
+        GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    else
+      opt task.SubTasks.Count > 0
+        GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    end
+    opt !GroupRules.IsAssignedTo(task, subTask, userId)
+      GroupScheduleService-->>GroupWorkController: throw GroupForbiddenException
+    end
+    GroupScheduleService->>GroupScheduleService: ValidateTimes(start, end, explanation)
+      opt end <= start
+        GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+      opt explanation?.Length > MaxExplanationLength
+        GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+      end
+    opt status is not (ApprovedStatus or ProposedStatus)
+      GroupScheduleService-->>GroupWorkController: throw UserFriendlyException (400)
+    end
+    GroupScheduleService->>GroupScheduleService: EnsureNoOverlap(userId, slot)
+      GroupScheduleService->>ScheduleSlotRepository: GetLiveSlotsOverlapping(userId, startUtc, endUtc, excludeSlotId)
+      ScheduleSlotRepository-->>GroupScheduleService: ScheduleSlot list
+      opt overlaps.Count > 0
+      end
+    GroupScheduleService->>ScheduleSlotRepository: Add(slot)
+    GroupScheduleService->>GroupScheduleService: AddLog(slotId, changeType, oldStart, oldEnd, newStart, newEnd)
+      GroupScheduleService->>ScheduleChangeLogRepository: Add(log)
+    GroupScheduleService->>GroupWorkRepository: AddActivity(log)
+    GroupScheduleService->>UnitOfWork: SaveChanges()
+    GroupScheduleService->>GroupScheduleService: SyncJobs(slot)
+      GroupScheduleService->>ScheduleJobService: ScheduleAllJobsForSlot(slot)
+      GroupScheduleService->>ScheduleJobService: CancelAllJobs(slotId)
+    GroupScheduleService->>GroupWorkRepository: GetUserNames(userIds)
+    GroupWorkRepository-->>GroupScheduleService: Dictionary of Guid,string
+  GroupScheduleService-->>GroupWorkController: GroupSlotDto
+  GroupWorkController-->>UI: 201 Created (GroupSlotDto)
+  UI-->>Member: Show result
+```
+
+Figure 3.176.2 Sequence Diagram
+
+### 3.176.3 Class Specification
+
+#### 3.176.3.a GroupWorkController
+
+Table 3.176.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateSlot(Guid taskId, GroupSlotRequestDto request) : GroupSlotDto` | `POST /api/group-tasks/{taskId}/schedule-slots`. The assignee plans their own time for a group task (or sub-task) in their personal calendar. Leader or Member only; the work must be assigned to the caller (the task, the sub-task, or the unassigned sub-task of a task assigned to the caller), the group must be active, the task or sub-task must not be Done or Skipped, and a task that has sub-tasks needs one to be chosen. The end must be after the start and the status is Approved (default) or Proposed. An active slot may not overlap another active slot of the same person, group or personal (409 SLOT_OVERLAP). The slot is stored in the shared ScheduleSlot table with the person as its owner, a change log row and a group activity row are written and its reminder jobs are scheduled. The status of the group task is not changed. Requires a signed-in user. |
+
+#### 3.176.3.b GroupScheduleService
+
+Table 3.176.3.b: GroupScheduleService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CreateSlot(Guid userId, Guid taskId, GroupSlotRequestDto request) : GroupSlotDto` | Validates the request and creates a slot for the caller on a group task or sub-task (see the function description); checks the overlap rule, saves the slot, the change log row and the activity row in one transaction and then schedules the reminder jobs. |
+| 2 | `private GetTask(Guid taskId) : GroupTask` | Loads a group task or raises 404. |
+| 3 | `private ValidateTimes(DateTimeOffset start, DateTimeOffset end, string explanation)` | Validates the request fields and raises a UserFriendlyException with a clear message when a rule is broken. |
+| 4 | `private Minutes(DateTimeOffset start, DateTimeOffset end) : int` | Length of the slot in whole minutes (the proposed minutes). |
+| 5 | `private EnsureNoOverlap(Guid userId, ScheduleSlot slot)` | For an active slot, asks the repository for the person's other active slots (group or personal) that intersect its time and raises 409 SLOT_OVERLAP with the conflicting slots; touching ends are allowed and Proposed slots never block. |
+| 6 | `private AddLog(Guid slotId, string changeType, DateTime oldStart, DateTime oldEnd, DateTime newStart, DateTime newEnd)` | Adds a ScheduleChangeLog row (Created, Moved, Resized or Deleted, source Manual) for the slot. |
+| 7 | `private SyncJobs(ScheduleSlot slot)` | After the save: schedules the reminder jobs of an Approved slot, or cancels every job of a slot that is not active any more. |
+| 8 | `private ToGroupDto(ScheduleSlot slot, GroupTask task, GroupSubTask subTask, string userName) : GroupSlotDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.176.3.c GroupWorkRepository
+
+Table 3.176.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+| 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
+| 3 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
+
+#### 3.176.3.d GroupAccessService
+
+Table 3.176.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.176.3.e GroupRepository
+
+Table 3.176.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.176.3.f ScheduleSlotRepository
+
+Table 3.176.3.f: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetLiveSlotsOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeSlotId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (userId, startUtc, endUtc, excludeSlotId); returns nothing or an empty list when there is no match. |
+| 2 | `Add(ScheduleSlot slot)` | Adds a ScheduleSlot to the context. |
+
+#### 3.176.3.g ScheduleChangeLogRepository
+
+Table 3.176.3.g: ScheduleChangeLogRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(ScheduleChangeLog log)` | Adds a ScheduleChangeLog row to the context. |
+
+#### 3.176.3.h UnitOfWork
+
+Table 3.176.3.h: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.176.3.i ScheduleJobService
+
+Table 3.176.3.i: ScheduleJobService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `ScheduleAllJobsForSlot(ScheduleSlot slot)` | Removes the old Hangfire jobs of the slot and schedules all of its reminder and status jobs again from the current StartTime and EndTime. |
+| 2 | `CancelAllJobs(Guid slotId)` | Removes every Hangfire job of the slot. |
+
+### 3.176.4 Methods Used
+
+Table 3.176.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.CreateSlot | IGroupScheduleService.CreateSlot | GroupScheduleService |
+| 2 | GroupScheduleService.GetTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupScheduleService.CreateSlot | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupScheduleService.EnsureNoOverlap | IScheduleSlotRepository.GetLiveSlotsOverlapping | ScheduleSlotRepository |
+| 7 | GroupScheduleService.CreateSlot | IScheduleSlotRepository.Add | ScheduleSlotRepository |
+| 8 | GroupScheduleService.AddLog | IScheduleChangeLogRepository.Add | ScheduleChangeLogRepository |
+| 9 | GroupScheduleService.CreateSlot | IGroupWorkRepository.AddActivity | GroupWorkRepository |
+| 10 | GroupScheduleService.CreateSlot | IUnitOfWork.SaveChanges | UnitOfWork |
+| 11 | GroupScheduleService.SyncJobs | IScheduleJobService.ScheduleAllJobsForSlot | ScheduleJobService |
+| 12 | GroupScheduleService.SyncJobs | IScheduleJobService.CancelAllJobs | ScheduleJobService |
+| 13 | GroupScheduleService.CreateSlot | IGroupWorkRepository.GetUserNames | GroupWorkRepository |
+
+Entities used: GroupSubTask, ScheduleSlot, GroupTask, SubTask, GroupMember, WorkGroup, ScheduleChangeLog, GroupActivityLog, User.
+
+---
+
+## 3.177 View Group Schedule Slots
+
+Lists the schedule slots of a group task and of its sub-tasks, with the person who planned each one, the task and the sub-task. Any member (including a Viewer) may call it; cancelled slots are listed only when includeCancelled is true.
+
+- **Endpoint:** `GET /api/group-tasks/{taskId}/schedule-slots`  
+- **Access:** Signed-in user
+
+### 3.177.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class GroupWorkController {
+    +GetSlots(Guid taskId, bool includeCancelled) GroupSlotDto[]
+  }
+  class IGroupScheduleService {
+    <<interface>>
+    +GetSlots(Guid userId, Guid taskId, bool includeCancelled) GroupSlotDto[]
+  }
+  class GroupScheduleService {
+    +GetSlots(Guid userId, Guid taskId, bool includeCancelled) GroupSlotDto[]
+    -GetTask(Guid taskId) GroupTask
+    -ToGroupDto(ScheduleSlot slot, GroupTask task, GroupSubTask subTask, string userName) GroupSlotDto
+  }
+  class IGroupWorkRepository {
+    <<interface>>
+    +GetTask(Guid taskId) GroupTask
+  }
+  class GroupWorkRepository {
+    +GetTask(Guid taskId) GroupTask
+  }
+  class IGroupAccessService {
+    <<interface>>
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class GroupAccessService {
+    +GetAccess(Guid groupId, Guid userId) GroupAccess
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class GroupRepository {
+    +GetMember(Guid groupId, Guid userId) GroupMember
+    +GetGroup(Guid groupId) WorkGroup
+  }
+  class IScheduleSlotRepository {
+    <<interface>>
+    +GetByGroupTaskId(Guid groupTaskId, bool includeCancelled) ScheduleSlot[]
+  }
+  class ScheduleSlotRepository {
+    +GetByGroupTaskId(Guid groupTaskId, bool includeCancelled) ScheduleSlot[]
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class SubTask {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -string Title
+    -int EstimatedMinutes
+    -int OrderIndex
+    -string Status
+  }
+  class GroupMember {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid UserId
+    -string Role
+    -DateTime JoinedAt
+  }
+  class WorkGroup {
+    <<Entity>>
+    -Guid Id
+    -string Name
+    -string Description
+    -Guid OwnerId
+    -DateOnly StartDate
+    -DateOnly Deadline
+    -string Status
+    -DateTime CreatedAt
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
+  }
+  GroupWorkController ..> IGroupScheduleService : uses
+  GroupScheduleService ..> IGroupWorkRepository : uses
+  GroupScheduleService ..> IGroupAccessService : uses
+  GroupAccessService ..> IGroupRepository : uses
+  GroupScheduleService ..> IScheduleSlotRepository : uses
+  IGroupScheduleService <|.. GroupScheduleService : implements
+  IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupAccessService <|.. GroupAccessService : implements
+  IGroupRepository <|.. GroupRepository : implements
+  IScheduleSlotRepository <|.. ScheduleSlotRepository : implements
+  GroupWorkRepository ..> GroupTask
+  GroupWorkRepository ..> SubTask
+  GroupRepository ..> GroupMember
+  GroupRepository ..> WorkGroup
+  ScheduleSlotRepository ..> ScheduleSlot
+  SubTask "1" --> "0..*" ScheduleSlot
+  WorkGroup "1" --> "0..*" GroupMember
+  WorkGroup "1" --> "0..*" GroupTask
+  ScheduleSlot "*" --> "1" GroupTask
+```
+
+Figure 3.177.1 Class Diagram
+
+### 3.177.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Client App
+  participant GroupWorkController
+  participant GroupScheduleService
+  participant GroupWorkRepository
+  participant GroupAccessService
+  participant GroupRepository
+  participant ScheduleSlotRepository
+  User->>UI: View Group Schedule Slots
+  UI->>GroupWorkController: GET /api/group-tasks/(taskId)/schedule-slots
+  GroupWorkController->>GroupScheduleService: GetSlots(userId, taskId, includeCancelled)
+    GroupScheduleService->>GroupScheduleService: GetTask(taskId)
+      GroupScheduleService->>GroupWorkRepository: GetTask(taskId)
+      GroupWorkRepository-->>GroupScheduleService: GroupTask
+      opt value is missing
+        GroupScheduleService-->>GroupWorkController: throw NotFoundException (404)
+      end
+    GroupScheduleService->>GroupAccessService: GetAccess(groupId, userId)
+      GroupAccessService->>GroupRepository: GetMember(groupId, userId)
+      GroupRepository-->>GroupAccessService: GroupMember
+      GroupAccessService->>GroupRepository: GetGroup(groupId)
+      GroupRepository-->>GroupAccessService: WorkGroup
+      opt member == null || group == null
+        GroupAccessService-->>GroupScheduleService: throw NotFoundException (404)
+      end
+    GroupAccessService-->>GroupScheduleService: GroupAccess
+    GroupScheduleService->>ScheduleSlotRepository: GetByGroupTaskId(groupTaskId, includeCancelled)
+    ScheduleSlotRepository-->>GroupScheduleService: ScheduleSlot list
+  GroupScheduleService-->>GroupWorkController: GroupSlotDto list
+  GroupWorkController-->>UI: 200 OK (GroupSlotDto list)
+  UI-->>User: Show result
+```
+
+Figure 3.177.2 Sequence Diagram
+
+### 3.177.3 Class Specification
+
+#### 3.177.3.a GroupWorkController
+
+Table 3.177.3.a: GroupWorkController Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid taskId, bool includeCancelled) : GroupSlotDto[]` | `GET /api/group-tasks/{taskId}/schedule-slots`. Lists the schedule slots of a group task and of its sub-tasks, with the person who planned each one, the task and the sub-task. Any member (including a Viewer) may call it; cancelled slots are listed only when includeCancelled is true. Requires a signed-in user. |
+
+#### 3.177.3.b GroupScheduleService
+
+Table 3.177.3.b: GroupScheduleService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetSlots(Guid userId, Guid taskId, bool includeCancelled) : GroupSlotDto[]` | Returns the live (or, on request, also cancelled) slots of the task and its sub-tasks to any member, with the person and the titles. |
+| 2 | `private GetTask(Guid taskId) : GroupTask` | Loads a group task or raises 404. |
+| 3 | `private ToGroupDto(ScheduleSlot slot, GroupTask task, GroupSubTask subTask, string userName) : GroupSlotDto` | Maps the entity to the DTO returned by the API. |
+
+#### 3.177.3.c GroupWorkRepository
+
+Table 3.177.3.c: GroupWorkRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
+
+#### 3.177.3.d GroupAccessService
+
+Table 3.177.3.d: GroupAccessService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
+
+#### 3.177.3.e GroupRepository
+
+Table 3.177.3.e: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
+| 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
+
+#### 3.177.3.f ScheduleSlotRepository
+
+Table 3.177.3.f: ScheduleSlotRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByGroupTaskId(Guid groupTaskId, bool includeCancelled) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupTaskId, includeCancelled); returns nothing or an empty list when there is no match. |
+
+### 3.177.4 Methods Used
+
+Table 3.177.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | GroupWorkController.GetSlots | IGroupScheduleService.GetSlots | GroupScheduleService |
+| 2 | GroupScheduleService.GetTask | IGroupWorkRepository.GetTask | GroupWorkRepository |
+| 3 | GroupScheduleService.GetSlots | IGroupAccessService.GetAccess | GroupAccessService |
+| 4 | GroupAccessService.GetAccess | IGroupRepository.GetMember | GroupRepository |
+| 5 | GroupAccessService.GetAccess | IGroupRepository.GetGroup | GroupRepository |
+| 6 | GroupScheduleService.GetSlots | IScheduleSlotRepository.GetByGroupTaskId | ScheduleSlotRepository |
+
+Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot.
+
+---
+
 # Group: Assignee Availability and Change Requests
 
-## 3.176 Check Assignee Availability
+## 3.178 Check Assignee Availability
 
 Leader only. Checks whether a member can take a task before assigning it: fixed time against the member's live schedule slots, Google Calendar events and other group tasks, plus a workload warning for the week of the deadline. The Leader sees only busy or free periods, never titles of personal items.
 
 - **Endpoint:** `GET /api/group-tasks/{taskId}/assignee-check`  
 - **Access:** Signed-in user
 
-### 3.176.1 Class Diagram
+### 3.178.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -36629,6 +38893,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -36696,11 +38963,13 @@ classDiagram
   GroupTask "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
-Figure 3.176.1 Class Diagram
+Figure 3.178.1 Class Diagram
 
-### 3.176.2 Sequence Diagram
+### 3.178.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -36755,21 +39024,21 @@ sequenceDiagram
   UI-->>Group Leader: Show result
 ```
 
-Figure 3.176.2 Sequence Diagram
+Figure 3.178.2 Sequence Diagram
 
-### 3.176.3 Class Specification
+### 3.178.3 Class Specification
 
-#### 3.176.3.a GroupSchedulingController
+#### 3.178.3.a GroupSchedulingController
 
-Table 3.176.3.a: GroupSchedulingController Description Table
+Table 3.178.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CheckAssignee(Guid taskId, Guid assigneeId) : GroupAssigneeAvailabilityDto` | `GET /api/group-tasks/{taskId}/assignee-check`. Leader only. Checks whether a member can take a task before assigning it: fixed time against the member's live schedule slots, Google Calendar events and other group tasks, plus a workload warning for the week of the deadline. The Leader sees only busy or free periods, never titles of personal items. Requires a signed-in user. |
 
-#### 3.176.3.b GroupAvailabilityService
+#### 3.178.3.b GroupAvailabilityService
 
-Table 3.176.3.b: GroupAvailabilityService Description Table
+Table 3.178.3.b: GroupAvailabilityService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -36777,9 +39046,9 @@ Table 3.176.3.b: GroupAvailabilityService Description Table
 | 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
 | 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
 
-#### 3.176.3.c GroupWorkRepository
+#### 3.178.3.c GroupWorkRepository
 
-Table 3.176.3.c: GroupWorkRepository Description Table
+Table 3.178.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -36787,26 +39056,26 @@ Table 3.176.3.c: GroupWorkRepository Description Table
 | 2 | `GetFixedTasksOverlapping(Guid userId, DateTime startUtc, DateTime endUtc, Guid excludeTaskId) : GroupTask[]` | Reads the GroupTask list matching (userId, startUtc, endUtc, excludeTaskId); returns nothing or an empty list when there is no match. |
 | 3 | `SumOpenEstimatedMinutes(Guid userId, DateTime fromUtc, DateTime toUtc, Guid excludeTaskId) : int` | Sums the values for (userId, fromUtc, toUtc, excludeTaskId) and returns the total. |
 
-#### 3.176.3.d GroupAccessService
+#### 3.178.3.d GroupAccessService
 
-Table 3.176.3.d: GroupAccessService Description Table
+Table 3.178.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.176.3.e GroupRepository
+#### 3.178.3.e GroupRepository
 
-Table 3.176.3.e: GroupRepository Description Table
+Table 3.178.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.176.3.f CalendarRepository
+#### 3.178.3.f CalendarRepository
 
-Table 3.176.3.f: CalendarRepository Description Table
+Table 3.178.3.f: CalendarRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -36814,9 +39083,9 @@ Table 3.176.3.f: CalendarRepository Description Table
 | 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
 | 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
 
-### 3.176.4 Methods Used
+### 3.178.4 Methods Used
 
-Table 3.176.4: Methods used by this function
+Table 3.178.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -36836,14 +39105,14 @@ Entities used: GroupTask, SubTask, GroupMember, WorkGroup, ScheduleSlot, GoogleC
 
 ---
 
-## 3.177 Propose Time Change
+## 3.179 Propose Time Change
 
 The assignee of a task (or of one of its sub-tasks) proposes a new fixed time or deadline with a reason. Only one pending proposal per person and task; the Leaders are notified.
 
 - **Endpoint:** `POST /api/group-tasks/{taskId}/change-requests`  
 - **Access:** Signed-in user
 
-### 3.177.1 Class Diagram
+### 3.179.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -37030,9 +39299,9 @@ classDiagram
   GroupActivityLog "*" --> "1" User
 ```
 
-Figure 3.177.1 Class Diagram
+Figure 3.179.1 Class Diagram
 
-### 3.177.2 Sequence Diagram
+### 3.179.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -37106,21 +39375,21 @@ sequenceDiagram
   UI-->>Member: Show result
 ```
 
-Figure 3.177.2 Sequence Diagram
+Figure 3.179.2 Sequence Diagram
 
-### 3.177.3 Class Specification
+### 3.179.3 Class Specification
 
-#### 3.177.3.a GroupSchedulingController
+#### 3.179.3.a GroupSchedulingController
 
-Table 3.177.3.a: GroupSchedulingController Description Table
+Table 3.179.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `CreateChangeRequest(Guid taskId, GroupChangeRequestCreateDto request) : GroupChangeRequestDto` | `POST /api/group-tasks/{taskId}/change-requests`. The assignee of a task (or of one of its sub-tasks) proposes a new fixed time or deadline with a reason. Only one pending proposal per person and task; the Leaders are notified. Requires a signed-in user. |
 
-#### 3.177.3.b GroupChangeRequestService
+#### 3.179.3.b GroupChangeRequestService
 
-Table 3.177.3.b: GroupChangeRequestService Description Table
+Table 3.179.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -37130,9 +39399,9 @@ Table 3.177.3.b: GroupChangeRequestService Description Table
 | 4 | `private Describe(DateTime fixedStart, DateTime fixedEnd, DateTime deadline) : string` | Formats the fixed time and the deadline as one short text for the notification and the activity log. |
 | 5 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.177.3.c GroupWorkRepository
+#### 3.179.3.c GroupWorkRepository
 
-Table 3.177.3.c: GroupWorkRepository Description Table
+Table 3.179.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -37142,17 +39411,17 @@ Table 3.177.3.c: GroupWorkRepository Description Table
 | 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 | 5 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
 
-#### 3.177.3.d GroupAccessService
+#### 3.179.3.d GroupAccessService
 
-Table 3.177.3.d: GroupAccessService Description Table
+Table 3.179.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.177.3.e GroupRepository
+#### 3.179.3.e GroupRepository
 
-Table 3.177.3.e: GroupRepository Description Table
+Table 3.179.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -37160,25 +39429,25 @@ Table 3.177.3.e: GroupRepository Description Table
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 | 3 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.177.3.f UnitOfWork
+#### 3.179.3.f UnitOfWork
 
-Table 3.177.3.f: UnitOfWork Description Table
+Table 3.179.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.177.3.g GroupNotifier
+#### 3.179.3.g GroupNotifier
 
-Table 3.177.3.g: GroupNotifier Description Table
+Table 3.179.3.g: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
-### 3.177.4 Methods Used
+### 3.179.4 Methods Used
 
-Table 3.177.4: Methods used by this function
+Table 3.179.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -37199,14 +39468,14 @@ Entities used: GroupTaskChangeRequest, GroupTask, SubTask, GroupMember, WorkGrou
 
 ---
 
-## 3.178 View Task Change Requests
+## 3.180 View Task Change Requests
 
 Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused.
 
 - **Endpoint:** `GET /api/group-tasks/{taskId}/change-requests`  
 - **Access:** Signed-in user
 
-### 3.178.1 Class Diagram
+### 3.180.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -37325,9 +39594,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupTask
 ```
 
-Figure 3.178.1 Class Diagram
+Figure 3.180.1 Class Diagram
 
-### 3.178.2 Sequence Diagram
+### 3.180.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -37363,56 +39632,56 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.178.2 Sequence Diagram
+Figure 3.180.2 Sequence Diagram
 
-### 3.178.3 Class Specification
+### 3.180.3 Class Specification
 
-#### 3.178.3.a GroupSchedulingController
+#### 3.180.3.a GroupSchedulingController
 
-Table 3.178.3.a: GroupSchedulingController Description Table
+Table 3.180.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetTaskChangeRequests(Guid taskId) : GroupChangeRequestDto[]` | `GET /api/group-tasks/{taskId}/change-requests`. Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused. Requires a signed-in user. |
 
-#### 3.178.3.b GroupChangeRequestService
+#### 3.180.3.b GroupChangeRequestService
 
-Table 3.178.3.b: GroupChangeRequestService Description Table
+Table 3.180.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetOfTask(Guid userId, Guid taskId) : GroupChangeRequestDto[]` | Lists the change requests of one task. A Member sees only their own; a Leader sees all; Viewers are refused. |
 | 2 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.178.3.c GroupWorkRepository
+#### 3.180.3.c GroupWorkRepository
 
-Table 3.178.3.c: GroupWorkRepository Description Table
+Table 3.180.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetTask(Guid taskId) : GroupTask` | Reads the GroupTask matching (taskId); returns nothing or an empty list when there is no match. |
 | 2 | `GetChangeRequestsOfTask(Guid taskId, Guid requestedById) : GroupTaskChangeRequest[]` | Reads the GroupTaskChangeRequest list matching (taskId, requestedById); returns nothing or an empty list when there is no match. |
 
-#### 3.178.3.d GroupAccessService
+#### 3.180.3.d GroupAccessService
 
-Table 3.178.3.d: GroupAccessService Description Table
+Table 3.180.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.178.3.e GroupRepository
+#### 3.180.3.e GroupRepository
 
-Table 3.178.3.e: GroupRepository Description Table
+Table 3.180.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-### 3.178.4 Methods Used
+### 3.180.4 Methods Used
 
-Table 3.178.4: Methods used by this function
+Table 3.180.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -37427,14 +39696,14 @@ Entities used: GroupTask, SubTask, GroupMember, WorkGroup, GroupTaskChangeReques
 
 ---
 
-## 3.179 View Group Change Requests
+## 3.181 View Group Change Requests
 
 Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused.
 
 - **Endpoint:** `GET /api/groups/{groupId}/change-requests`  
 - **Access:** Signed-in user
 
-### 3.179.1 Class Diagram
+### 3.181.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -37521,9 +39790,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupMember
 ```
 
-Figure 3.179.1 Class Diagram
+Figure 3.181.1 Class Diagram
 
-### 3.179.2 Sequence Diagram
+### 3.181.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -37557,55 +39826,55 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.179.2 Sequence Diagram
+Figure 3.181.2 Sequence Diagram
 
-### 3.179.3 Class Specification
+### 3.181.3 Class Specification
 
-#### 3.179.3.a GroupSchedulingController
+#### 3.181.3.a GroupSchedulingController
 
-Table 3.179.3.a: GroupSchedulingController Description Table
+Table 3.181.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetGroupChangeRequests(Guid groupId, string status) : GroupChangeRequestDto[]` | `GET /api/groups/{groupId}/change-requests`. Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused. Requires a signed-in user. |
 
-#### 3.179.3.b GroupChangeRequestService
+#### 3.181.3.b GroupChangeRequestService
 
-Table 3.179.3.b: GroupChangeRequestService Description Table
+Table 3.181.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetOfGroup(Guid userId, Guid groupId, string status) : GroupChangeRequestDto[]` | Lists the change requests of the group, optionally by status. A Leader sees every request; a Member only their own; Viewers are refused. |
 | 2 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.179.3.c GroupAccessService
+#### 3.181.3.c GroupAccessService
 
-Table 3.179.3.c: GroupAccessService Description Table
+Table 3.181.3.c: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.179.3.d GroupRepository
+#### 3.181.3.d GroupRepository
 
-Table 3.179.3.d: GroupRepository Description Table
+Table 3.181.3.d: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.179.3.e GroupWorkRepository
+#### 3.181.3.e GroupWorkRepository
 
-Table 3.179.3.e: GroupWorkRepository Description Table
+Table 3.181.3.e: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetChangeRequestsOfGroup(Guid groupId, string status, Guid requestedById) : GroupTaskChangeRequest[]` | Reads the GroupTaskChangeRequest list matching (groupId, status, requestedById); returns nothing or an empty list when there is no match. |
 
-### 3.179.4 Methods Used
+### 3.181.4 Methods Used
 
-Table 3.179.4: Methods used by this function
+Table 3.181.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -37619,14 +39888,14 @@ Entities used: GroupMember, WorkGroup, GroupTaskChangeRequest.
 
 ---
 
-## 3.180 Approve Change Request
+## 3.182 Approve Change Request
 
 Leader only. Checks the assignee's availability for the new time (409 until confirmed), applies the new fixed time or deadline to the task, logs the change and notifies the proposer.
 
 - **Endpoint:** `POST /api/group-change-requests/{requestId}/approve`  
 - **Access:** Signed-in user
 
-### 3.180.1 Class Diagram
+### 3.182.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -37760,6 +40029,9 @@ classDiagram
     -Guid Id
     -Guid TaskId
     -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
     -Guid ScheduleProposalId
     -DateTime StartTime
     -DateTime EndTime
@@ -37867,13 +40139,15 @@ classDiagram
   GroupTaskChangeRequest "*" --> "1" User
   GroupMember "*" --> "1" User
   WorkGroup "*" --> "1" User
+  ScheduleSlot "*" --> "1" User
+  ScheduleSlot "*" --> "1" GroupTask
   GroupTask "*" --> "1" User
   GroupActivityLog "*" --> "1" User
 ```
 
-Figure 3.180.1 Class Diagram
+Figure 3.182.1 Class Diagram
 
-### 3.180.2 Sequence Diagram
+### 3.182.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -37946,21 +40220,21 @@ sequenceDiagram
   UI-->>Group Leader: Show result
 ```
 
-Figure 3.180.2 Sequence Diagram
+Figure 3.182.2 Sequence Diagram
 
-### 3.180.3 Class Specification
+### 3.182.3 Class Specification
 
-#### 3.180.3.a GroupSchedulingController
+#### 3.182.3.a GroupSchedulingController
 
-Table 3.180.3.a: GroupSchedulingController Description Table
+Table 3.182.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Approve(Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/approve`. Leader only. Checks the assignee's availability for the new time (409 until confirmed), applies the new fixed time or deadline to the task, logs the change and notifies the proposer. Requires a signed-in user. |
 
-#### 3.180.3.b GroupChangeRequestService
+#### 3.182.3.b GroupChangeRequestService
 
-Table 3.180.3.b: GroupChangeRequestService Description Table
+Table 3.182.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -37973,9 +40247,9 @@ Table 3.180.3.b: GroupChangeRequestService Description Table
 | 7 | `private ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 | 8 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.180.3.c GroupWorkRepository
+#### 3.182.3.c GroupWorkRepository
 
-Table 3.180.3.c: GroupWorkRepository Description Table
+Table 3.182.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -37985,26 +40259,26 @@ Table 3.180.3.c: GroupWorkRepository Description Table
 | 4 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 | 5 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
 
-#### 3.180.3.d GroupAccessService
+#### 3.182.3.d GroupAccessService
 
-Table 3.180.3.d: GroupAccessService Description Table
+Table 3.182.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.180.3.e GroupRepository
+#### 3.182.3.e GroupRepository
 
-Table 3.180.3.e: GroupRepository Description Table
+Table 3.182.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.180.3.f GroupAvailabilityService
+#### 3.182.3.f GroupAvailabilityService
 
-Table 3.180.3.f: GroupAvailabilityService Description Table
+Table 3.182.3.f: GroupAvailabilityService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -38012,9 +40286,9 @@ Table 3.180.3.f: GroupAvailabilityService Description Table
 | 2 | `private Check(Guid assigneeId, DateTime fixedStartUtc, DateTime fixedEndUtc, DateTime deadlineUtc, int estimatedMinutes, Guid excludeTaskId) : GroupAssigneeAvailabilityDto` | Compares the task's fixed time with the assignee's live schedule slots, Google Calendar events (not all-day) and other group tasks with a fixed time, and computes the workload of the 7 days before the deadline against the weekly capacity from the working hours. |
 | 3 | `private Period(DateTime start, DateTime end, string source) : GroupBusyPeriodDto` | Builds a busy period (start, end, source) for the response. |
 
-#### 3.180.3.g CalendarRepository
+#### 3.182.3.g CalendarRepository
 
-Table 3.180.3.g: CalendarRepository Description Table
+Table 3.182.3.g: CalendarRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -38022,25 +40296,25 @@ Table 3.180.3.g: CalendarRepository Description Table
 | 2 | `GetGoogleEvents(Guid userId, DateTime from, DateTime to) : GoogleCalendarEvent[]` | Returns the user's cached Google events that overlap [from, to), excluding cancelled events and events created by METANOIA itself. |
 | 3 | `GetWorkingHours(Guid userId) : CalendarWorkingHours` | Returns the user's work-day start and end, weekend flag and time zone. |
 
-#### 3.180.3.h UnitOfWork
+#### 3.182.3.h UnitOfWork
 
-Table 3.180.3.h: UnitOfWork Description Table
+Table 3.182.3.h: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.180.3.i GroupNotifier
+#### 3.182.3.i GroupNotifier
 
-Table 3.180.3.i: GroupNotifier Description Table
+Table 3.182.3.i: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
-### 3.180.4 Methods Used
+### 3.182.4 Methods Used
 
-Table 3.180.4: Methods used by this function
+Table 3.182.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -38064,14 +40338,14 @@ Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, Schedule
 
 ---
 
-## 3.181 Reject Change Request
+## 3.183 Reject Change Request
 
 Leader only. Rejects a pending request; a reason is mandatory and the proposer is notified.
 
 - **Endpoint:** `POST /api/group-change-requests/{requestId}/reject`  
 - **Access:** Signed-in user
 
-### 3.181.1 Class Diagram
+### 3.183.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -38230,9 +40504,9 @@ classDiagram
   GroupActivityLog "*" --> "1" User
 ```
 
-Figure 3.181.1 Class Diagram
+Figure 3.183.1 Class Diagram
 
-### 3.181.2 Sequence Diagram
+### 3.183.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -38283,21 +40557,21 @@ sequenceDiagram
   UI-->>Group Leader: Show result
 ```
 
-Figure 3.181.2 Sequence Diagram
+Figure 3.183.2 Sequence Diagram
 
-### 3.181.3 Class Specification
+### 3.183.3 Class Specification
 
-#### 3.181.3.a GroupSchedulingController
+#### 3.183.3.a GroupSchedulingController
 
-Table 3.181.3.a: GroupSchedulingController Description Table
+Table 3.183.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Reject(Guid requestId, GroupChangeDecisionDto request) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/reject`. Leader only. Rejects a pending request; a reason is mandatory and the proposer is notified. Requires a signed-in user. |
 
-#### 3.181.3.b GroupChangeRequestService
+#### 3.183.3.b GroupChangeRequestService
 
-Table 3.181.3.b: GroupChangeRequestService Description Table
+Table 3.183.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -38309,9 +40583,9 @@ Table 3.181.3.b: GroupChangeRequestService Description Table
 | 6 | `private ToDto(GroupTaskChangeRequest changeRequest, GroupTask task, Guid deciderId) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 | 7 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.181.3.c GroupWorkRepository
+#### 3.183.3.c GroupWorkRepository
 
-Table 3.181.3.c: GroupWorkRepository Description Table
+Table 3.183.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -38319,42 +40593,42 @@ Table 3.181.3.c: GroupWorkRepository Description Table
 | 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 | 3 | `GetUserNames(Guid[] userIds) : <>` | Reads the Dictionary of Guid,string matching (userIds); returns nothing or an empty list when there is no match. |
 
-#### 3.181.3.d GroupAccessService
+#### 3.183.3.d GroupAccessService
 
-Table 3.181.3.d: GroupAccessService Description Table
+Table 3.183.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.181.3.e GroupRepository
+#### 3.183.3.e GroupRepository
 
-Table 3.181.3.e: GroupRepository Description Table
+Table 3.183.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.181.3.f UnitOfWork
+#### 3.183.3.f UnitOfWork
 
-Table 3.181.3.f: UnitOfWork Description Table
+Table 3.183.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.181.3.g GroupNotifier
+#### 3.183.3.g GroupNotifier
 
-Table 3.181.3.g: GroupNotifier Description Table
+Table 3.183.3.g: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
-### 3.181.4 Methods Used
+### 3.183.4 Methods Used
 
-Table 3.181.4: Methods used by this function
+Table 3.183.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -38372,14 +40646,14 @@ Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, GroupAct
 
 ---
 
-## 3.182 Withdraw Change Request
+## 3.184 Withdraw Change Request
 
 Only the proposer may withdraw their pending request.
 
 - **Endpoint:** `POST /api/group-change-requests/{requestId}/cancel`  
 - **Access:** Signed-in user
 
-### 3.182.1 Class Diagram
+### 3.184.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -38503,9 +40777,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupActivityLog
 ```
 
-Figure 3.182.1 Class Diagram
+Figure 3.184.1 Class Diagram
 
-### 3.182.2 Sequence Diagram
+### 3.184.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -38550,21 +40824,21 @@ sequenceDiagram
   UI-->>User: Show result
 ```
 
-Figure 3.182.2 Sequence Diagram
+Figure 3.184.2 Sequence Diagram
 
-### 3.182.3 Class Specification
+### 3.184.3 Class Specification
 
-#### 3.182.3.a GroupSchedulingController
+#### 3.184.3.a GroupSchedulingController
 
-Table 3.182.3.a: GroupSchedulingController Description Table
+Table 3.184.3.a: GroupSchedulingController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Cancel(Guid requestId) : GroupChangeRequestDto` | `POST /api/group-change-requests/{requestId}/cancel`. Only the proposer may withdraw their pending request. Requires a signed-in user. |
 
-#### 3.182.3.b GroupChangeRequestService
+#### 3.184.3.b GroupChangeRequestService
 
-Table 3.182.3.b: GroupChangeRequestService Description Table
+Table 3.184.3.b: GroupChangeRequestService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -38573,43 +40847,43 @@ Table 3.182.3.b: GroupChangeRequestService Description Table
 | 3 | `private EnsurePending(GroupTaskChangeRequest changeRequest)` | Allows only a Pending request to be decided or withdrawn; otherwise UserFriendlyException. |
 | 4 | `private ToDto(GroupTaskChangeRequest r, GroupTask task, string requesterName, string decidedByName) : GroupChangeRequestDto` | Maps the entity to the DTO returned by the API. |
 
-#### 3.182.3.c GroupWorkRepository
+#### 3.184.3.c GroupWorkRepository
 
-Table 3.182.3.c: GroupWorkRepository Description Table
+Table 3.184.3.c: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetChangeRequest(Guid requestId) : GroupTaskChangeRequest` | Reads the GroupTaskChangeRequest matching (requestId); returns nothing or an empty list when there is no match. |
 | 2 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
-#### 3.182.3.d GroupAccessService
+#### 3.184.3.d GroupAccessService
 
-Table 3.182.3.d: GroupAccessService Description Table
+Table 3.184.3.d: GroupAccessService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetAccess(Guid groupId, Guid userId) : GroupAccess` | The single access point of the group branch. Loads the group and the caller's membership and returns a GroupAccess (group and role). A user who is not a member receives 404 so that the group is not revealed; the role checks (Leader, can work, active group) are then made by the caller on the returned object. |
 
-#### 3.182.3.e GroupRepository
+#### 3.184.3.e GroupRepository
 
-Table 3.182.3.e: GroupRepository Description Table
+Table 3.184.3.e: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetMember(Guid groupId, Guid userId) : GroupMember` | Reads the GroupMember matching (groupId, userId); returns nothing or an empty list when there is no match. |
 | 2 | `GetGroup(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.182.3.f UnitOfWork
+#### 3.184.3.f UnitOfWork
 
-Table 3.182.3.f: UnitOfWork Description Table
+Table 3.184.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-### 3.182.4 Methods Used
+### 3.184.4 Methods Used
 
-Table 3.182.4: Methods used by this function
+Table 3.184.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -38627,14 +40901,14 @@ Entities used: GroupTaskChangeRequest, SubTask, GroupMember, WorkGroup, GroupAct
 
 # Administration: Groups
 
-## 3.183 Admin: Search Groups
+## 3.185 Admin: Search Groups
 
 Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging.
 
 - **Endpoint:** `GET /api/admin/groups`  
 - **Access:** Admin role
 
-### 3.183.1 Class Diagram
+### 3.185.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -38681,9 +40955,9 @@ classDiagram
   AdminGroupRepository ..> Task
 ```
 
-Figure 3.183.1 Class Diagram
+Figure 3.185.1 Class Diagram
 
-### 3.183.2 Sequence Diagram
+### 3.185.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -38706,37 +40980,37 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.183.2 Sequence Diagram
+Figure 3.185.2 Sequence Diagram
 
-### 3.183.3 Class Specification
+### 3.185.3 Class Specification
 
-#### 3.183.3.a AdminGroupsController
+#### 3.185.3.a AdminGroupsController
 
-Table 3.183.3.a: AdminGroupsController Description Table
+Table 3.185.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : <>` | `GET /api/admin/groups`. Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging. Requires the Admin role. |
 
-#### 3.183.3.b AdminGroupService
+#### 3.185.3.b AdminGroupService
 
-Table 3.183.3.b: AdminGroupService Description Table
+Table 3.185.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : <>` | Lists every group with its owner, member and task counts, filtered by name or owner text, status or owner, with paging. |
 
-#### 3.183.3.c AdminGroupRepository
+#### 3.185.3.c AdminGroupRepository
 
-Table 3.183.3.c: AdminGroupRepository Description Table
+Table 3.185.3.c: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Search(string search, string status, Guid ownerId, int page, int pageSize) : Tuple` | Reads the Tuple matching (search, status, ownerId, page, pageSize); returns nothing or an empty list when there is no match. |
 
-### 3.183.4 Methods Used
+### 3.185.4 Methods Used
 
-Table 3.183.4: Methods used by this function
+Table 3.185.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -38747,14 +41021,14 @@ Entities used: Task.
 
 ---
 
-## 3.184 Admin: View Group Statistics
+## 3.186 Admin: View Group Statistics
 
 Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions.
 
 - **Endpoint:** `GET /api/admin/groups/stats`  
 - **Access:** Admin role
 
-### 3.184.1 Class Diagram
+### 3.186.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -38782,9 +41056,9 @@ classDiagram
   IAdminGroupRepository <|.. AdminGroupRepository : implements
 ```
 
-Figure 3.184.1 Class Diagram
+Figure 3.186.1 Class Diagram
 
-### 3.184.2 Sequence Diagram
+### 3.186.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -38804,37 +41078,37 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.184.2 Sequence Diagram
+Figure 3.186.2 Sequence Diagram
 
-### 3.184.3 Class Specification
+### 3.186.3 Class Specification
 
-#### 3.184.3.a AdminGroupsController
+#### 3.186.3.a AdminGroupsController
 
-Table 3.184.3.a: AdminGroupsController Description Table
+Table 3.186.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetStats() : AdminGroupStatsDto` | `GET /api/admin/groups/stats`. Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions. Requires the Admin role. |
 
-#### 3.184.3.b AdminGroupService
+#### 3.186.3.b AdminGroupService
 
-Table 3.184.3.b: AdminGroupService Description Table
+Table 3.186.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetStats() : AdminGroupStatsDto` | Summarizes groups (active, archived), memberships and distinct members, tasks by status, groups created in the last 30 days, pending invitations and running group sessions. |
 
-#### 3.184.3.c AdminGroupRepository
+#### 3.186.3.c AdminGroupRepository
 
-Table 3.184.3.c: AdminGroupRepository Description Table
+Table 3.186.3.c: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetStats(DateTime nowUtc) : AdminGroupStatsDto` | Reads the AdminGroupStatsDto matching (nowUtc); returns nothing or an empty list when there is no match. |
 
-### 3.184.4 Methods Used
+### 3.186.4 Methods Used
 
-Table 3.184.4: Methods used by this function
+Table 3.186.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -38843,14 +41117,14 @@ Table 3.184.4: Methods used by this function
 
 ---
 
-## 3.185 Admin: View Group Detail
+## 3.187 Admin: View Group Detail
 
 Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars.
 
 - **Endpoint:** `GET /api/admin/groups/{groupId}`  
 - **Access:** Admin role
 
-### 3.185.1 Class Diagram
+### 3.187.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -38873,13 +41147,6 @@ classDiagram
   class AdminGroupRepository {
     +GetGroupWithOwner(Guid groupId) WorkGroup
   }
-  class IGroupRepository {
-    <<interface>>
-    +GetMembers(Guid groupId) GroupMemberDto[]
-  }
-  class GroupRepository {
-    +GetMembers(Guid groupId) GroupMemberDto[]
-  }
   class IGroupProgressService {
     <<interface>>
     +GetProgressForAdmin(Guid groupId) GroupProgressDto
@@ -38887,17 +41154,29 @@ classDiagram
   class GroupProgressService {
     +GetProgressForAdmin(Guid groupId) GroupProgressDto
     -BuildProgress(Guid groupId) GroupProgressDto
+    -BuildSignals(Guid groupId, GroupTask[] tasks, GroupMemberDto[] members, GroupFocusSession[] finishedSessions) SignalResult
   }
   class IGroupWorkRepository {
     <<interface>>
     +GetTasksForProgress(Guid groupId) GroupTask[]
     +GetMilestones(Guid groupId) GroupMilestone[]
     +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+    +GetLiveSlotsOfGroup(Guid groupId) ScheduleSlot[]
+    +GetLastActivityByTask(Guid groupId) Dictionary~Guid,DateTime~
   }
   class GroupWorkRepository {
     +GetTasksForProgress(Guid groupId) GroupTask[]
     +GetMilestones(Guid groupId) GroupMilestone[]
     +GetFinishedFocusSessionsOfGroup(Guid groupId) GroupFocusSession[]
+    +GetLiveSlotsOfGroup(Guid groupId) ScheduleSlot[]
+    +GetLastActivityByTask(Guid groupId) Dictionary~Guid,DateTime~
+  }
+  class IGroupRepository {
+    <<interface>>
+    +GetMembers(Guid groupId) GroupMemberDto[]
+  }
+  class GroupRepository {
+    +GetMembers(Guid groupId) GroupMemberDto[]
   }
   class WorkGroup {
     <<Entity>>
@@ -38958,32 +41237,57 @@ classDiagram
     -string StopReason
     -string Note
     -string CaptureMethod
+    -Guid ScheduleSlotId
+  }
+  class ScheduleSlot {
+    <<Entity>>
+    -Guid Id
+    -Guid TaskId
+    -Guid SubTaskId
+    -Guid UserId
+    -Guid GroupTaskId
+    -Guid GroupSubTaskId
+    -Guid ScheduleProposalId
+    -DateTime StartTime
+    -DateTime EndTime
+    -DateTime OriginalStartTime
+    -bool IsManualOverride
+    -int ProposedMinutes
+    -decimal KbiasUsed
+    -string Explanation
+    -string Status
+    -string GoogleEventId
+    -bool SyncFailed
   }
   AdminGroupsController ..> IAdminGroupService : uses
   AdminGroupService ..> IAdminGroupRepository : uses
-  AdminGroupService ..> IGroupRepository : uses
   AdminGroupService ..> IGroupProgressService : uses
   GroupProgressService ..> IGroupWorkRepository : uses
   GroupProgressService ..> IGroupRepository : uses
+  AdminGroupService ..> IGroupRepository : uses
   IAdminGroupService <|.. AdminGroupService : implements
   IAdminGroupRepository <|.. AdminGroupRepository : implements
-  IGroupRepository <|.. GroupRepository : implements
   IGroupProgressService <|.. GroupProgressService : implements
   IGroupWorkRepository <|.. GroupWorkRepository : implements
+  IGroupRepository <|.. GroupRepository : implements
   AdminGroupRepository ..> WorkGroup
   GroupWorkRepository ..> GroupTask
   GroupWorkRepository ..> SubTask
   GroupWorkRepository ..> GroupMilestone
   GroupWorkRepository ..> GroupFocusSession
+  GroupWorkRepository ..> ScheduleSlot
   WorkGroup "1" --> "0..*" GroupMilestone
   WorkGroup "1" --> "0..*" GroupTask
   GroupTask "1" --> "0..*" GroupFocusSession
+  SubTask "1" --> "0..*" ScheduleSlot
   GroupMilestone "1" --> "0..*" GroupTask
+  GroupFocusSession "*" --> "1" ScheduleSlot
+  ScheduleSlot "*" --> "1" GroupTask
 ```
 
-Figure 3.185.1 Class Diagram
+Figure 3.187.1 Class Diagram
 
-### 3.185.2 Sequence Diagram
+### 3.187.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -38993,9 +41297,9 @@ sequenceDiagram
   participant AdminGroupsController
   participant AdminGroupService
   participant AdminGroupRepository
-  participant GroupRepository
   participant GroupProgressService
   participant GroupWorkRepository
+  participant GroupRepository
   Admin->>UI: Admin: View Group Detail
   UI->>AdminGroupsController: GET /api/admin/groups/(groupId)
   AdminGroupsController->>AdminGroupService: Get(groupId)
@@ -39005,8 +41309,6 @@ sequenceDiagram
       opt value is missing
         AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
       end
-      AdminGroupService->>GroupRepository: GetMembers(groupId)
-      GroupRepository-->>AdminGroupService: GroupMemberDto list
       AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
         GroupProgressService->>GroupProgressService: BuildProgress(groupId)
           GroupProgressService->>GroupWorkRepository: GetTasksForProgress(groupId)
@@ -39017,95 +41319,107 @@ sequenceDiagram
           GroupWorkRepository-->>GroupProgressService: GroupMilestone list
           GroupProgressService->>GroupWorkRepository: GetFinishedFocusSessionsOfGroup(groupId)
           GroupWorkRepository-->>GroupProgressService: GroupFocusSession list
+          GroupProgressService->>GroupProgressService: BuildSignals(groupId, tasks, members, finishedSessions)
+            GroupProgressService->>GroupWorkRepository: GetLiveSlotsOfGroup(groupId)
+            GroupWorkRepository-->>GroupProgressService: ScheduleSlot list
+            GroupProgressService->>GroupWorkRepository: GetLastActivityByTask(groupId)
+            GroupWorkRepository-->>GroupProgressService: Dictionary of Guid,DateTime
       GroupProgressService-->>AdminGroupService: GroupProgressDto
+      AdminGroupService->>GroupRepository: GetMembers(groupId)
+      GroupRepository-->>AdminGroupService: GroupMemberDto list
   AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
   AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
   UI-->>Admin: Show result
 ```
 
-Figure 3.185.2 Sequence Diagram
+Figure 3.187.2 Sequence Diagram
 
-### 3.185.3 Class Specification
+### 3.187.3 Class Specification
 
-#### 3.185.3.a AdminGroupsController
+#### 3.187.3.a AdminGroupsController
 
-Table 3.185.3.a: AdminGroupsController Description Table
+Table 3.187.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(Guid groupId) : AdminGroupDetailDto` | `GET /api/admin/groups/{groupId}`. Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars. Requires the Admin role. |
 
-#### 3.185.3.b AdminGroupService
+#### 3.187.3.b AdminGroupService
 
-Table 3.185.3.b: AdminGroupService Description Table
+Table 3.187.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Get(Guid groupId) : AdminGroupDetailDto` | Returns one group with its owner, members and progress report. The administrator does not need to be a member and cannot read comments or personal calendars. |
 | 2 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
 
-#### 3.185.3.c AdminGroupRepository
+#### 3.187.3.c AdminGroupRepository
 
-Table 3.185.3.c: AdminGroupRepository Description Table
+Table 3.187.3.c: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.185.3.d GroupRepository
+#### 3.187.3.d GroupProgressService
 
-Table 3.185.3.d: GroupRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
-
-#### 3.185.3.e GroupProgressService
-
-Table 3.185.3.e: GroupProgressService Description Table
+Table 3.187.3.d: GroupProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
 | 2 | `private BuildProgress(Guid groupId) : GroupProgressDto` | Builds the progress report of a group: tasks by status, remaining and unassigned tasks, percent done, estimated against tracked minutes, and the figures of each member and milestone. Shared by the member view and the admin view. |
+| 3 | `private BuildSignals(Guid groupId, GroupTask[] tasks, GroupMemberDto[] members, GroupFocusSession[] finishedSessions) : SignalResult` | Computes the overdue, not-scheduled, at-risk and stale signals of the open tasks that have an assignee, with the counters per member. Nothing is stored. |
 
-#### 3.185.3.f GroupWorkRepository
+#### 3.187.3.e GroupWorkRepository
 
-Table 3.185.3.f: GroupWorkRepository Description Table
+Table 3.187.3.e: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetTasksForProgress(Guid groupId) : GroupTask[]` | Reads the GroupTask list matching (groupId); returns nothing or an empty list when there is no match. |
 | 2 | `GetMilestones(Guid groupId) : GroupMilestone[]` | Reads the GroupMilestone list matching (groupId); returns nothing or an empty list when there is no match. |
 | 3 | `GetFinishedFocusSessionsOfGroup(Guid groupId) : GroupFocusSession[]` | Reads the GroupFocusSession list matching (groupId); returns nothing or an empty list when there is no match. |
+| 4 | `GetLiveSlotsOfGroup(Guid groupId) : ScheduleSlot[]` | Reads the ScheduleSlot list matching (groupId); returns nothing or an empty list when there is no match. |
+| 5 | `GetLastActivityByTask(Guid groupId) : <>` | Reads the Dictionary of Guid,DateTime matching (groupId); returns nothing or an empty list when there is no match. |
 
-### 3.185.4 Methods Used
+#### 3.187.3.f GroupRepository
 
-Table 3.185.4: Methods used by this function
+Table 3.187.3.f: GroupRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
+
+### 3.187.4 Methods Used
+
+Table 3.187.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
 | 1 | AdminGroupsController.Get | IAdminGroupService.Get | AdminGroupService |
 | 2 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
-| 3 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
-| 4 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
-| 5 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetTasksForProgress | GroupWorkRepository |
-| 6 | GroupProgressService.BuildProgress | IGroupRepository.GetMembers | GroupRepository |
-| 7 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
-| 8 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetFinishedFocusSessionsOfGroup | GroupWorkRepository |
+| 3 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 4 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetTasksForProgress | GroupWorkRepository |
+| 5 | GroupProgressService.BuildProgress | IGroupRepository.GetMembers | GroupRepository |
+| 6 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetMilestones | GroupWorkRepository |
+| 7 | GroupProgressService.BuildProgress | IGroupWorkRepository.GetFinishedFocusSessionsOfGroup | GroupWorkRepository |
+| 8 | GroupProgressService.BuildSignals | IGroupWorkRepository.GetLiveSlotsOfGroup | GroupWorkRepository |
+| 9 | GroupProgressService.BuildSignals | IGroupWorkRepository.GetLastActivityByTask | GroupWorkRepository |
+| 10 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
 
-Entities used: WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession.
+Entities used: WorkGroup, GroupTask, SubTask, GroupMilestone, GroupFocusSession, ScheduleSlot.
 
 ---
 
-## 3.186 Admin: View Group Activity
+## 3.188 Admin: View Group Activity
 
 Returns the activity log of any group, newest first, with skip and take paging.
 
 - **Endpoint:** `GET /api/admin/groups/{groupId}/activity`  
 - **Access:** Admin role
 
-### 3.186.1 Class Diagram
+### 3.188.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -39168,9 +41482,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupActivityLog
 ```
 
-Figure 3.186.1 Class Diagram
+Figure 3.188.1 Class Diagram
 
-### 3.186.2 Sequence Diagram
+### 3.188.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -39196,45 +41510,45 @@ sequenceDiagram
   UI-->>Admin: Show result
 ```
 
-Figure 3.186.2 Sequence Diagram
+Figure 3.188.2 Sequence Diagram
 
-### 3.186.3 Class Specification
+### 3.188.3 Class Specification
 
-#### 3.186.3.a AdminGroupsController
+#### 3.188.3.a AdminGroupsController
 
-Table 3.186.3.a: AdminGroupsController Description Table
+Table 3.188.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityDto[]` | `GET /api/admin/groups/{groupId}/activity`. Returns the activity log of any group, newest first, with skip and take paging. Requires the Admin role. |
 
-#### 3.186.3.b AdminGroupService
+#### 3.188.3.b AdminGroupService
 
-Table 3.186.3.b: AdminGroupService Description Table
+Table 3.188.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityDto[]` | Returns the activity log of any group, newest first, with skip and take paging. |
 
-#### 3.186.3.c AdminGroupRepository
+#### 3.188.3.c AdminGroupRepository
 
-Table 3.186.3.c: AdminGroupRepository Description Table
+Table 3.188.3.c: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.186.3.d GroupWorkRepository
+#### 3.188.3.d GroupWorkRepository
 
-Table 3.186.3.d: GroupWorkRepository Description Table
+Table 3.188.3.d: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetActivity(Guid groupId, int skip, int take) : GroupActivityLog[]` | Reads the GroupActivityLog list matching (groupId, skip, take); returns nothing or an empty list when there is no match. |
 
-### 3.186.4 Methods Used
+### 3.188.4 Methods Used
 
-Table 3.186.4: Methods used by this function
+Table 3.188.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -39246,14 +41560,14 @@ Entities used: WorkGroup, GroupActivityLog.
 
 ---
 
-## 3.187 Admin: Archive Group
+## 3.189 Admin: Archive Group
 
 Moves a group to Archived (reason required in the X-Admin-Reason header). The change is written to the admin action log, to the group's activity log with the reason, and the Leaders are notified.
 
 - **Endpoint:** `POST /api/admin/groups/{groupId}/archive`  
 - **Access:** Admin role
 
-### 3.187.1 Class Diagram
+### 3.189.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -39359,9 +41673,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupActivityLog
 ```
 
-Figure 3.187.1 Class Diagram
+Figure 3.189.1 Class Diagram
 
-### 3.187.2 Sequence Diagram
+### 3.189.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -39401,30 +41715,30 @@ sequenceDiagram
         opt value is missing
           AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
         end
-        AdminGroupService->>GroupRepository: GetMembers(groupId)
-        GroupRepository-->>AdminGroupService: GroupMemberDto list
         AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
         GroupProgressService-->>AdminGroupService: GroupProgressDto
+        AdminGroupService->>GroupRepository: GetMembers(groupId)
+        GroupRepository-->>AdminGroupService: GroupMemberDto list
   AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
   AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
   UI-->>Admin: Show result
 ```
 
-Figure 3.187.2 Sequence Diagram
+Figure 3.189.2 Sequence Diagram
 
-### 3.187.3 Class Specification
+### 3.189.3 Class Specification
 
-#### 3.187.3.a AdminGroupsController
+#### 3.189.3.a AdminGroupsController
 
-Table 3.187.3.a: AdminGroupsController Description Table
+Table 3.189.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Archive(Guid groupId) : AdminGroupDetailDto` | `POST /api/admin/groups/{groupId}/archive`. Moves a group to Archived (reason required in the X-Admin-Reason header). The change is written to the admin action log, to the group's activity log with the reason, and the Leaders are notified. Requires the Admin role. |
 
-#### 3.187.3.b AdminGroupService
+#### 3.189.3.b AdminGroupService
 
-Table 3.187.3.b: AdminGroupService Description Table
+Table 3.189.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -39432,9 +41746,9 @@ Table 3.187.3.b: AdminGroupService Description Table
 | 2 | `private SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) : AdminGroupDetailDto` | Shared by Archive and Restore: refuses a no-op change, sets the group status, writes the group activity row (actor = the administrator, with the reason), saves, and notifies every Leader of the group about the change and the reason. |
 | 3 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
 
-#### 3.187.3.c GroupRepository
+#### 3.189.3.c GroupRepository
 
-Table 3.187.3.c: GroupRepository Description Table
+Table 3.189.3.c: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -39442,49 +41756,49 @@ Table 3.187.3.c: GroupRepository Description Table
 | 2 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
 | 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.187.3.d GroupWorkRepository
+#### 3.189.3.d GroupWorkRepository
 
-Table 3.187.3.d: GroupWorkRepository Description Table
+Table 3.189.3.d: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
-#### 3.187.3.e UnitOfWork
+#### 3.189.3.e UnitOfWork
 
-Table 3.187.3.e: UnitOfWork Description Table
+Table 3.189.3.e: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.187.3.f GroupNotifier
+#### 3.189.3.f GroupNotifier
 
-Table 3.187.3.f: GroupNotifier Description Table
+Table 3.189.3.f: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
-#### 3.187.3.g AdminGroupRepository
+#### 3.189.3.g AdminGroupRepository
 
-Table 3.187.3.g: AdminGroupRepository Description Table
+Table 3.189.3.g: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.187.3.h GroupProgressService
+#### 3.189.3.h GroupProgressService
 
-Table 3.187.3.h: GroupProgressService Description Table
+Table 3.189.3.h: GroupProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
 
-### 3.187.4 Methods Used
+### 3.189.4 Methods Used
 
-Table 3.187.4: Methods used by this function
+Table 3.189.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -39495,21 +41809,21 @@ Table 3.187.4: Methods used by this function
 | 5 | AdminGroupService.SetStatus | IGroupRepository.GetLeaderIds | GroupRepository |
 | 6 | AdminGroupService.SetStatus | IGroupNotifier.Notify | GroupNotifier |
 | 7 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
-| 8 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
-| 9 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 8 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 9 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
 
 Entities used: WorkGroup, GroupActivityLog.
 
 ---
 
-## 3.188 Admin: Restore Group
+## 3.190 Admin: Restore Group
 
 Moves an archived group back to Active (reason required). Logged in the admin action log and in the group's activity log, and the Leaders are notified.
 
 - **Endpoint:** `POST /api/admin/groups/{groupId}/restore`  
 - **Access:** Admin role
 
-### 3.188.1 Class Diagram
+### 3.190.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -39615,9 +41929,9 @@ classDiagram
   WorkGroup "1" --> "0..*" GroupActivityLog
 ```
 
-Figure 3.188.1 Class Diagram
+Figure 3.190.1 Class Diagram
 
-### 3.188.2 Sequence Diagram
+### 3.190.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -39657,30 +41971,30 @@ sequenceDiagram
         opt value is missing
           AdminGroupService-->>AdminGroupsController: throw NotFoundException (404)
         end
-        AdminGroupService->>GroupRepository: GetMembers(groupId)
-        GroupRepository-->>AdminGroupService: GroupMemberDto list
         AdminGroupService->>GroupProgressService: GetProgressForAdmin(groupId)
         GroupProgressService-->>AdminGroupService: GroupProgressDto
+        AdminGroupService->>GroupRepository: GetMembers(groupId)
+        GroupRepository-->>AdminGroupService: GroupMemberDto list
   AdminGroupService-->>AdminGroupsController: AdminGroupDetailDto
   AdminGroupsController-->>UI: 200 OK (AdminGroupDetailDto)
   UI-->>Admin: Show result
 ```
 
-Figure 3.188.2 Sequence Diagram
+Figure 3.190.2 Sequence Diagram
 
-### 3.188.3 Class Specification
+### 3.190.3 Class Specification
 
-#### 3.188.3.a AdminGroupsController
+#### 3.190.3.a AdminGroupsController
 
-Table 3.188.3.a: AdminGroupsController Description Table
+Table 3.190.3.a: AdminGroupsController Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Restore(Guid groupId) : AdminGroupDetailDto` | `POST /api/admin/groups/{groupId}/restore`. Moves an archived group back to Active (reason required). Logged in the admin action log and in the group's activity log, and the Leaders are notified. Requires the Admin role. |
 
-#### 3.188.3.b AdminGroupService
+#### 3.190.3.b AdminGroupService
 
-Table 3.188.3.b: AdminGroupService Description Table
+Table 3.190.3.b: AdminGroupService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -39688,9 +42002,9 @@ Table 3.188.3.b: AdminGroupService Description Table
 | 2 | `private SetStatus(Guid adminId, Guid groupId, string newStatus, string reason) : AdminGroupDetailDto` | Shared by Archive and Restore: refuses a no-op change, sets the group status, writes the group activity row (actor = the administrator, with the reason), saves, and notifies every Leader of the group about the change and the reason. |
 | 3 | `private BuildDetail(Guid groupId) : AdminGroupDetailDto` | Loads the group with its owner, the member list and the progress report into one detail response. |
 
-#### 3.188.3.c GroupRepository
+#### 3.190.3.c GroupRepository
 
-Table 3.188.3.c: GroupRepository Description Table
+Table 3.190.3.c: GroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -39698,49 +42012,49 @@ Table 3.188.3.c: GroupRepository Description Table
 | 2 | `GetLeaderIds(Guid groupId) : Guid[]` | Reads the Guid list matching (groupId); returns nothing or an empty list when there is no match. |
 | 3 | `GetMembers(Guid groupId) : GroupMemberDto[]` | Reads the GroupMemberDto list matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.188.3.d GroupWorkRepository
+#### 3.190.3.d GroupWorkRepository
 
-Table 3.188.3.d: GroupWorkRepository Description Table
+Table 3.190.3.d: GroupWorkRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `AddActivity(GroupActivityLog log)` | Adds a new GroupActivityLog to the context; it is written when the unit of work is saved. |
 
-#### 3.188.3.e UnitOfWork
+#### 3.190.3.e UnitOfWork
 
-Table 3.188.3.e: UnitOfWork Description Table
+Table 3.190.3.e: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.188.3.f GroupNotifier
+#### 3.190.3.f GroupNotifier
 
-Table 3.188.3.f: GroupNotifier Description Table
+Table 3.190.3.f: GroupNotifier Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Notify(Guid userId, string type, string title, string message, Guid groupId, Guid groupTaskId)` | Writes an in-app notification with a link to the group (and task) and sends the web push. It runs in its own DI scope and swallows errors, so a failed notification never breaks the request that triggered it. |
 
-#### 3.188.3.g AdminGroupRepository
+#### 3.190.3.g AdminGroupRepository
 
-Table 3.188.3.g: AdminGroupRepository Description Table
+Table 3.190.3.g: AdminGroupRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetGroupWithOwner(Guid groupId) : WorkGroup` | Reads the WorkGroup matching (groupId); returns nothing or an empty list when there is no match. |
 
-#### 3.188.3.h GroupProgressService
+#### 3.190.3.h GroupProgressService
 
-Table 3.188.3.h: GroupProgressService Description Table
+Table 3.190.3.h: GroupProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetProgressForAdmin(Guid groupId) : GroupProgressDto` | Same report as the members see, for an administrator: no membership check. |
 
-### 3.188.4 Methods Used
+### 3.190.4 Methods Used
 
-Table 3.188.4: Methods used by this function
+Table 3.190.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -39751,8 +42065,8 @@ Table 3.188.4: Methods used by this function
 | 5 | AdminGroupService.SetStatus | IGroupRepository.GetLeaderIds | GroupRepository |
 | 6 | AdminGroupService.SetStatus | IGroupNotifier.Notify | GroupNotifier |
 | 7 | AdminGroupService.BuildDetail | IAdminGroupRepository.GetGroupWithOwner | AdminGroupRepository |
-| 8 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
-| 9 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 8 | AdminGroupService.BuildDetail | IGroupProgressService.GetProgressForAdmin | GroupProgressService |
+| 9 | AdminGroupService.BuildDetail | IGroupRepository.GetMembers | GroupRepository |
 
 Entities used: WorkGroup, GroupActivityLog.
 
@@ -39760,11 +42074,11 @@ Entities used: WorkGroup, GroupActivityLog.
 
 # Background Jobs
 
-## 3.189 Remind Before Slot Starts
+## 3.191 Remind Before Slot Starts
 
 Hangfire job that runs reminder-lead minutes before the slot start. When the slot is still Approved it sends a 'starting soon' notification.
 
-### 3.189.1 Class Diagram
+### 3.191.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -39807,6 +42121,23 @@ classDiagram
     +GetByUserId(Guid userId) UserPushSubscription[]
     +Remove(UserPushSubscription subscription) void
   }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
   class Notification {
     <<Entity>>
     -Guid Id
@@ -39839,14 +42170,15 @@ classDiagram
   INotificationRepository <|.. NotificationRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
   NotificationService ..> Notification
   NotificationRepository ..> Notification
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.189.1 Class Diagram
+Figure 3.191.1 Class Diagram
 
-### 3.189.2 Sequence Diagram
+### 3.191.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -39875,385 +42207,6 @@ sequenceDiagram
         end
 ```
 
-Figure 3.189.2 Sequence Diagram
-
-### 3.189.3 Class Specification
-
-#### 3.189.3.a SlotBackgroundJobs
-
-Table 3.189.3.a: SlotBackgroundJobs Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `PreStartReminder(Guid slotId)` | Hangfire job that runs reminder-lead minutes before the slot start. When the slot is still Approved it sends a 'starting soon' notification. |
-| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
-| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
-| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
-
-#### 3.189.3.b NotificationService
-
-Table 3.189.3.b: NotificationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
-| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
-
-#### 3.189.3.c NotificationRepository
-
-Table 3.189.3.c: NotificationRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
-
-#### 3.189.3.d UnitOfWork
-
-Table 3.189.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-#### 3.189.3.e UserPushSubscriptionRepository
-
-Table 3.189.3.e: UserPushSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
-| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
-
-### 3.189.4 Methods Used
-
-Table 3.189.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
-| 2 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
-| 3 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
-| 4 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
-| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
-| 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: Notification, UserPushSubscription.
-
----
-
-## 3.190 Mark Slot Due and Prompt Start
-
-Hangfire job that runs at the slot start. An Approved slot becomes Due (the timer is never started automatically) and a notification asks the user to press Start.
-
-### 3.190.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class SlotBackgroundJobs {
-    +SlotDue(Guid slotId) void
-    -GetSlot(Guid slotId) ScheduleSlot
-    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
-    -Notify(ScheduleSlot slot, string title, string message, string type) void
-  }
-  class AppDbContext {
-    +SaveChanges()
-  }
-  class INotificationService {
-    <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-  }
-  class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-    -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
-  }
-  class INotificationRepository {
-    <<interface>>
-    +Add(Notification notification) void
-  }
-  class NotificationRepository {
-    +Add(Notification notification) void
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class IUserPushSubscriptionRepository {
-    <<interface>>
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class UserPushSubscriptionRepository {
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class Notification {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ScheduleSlotId
-    -Guid GroupId
-    -Guid GroupTaskId
-    -string Type
-    -string Title
-    -string Message
-    -DateTime ScheduledAt
-    -DateTime SentAt
-    -bool IsRead
-    -DateTime ReadAt
-  }
-  class UserPushSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -string Endpoint
-    -string P256dh
-    -string Auth
-    -DateTimeOffset CreatedAt
-  }
-  SlotBackgroundJobs ..> AppDbContext : uses
-  SlotBackgroundJobs ..> INotificationService : uses
-  NotificationService ..> INotificationRepository : uses
-  NotificationService ..> IUnitOfWork : uses
-  NotificationService ..> IUserPushSubscriptionRepository : uses
-  INotificationService <|.. NotificationService : implements
-  INotificationRepository <|.. NotificationRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
-  NotificationService ..> Notification
-  NotificationRepository ..> Notification
-  UserPushSubscriptionRepository ..> UserPushSubscription
-```
-
-Figure 3.190.1 Class Diagram
-
-### 3.190.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant Hangfire
-  participant SlotBackgroundJobs
-  participant AppDbContext
-  participant NotificationService
-  participant NotificationRepository
-  participant UnitOfWork
-  participant UserPushSubscriptionRepository
-  Hangfire->>SlotBackgroundJobs: SlotDue(slotId)
-  SlotBackgroundJobs->>AppDbContext: SaveChanges()
-  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
-      NotificationService->>NotificationRepository: Add(notification)
-      NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
-        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
-        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
-        loop each subscription in subscriptions
-          opt catch WebPushException ex
-            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
-          end
-        end
-        opt removeExpired
-          NotificationService->>UnitOfWork: SaveChanges()
-        end
-```
-
-Figure 3.190.2 Sequence Diagram
-
-### 3.190.3 Class Specification
-
-#### 3.190.3.a SlotBackgroundJobs
-
-Table 3.190.3.a: SlotBackgroundJobs Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SlotDue(Guid slotId)` | Hangfire job that runs at the slot start. An Approved slot becomes Due (the timer is never started automatically) and a notification asks the user to press Start. |
-| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
-| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
-| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
-
-#### 3.190.3.b AppDbContext
-
-Table 3.190.3.b: AppDbContext Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
-
-#### 3.190.3.c NotificationService
-
-Table 3.190.3.c: NotificationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
-| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
-
-#### 3.190.3.d NotificationRepository
-
-Table 3.190.3.d: NotificationRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
-
-#### 3.190.3.e UnitOfWork
-
-Table 3.190.3.e: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-#### 3.190.3.f UserPushSubscriptionRepository
-
-Table 3.190.3.f: UserPushSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
-| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
-
-### 3.190.4 Methods Used
-
-Table 3.190.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | SlotBackgroundJobs.SlotDue | AppDbContext.SaveChanges |  |
-| 2 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
-| 3 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
-| 4 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
-| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
-| 6 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
-| 7 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: Notification, UserPushSubscription.
-
----
-
-## 3.191 Nudge Not-started Slot
-
-Hangfire job that runs 20 minutes after the slot start. When the slot is still Due and has no focus session it nudges the user to start.
-
-### 3.191.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class SlotBackgroundJobs {
-    +NotStartedNudge(Guid slotId) void
-    -GetSlot(Guid slotId) ScheduleSlot
-    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
-    -Notify(ScheduleSlot slot, string title, string message, string type) void
-  }
-  class INotificationService {
-    <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-  }
-  class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-    -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
-  }
-  class INotificationRepository {
-    <<interface>>
-    +Add(Notification notification) void
-  }
-  class NotificationRepository {
-    +Add(Notification notification) void
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class IUserPushSubscriptionRepository {
-    <<interface>>
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class UserPushSubscriptionRepository {
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class Notification {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ScheduleSlotId
-    -Guid GroupId
-    -Guid GroupTaskId
-    -string Type
-    -string Title
-    -string Message
-    -DateTime ScheduledAt
-    -DateTime SentAt
-    -bool IsRead
-    -DateTime ReadAt
-  }
-  class UserPushSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -string Endpoint
-    -string P256dh
-    -string Auth
-    -DateTimeOffset CreatedAt
-  }
-  SlotBackgroundJobs ..> INotificationService : uses
-  NotificationService ..> INotificationRepository : uses
-  NotificationService ..> IUnitOfWork : uses
-  NotificationService ..> IUserPushSubscriptionRepository : uses
-  INotificationService <|.. NotificationService : implements
-  INotificationRepository <|.. NotificationRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
-  NotificationService ..> Notification
-  NotificationRepository ..> Notification
-  UserPushSubscriptionRepository ..> UserPushSubscription
-```
-
-Figure 3.191.1 Class Diagram
-
-### 3.191.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant Hangfire
-  participant SlotBackgroundJobs
-  participant NotificationService
-  participant NotificationRepository
-  participant UnitOfWork
-  participant UserPushSubscriptionRepository
-  Hangfire->>SlotBackgroundJobs: NotStartedNudge(slotId)
-  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
-      NotificationService->>NotificationRepository: Add(notification)
-      NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
-        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
-        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
-        loop each subscription in subscriptions
-          opt catch WebPushException ex
-            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
-          end
-        end
-        opt removeExpired
-          NotificationService->>UnitOfWork: SaveChanges()
-        end
-```
-
 Figure 3.191.2 Sequence Diagram
 
 ### 3.191.3 Class Specification
@@ -40264,7 +42217,7 @@ Table 3.191.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `NotStartedNudge(Guid slotId)` | Hangfire job that runs 20 minutes after the slot start. When the slot is still Due and has no focus session it nudges the user to start. |
+| 1 | `PreStartReminder(Guid slotId)` | Hangfire job that runs reminder-lead minutes before the slot start. When the slot is still Approved it sends a 'starting soon' notification. |
 | 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
@@ -40317,15 +42270,432 @@ Table 3.191.4: Methods used by this function
 | 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
 | 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: Notification, UserPushSubscription.
+Entities used: GroupTask, Notification, UserPushSubscription.
 
 ---
 
-## 3.192 Remind Slot Is Ending
+## 3.192 Mark Slot Due and Prompt Start
+
+Hangfire job that runs at the slot start. An Approved slot becomes Due (the timer is never started automatically) and a notification asks the user to press Start.
+
+### 3.192.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class SlotBackgroundJobs {
+    +SlotDue(Guid slotId) void
+    -GetSlot(Guid slotId) ScheduleSlot
+    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
+    -Notify(ScheduleSlot slot, string title, string message, string type) void
+  }
+  class AppDbContext {
+    +SaveChanges()
+  }
+  class INotificationService {
+    <<interface>>
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+  }
+  class NotificationService {
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+    -ToStoredType(string actionType) string
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
+  }
+  class INotificationRepository {
+    <<interface>>
+    +Add(Notification notification) void
+  }
+  class NotificationRepository {
+    +Add(Notification notification) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IUserPushSubscriptionRepository {
+    <<interface>>
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class UserPushSubscriptionRepository {
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class Notification {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
+    -string Type
+    -string Title
+    -string Message
+    -DateTime ScheduledAt
+    -DateTime SentAt
+    -bool IsRead
+    -DateTime ReadAt
+  }
+  class UserPushSubscription {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -string Endpoint
+    -string P256dh
+    -string Auth
+    -DateTimeOffset CreatedAt
+  }
+  SlotBackgroundJobs ..> AppDbContext : uses
+  SlotBackgroundJobs ..> INotificationService : uses
+  NotificationService ..> INotificationRepository : uses
+  NotificationService ..> IUnitOfWork : uses
+  NotificationService ..> IUserPushSubscriptionRepository : uses
+  INotificationService <|.. NotificationService : implements
+  INotificationRepository <|.. NotificationRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
+  NotificationService ..> Notification
+  NotificationRepository ..> Notification
+  UserPushSubscriptionRepository ..> UserPushSubscription
+```
+
+Figure 3.192.1 Class Diagram
+
+### 3.192.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Hangfire
+  participant SlotBackgroundJobs
+  participant AppDbContext
+  participant NotificationService
+  participant NotificationRepository
+  participant UnitOfWork
+  participant UserPushSubscriptionRepository
+  Hangfire->>SlotBackgroundJobs: SlotDue(slotId)
+  SlotBackgroundJobs->>AppDbContext: SaveChanges()
+  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
+      NotificationService->>NotificationRepository: Add(notification)
+      NotificationService->>UnitOfWork: SaveChanges()
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
+        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
+        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
+        loop each subscription in subscriptions
+          opt catch WebPushException ex
+            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
+          end
+        end
+        opt removeExpired
+          NotificationService->>UnitOfWork: SaveChanges()
+        end
+```
+
+Figure 3.192.2 Sequence Diagram
+
+### 3.192.3 Class Specification
+
+#### 3.192.3.a SlotBackgroundJobs
+
+Table 3.192.3.a: SlotBackgroundJobs Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SlotDue(Guid slotId)` | Hangfire job that runs at the slot start. An Approved slot becomes Due (the timer is never started automatically) and a notification asks the user to press Start. |
+| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
+| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
+| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
+
+#### 3.192.3.b AppDbContext
+
+Table 3.192.3.b: AppDbContext Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
+
+#### 3.192.3.c NotificationService
+
+Table 3.192.3.c: NotificationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+
+#### 3.192.3.d NotificationRepository
+
+Table 3.192.3.d: NotificationRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
+
+#### 3.192.3.e UnitOfWork
+
+Table 3.192.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.192.3.f UserPushSubscriptionRepository
+
+Table 3.192.3.f: UserPushSubscriptionRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
+| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
+
+### 3.192.4 Methods Used
+
+Table 3.192.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | SlotBackgroundJobs.SlotDue | AppDbContext.SaveChanges |  |
+| 2 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
+| 3 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
+| 4 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
+| 6 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
+| 7 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTask, Notification, UserPushSubscription.
+
+---
+
+## 3.193 Nudge Not-started Slot
+
+Hangfire job that runs 20 minutes after the slot start. When the slot is still Due and has no focus session it nudges the user to start.
+
+### 3.193.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class SlotBackgroundJobs {
+    +NotStartedNudge(Guid slotId) void
+    -GetSlot(Guid slotId) ScheduleSlot
+    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
+    -HasAnySession(Guid slotId) bool
+    -Notify(ScheduleSlot slot, string title, string message, string type) void
+  }
+  class INotificationService {
+    <<interface>>
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+  }
+  class NotificationService {
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+    -ToStoredType(string actionType) string
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
+  }
+  class INotificationRepository {
+    <<interface>>
+    +Add(Notification notification) void
+  }
+  class NotificationRepository {
+    +Add(Notification notification) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IUserPushSubscriptionRepository {
+    <<interface>>
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class UserPushSubscriptionRepository {
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class Notification {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
+    -string Type
+    -string Title
+    -string Message
+    -DateTime ScheduledAt
+    -DateTime SentAt
+    -bool IsRead
+    -DateTime ReadAt
+  }
+  class UserPushSubscription {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -string Endpoint
+    -string P256dh
+    -string Auth
+    -DateTimeOffset CreatedAt
+  }
+  SlotBackgroundJobs ..> INotificationService : uses
+  NotificationService ..> INotificationRepository : uses
+  NotificationService ..> IUnitOfWork : uses
+  NotificationService ..> IUserPushSubscriptionRepository : uses
+  INotificationService <|.. NotificationService : implements
+  INotificationRepository <|.. NotificationRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
+  NotificationService ..> Notification
+  NotificationRepository ..> Notification
+  UserPushSubscriptionRepository ..> UserPushSubscription
+```
+
+Figure 3.193.1 Class Diagram
+
+### 3.193.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Hangfire
+  participant SlotBackgroundJobs
+  participant NotificationService
+  participant NotificationRepository
+  participant UnitOfWork
+  participant UserPushSubscriptionRepository
+  Hangfire->>SlotBackgroundJobs: NotStartedNudge(slotId)
+  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
+      NotificationService->>NotificationRepository: Add(notification)
+      NotificationService->>UnitOfWork: SaveChanges()
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
+        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
+        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
+        loop each subscription in subscriptions
+          opt catch WebPushException ex
+            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
+          end
+        end
+        opt removeExpired
+          NotificationService->>UnitOfWork: SaveChanges()
+        end
+```
+
+Figure 3.193.2 Sequence Diagram
+
+### 3.193.3 Class Specification
+
+#### 3.193.3.a SlotBackgroundJobs
+
+Table 3.193.3.a: SlotBackgroundJobs Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `NotStartedNudge(Guid slotId)` | Hangfire job that runs 20 minutes after the slot start. When the slot is still Due and has no focus session it nudges the user to start. |
+| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
+| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
+| 4 | `private HasAnySession(Guid slotId) : bool` | Tells whether any focus session, personal or group, is linked to the slot. |
+| 5 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
+
+#### 3.193.3.b NotificationService
+
+Table 3.193.3.b: NotificationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+
+#### 3.193.3.c NotificationRepository
+
+Table 3.193.3.c: NotificationRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
+
+#### 3.193.3.d UnitOfWork
+
+Table 3.193.3.d: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.193.3.e UserPushSubscriptionRepository
+
+Table 3.193.3.e: UserPushSubscriptionRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
+| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
+
+### 3.193.4 Methods Used
+
+Table 3.193.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
+| 2 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
+| 3 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
+| 4 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
+| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
+| 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTask, Notification, UserPushSubscription.
+
+---
+
+## 3.194 Remind Slot Is Ending
 
 Hangfire job that runs 10 minutes before the planned end. Only when a session is running (slot InProgress) it warns the user that time is almost up.
 
-### 3.192.1 Class Diagram
+### 3.194.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -40368,6 +42738,23 @@ classDiagram
     +GetByUserId(Guid userId) UserPushSubscription[]
     +Remove(UserPushSubscription subscription) void
   }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
   class Notification {
     <<Entity>>
     -Guid Id
@@ -40400,14 +42787,15 @@ classDiagram
   INotificationRepository <|.. NotificationRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
   NotificationService ..> Notification
   NotificationRepository ..> Notification
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.192.1 Class Diagram
+Figure 3.194.1 Class Diagram
 
-### 3.192.2 Sequence Diagram
+### 3.194.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -40436,436 +42824,6 @@ sequenceDiagram
         end
 ```
 
-Figure 3.192.2 Sequence Diagram
-
-### 3.192.3 Class Specification
-
-#### 3.192.3.a SlotBackgroundJobs
-
-Table 3.192.3.a: SlotBackgroundJobs Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `NearEndReminder(Guid slotId)` | Hangfire job that runs 10 minutes before the planned end. Only when a session is running (slot InProgress) it warns the user that time is almost up. |
-| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
-| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
-| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
-
-#### 3.192.3.b NotificationService
-
-Table 3.192.3.b: NotificationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
-| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
-
-#### 3.192.3.c NotificationRepository
-
-Table 3.192.3.c: NotificationRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
-
-#### 3.192.3.d UnitOfWork
-
-Table 3.192.3.d: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-#### 3.192.3.e UserPushSubscriptionRepository
-
-Table 3.192.3.e: UserPushSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
-| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
-
-### 3.192.4 Methods Used
-
-Table 3.192.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
-| 2 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
-| 3 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
-| 4 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
-| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
-| 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
-
-Entities used: Notification, UserPushSubscription.
-
----
-
-## 3.193 Handle Slot End
-
-Hangfire job that runs at the planned end. A running slot becomes Overrun and waits for Stop; a paused slot triggers a check-in notification; a slot that was never started becomes Missed, the task status is derived again and the user is notified.
-
-### 3.193.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class SlotBackgroundJobs {
-    +SlotEnded(Guid slotId) void
-    -GetSlot(Guid slotId) ScheduleSlot
-    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
-    -Notify(ScheduleSlot slot, string title, string message, string type) void
-  }
-  class AppDbContext {
-    +SaveChanges()
-  }
-  class INotificationService {
-    <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-  }
-  class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-    -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
-  }
-  class INotificationRepository {
-    <<interface>>
-    +Add(Notification notification) void
-  }
-  class NotificationRepository {
-    +Add(Notification notification) void
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class IUserPushSubscriptionRepository {
-    <<interface>>
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class UserPushSubscriptionRepository {
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class ITaskProgressService {
-    <<interface>>
-    +RefreshTask(Guid taskId) ProgressResult
-  }
-  class TaskProgressService {
-    +RefreshTask(Guid taskId) ProgressResult
-    -Load(Guid taskId) Task
-    -DeriveLiveStatus(Task task, SubTask[] subTasks) string
-    -CountsAsProgress(FocusSession session) bool
-    -CancelNotStartedSlots(Task task, ProgressResult result) void
-    -RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted) void
-  }
-  class Notification {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ScheduleSlotId
-    -Guid GroupId
-    -Guid GroupTaskId
-    -string Type
-    -string Title
-    -string Message
-    -DateTime ScheduledAt
-    -DateTime SentAt
-    -bool IsRead
-    -DateTime ReadAt
-  }
-  class UserPushSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -string Endpoint
-    -string P256dh
-    -string Auth
-    -DateTimeOffset CreatedAt
-  }
-  class ScheduleChangeLog {
-    <<Entity>>
-    -Guid Id
-    -Guid ScheduleSlotId
-    -string ChangeType
-    -string Source
-    -DateTime OldStart
-    -DateTime OldEnd
-    -DateTime NewStart
-    -DateTime NewEnd
-    -DateTime ChangedAt
-  }
-  SlotBackgroundJobs ..> AppDbContext : uses
-  SlotBackgroundJobs ..> INotificationService : uses
-  NotificationService ..> INotificationRepository : uses
-  NotificationService ..> IUnitOfWork : uses
-  NotificationService ..> IUserPushSubscriptionRepository : uses
-  SlotBackgroundJobs ..> ITaskProgressService : uses
-  INotificationService <|.. NotificationService : implements
-  INotificationRepository <|.. NotificationRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
-  ITaskProgressService <|.. TaskProgressService : implements
-  NotificationService ..> Notification
-  NotificationRepository ..> Notification
-  UserPushSubscriptionRepository ..> UserPushSubscription
-  TaskProgressService ..> ScheduleChangeLog
-```
-
-Figure 3.193.1 Class Diagram
-
-### 3.193.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant Hangfire
-  participant SlotBackgroundJobs
-  participant AppDbContext
-  participant NotificationService
-  participant NotificationRepository
-  participant UnitOfWork
-  participant UserPushSubscriptionRepository
-  participant TaskProgressService
-  Hangfire->>SlotBackgroundJobs: SlotEnded(slotId)
-  opt Is(slot, ScheduleSlotStatus.InProgress)
-    SlotBackgroundJobs->>AppDbContext: SaveChanges()
-  end
-  opt dbContext.FocusSessions.Any(s => s.ScheduleSlotId == slotId)
-    SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-      SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
-        NotificationService->>NotificationRepository: Add(notification)
-        NotificationService->>UnitOfWork: SaveChanges()
-        NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
-          NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
-          UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
-          loop each subscription in subscriptions
-            opt catch WebPushException ex
-              NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
-            end
-          end
-          opt removeExpired
-            NotificationService->>UnitOfWork: SaveChanges()
-          end
-  end
-  SlotBackgroundJobs->>AppDbContext: SaveChanges()
-  SlotBackgroundJobs->>TaskProgressService: RefreshTask(taskId)
-  TaskProgressService-->>SlotBackgroundJobs: ProgressResult
-  SlotBackgroundJobs->>AppDbContext: SaveChanges()
-  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-```
-
-Figure 3.193.2 Sequence Diagram
-
-### 3.193.3 Class Specification
-
-#### 3.193.3.a SlotBackgroundJobs
-
-Table 3.193.3.a: SlotBackgroundJobs Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SlotEnded(Guid slotId)` | Hangfire job that runs at the planned end. A running slot becomes Overrun and waits for Stop; a paused slot triggers a check-in notification; a slot that was never started becomes Missed, the task status is derived again and the user is notified. |
-| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
-| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
-| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
-
-#### 3.193.3.b AppDbContext
-
-Table 3.193.3.b: AppDbContext Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
-
-#### 3.193.3.c NotificationService
-
-Table 3.193.3.c: NotificationService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
-| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
-| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
-
-#### 3.193.3.d NotificationRepository
-
-Table 3.193.3.d: NotificationRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
-
-#### 3.193.3.e UnitOfWork
-
-Table 3.193.3.e: UnitOfWork Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
-
-#### 3.193.3.f UserPushSubscriptionRepository
-
-Table 3.193.3.f: UserPushSubscriptionRepository Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
-| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
-
-#### 3.193.3.g TaskProgressService
-
-Table 3.193.3.g: TaskProgressService Description Table
-
-| No | Method | Description |
-|---|---|---|
-| 1 | `RefreshTask(Guid taskId) : ProgressResult` | Derives the task status from the facts (sessions, slots, sub-tasks): Done when every sub-task is done, reopened when a sub-task is ToDo, otherwise InProgress, Scheduled or ToDo; then refreshes the milestone. A Skipped task is never changed. |
-| 2 | `private Load(Guid taskId) : Task` | Loads the task with its sub-tasks, schedule slots and focus sessions. |
-| 3 | `private DeriveLiveStatus(Task task, SubTask[] subTasks) : string` | Derives the status from the facts: InProgress when a session is running, a counted session exists or a sub-task is Done; Scheduled when a live slot exists; otherwise ToDo. |
-| 4 | `private CountsAsProgress(FocusSession session) : bool` | False for an AutoTimeout session that was not confirmed (or was discarded), so it does not count as work done. |
-| 5 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
-| 6 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
-
-### 3.193.4 Methods Used
-
-Table 3.193.4: Methods used by this function
-
-| No | Caller | Method called | Implemented by |
-|---|---|---|---|
-| 1 | SlotBackgroundJobs.SlotEnded | AppDbContext.SaveChanges |  |
-| 2 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
-| 3 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
-| 4 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
-| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
-| 6 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
-| 7 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
-| 8 | SlotBackgroundJobs.SlotEnded | ITaskProgressService.RefreshTask | TaskProgressService |
-
-Entities used: Notification, UserPushSubscription, ScheduleChangeLog.
-
----
-
-## 3.194 Remind Overrun
-
-Hangfire job that runs 15 minutes after the planned end. When the slot is Overrun and a session is still running it reminds the user to press Stop.
-
-### 3.194.1 Class Diagram
-
-```mermaid
-classDiagram
-  direction TB
-  class SlotBackgroundJobs {
-    +OverrunReminder(Guid slotId) void
-    -GetSlot(Guid slotId) ScheduleSlot
-    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
-    -Notify(ScheduleSlot slot, string title, string message, string type) void
-  }
-  class INotificationService {
-    <<interface>>
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-  }
-  class NotificationService {
-    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
-    -ToStoredType(string actionType) string
-    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
-  }
-  class INotificationRepository {
-    <<interface>>
-    +Add(Notification notification) void
-  }
-  class NotificationRepository {
-    +Add(Notification notification) void
-  }
-  class IUnitOfWork {
-    <<interface>>
-    +SaveChanges() int
-  }
-  class UnitOfWork {
-    +SaveChanges() int
-  }
-  class IUserPushSubscriptionRepository {
-    <<interface>>
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class UserPushSubscriptionRepository {
-    +GetByUserId(Guid userId) UserPushSubscription[]
-    +Remove(UserPushSubscription subscription) void
-  }
-  class Notification {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -Guid ScheduleSlotId
-    -Guid GroupId
-    -Guid GroupTaskId
-    -string Type
-    -string Title
-    -string Message
-    -DateTime ScheduledAt
-    -DateTime SentAt
-    -bool IsRead
-    -DateTime ReadAt
-  }
-  class UserPushSubscription {
-    <<Entity>>
-    -Guid Id
-    -Guid UserId
-    -string Endpoint
-    -string P256dh
-    -string Auth
-    -DateTimeOffset CreatedAt
-  }
-  SlotBackgroundJobs ..> INotificationService : uses
-  NotificationService ..> INotificationRepository : uses
-  NotificationService ..> IUnitOfWork : uses
-  NotificationService ..> IUserPushSubscriptionRepository : uses
-  INotificationService <|.. NotificationService : implements
-  INotificationRepository <|.. NotificationRepository : implements
-  IUnitOfWork <|.. UnitOfWork : implements
-  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
-  NotificationService ..> Notification
-  NotificationRepository ..> Notification
-  UserPushSubscriptionRepository ..> UserPushSubscription
-```
-
-Figure 3.194.1 Class Diagram
-
-### 3.194.2 Sequence Diagram
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant Hangfire
-  participant SlotBackgroundJobs
-  participant NotificationService
-  participant NotificationRepository
-  participant UnitOfWork
-  participant UserPushSubscriptionRepository
-  Hangfire->>SlotBackgroundJobs: OverrunReminder(slotId)
-  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
-    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
-      NotificationService->>NotificationRepository: Add(notification)
-      NotificationService->>UnitOfWork: SaveChanges()
-      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
-        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
-        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
-        loop each subscription in subscriptions
-          opt catch WebPushException ex
-            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
-          end
-        end
-        opt removeExpired
-          NotificationService->>UnitOfWork: SaveChanges()
-        end
-```
-
 Figure 3.194.2 Sequence Diagram
 
 ### 3.194.3 Class Specification
@@ -40876,7 +42834,7 @@ Table 3.194.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `OverrunReminder(Guid slotId)` | Hangfire job that runs 15 minutes after the planned end. When the slot is Overrun and a session is still running it reminds the user to press Stop. |
+| 1 | `NearEndReminder(Guid slotId)` | Hangfire job that runs 10 minutes before the planned end. Only when a session is running (slot InProgress) it warns the user that time is almost up. |
 | 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
@@ -40929,13 +42887,13 @@ Table 3.194.4: Methods used by this function
 | 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
 | 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: Notification, UserPushSubscription.
+Entities used: GroupTask, Notification, UserPushSubscription.
 
 ---
 
-## 3.195 Retry Check-in (placeholder)
+## 3.195 Handle Slot End
 
-Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet.
+Hangfire job that runs at the planned end. A running slot becomes Overrun and waits for Stop; a paused slot triggers a check-in notification; a slot that was never started becomes Missed, the task status is derived again and the user is notified.
 
 ### 3.195.1 Class Diagram
 
@@ -40943,8 +42901,128 @@ Hangfire job reserved for asking the check-in question again. It currently does 
 classDiagram
   direction TB
   class SlotBackgroundJobs {
-    +CheckInRetry(Guid slotId) void
+    +SlotEnded(Guid slotId) void
+    -GetSlot(Guid slotId) ScheduleSlot
+    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
+    -HasAnySession(Guid slotId) bool
+    -Notify(ScheduleSlot slot, string title, string message, string type) void
   }
+  class AppDbContext {
+    +SaveChanges()
+  }
+  class INotificationService {
+    <<interface>>
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+  }
+  class NotificationService {
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+    -ToStoredType(string actionType) string
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
+  }
+  class INotificationRepository {
+    <<interface>>
+    +Add(Notification notification) void
+  }
+  class NotificationRepository {
+    +Add(Notification notification) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IUserPushSubscriptionRepository {
+    <<interface>>
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class UserPushSubscriptionRepository {
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class ITaskProgressService {
+    <<interface>>
+    +RefreshTask(Guid taskId) ProgressResult
+  }
+  class TaskProgressService {
+    +RefreshTask(Guid taskId) ProgressResult
+    -Load(Guid taskId) Task
+    -DeriveLiveStatus(Task task, SubTask[] subTasks) string
+    -CountsAsProgress(FocusSession session) bool
+    -CancelNotStartedSlots(Task task, ProgressResult result) void
+    -RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class Notification {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
+    -string Type
+    -string Title
+    -string Message
+    -DateTime ScheduledAt
+    -DateTime SentAt
+    -bool IsRead
+    -DateTime ReadAt
+  }
+  class UserPushSubscription {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -string Endpoint
+    -string P256dh
+    -string Auth
+    -DateTimeOffset CreatedAt
+  }
+  class ScheduleChangeLog {
+    <<Entity>>
+    -Guid Id
+    -Guid ScheduleSlotId
+    -string ChangeType
+    -string Source
+    -DateTime OldStart
+    -DateTime OldEnd
+    -DateTime NewStart
+    -DateTime NewEnd
+    -DateTime ChangedAt
+  }
+  SlotBackgroundJobs ..> AppDbContext : uses
+  SlotBackgroundJobs ..> INotificationService : uses
+  NotificationService ..> INotificationRepository : uses
+  NotificationService ..> IUnitOfWork : uses
+  NotificationService ..> IUserPushSubscriptionRepository : uses
+  SlotBackgroundJobs ..> ITaskProgressService : uses
+  INotificationService <|.. NotificationService : implements
+  INotificationRepository <|.. NotificationRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  ITaskProgressService <|.. TaskProgressService : implements
+  SlotBackgroundJobs ..> GroupTask
+  NotificationService ..> Notification
+  NotificationRepository ..> Notification
+  UserPushSubscriptionRepository ..> UserPushSubscription
+  TaskProgressService ..> ScheduleChangeLog
 ```
 
 Figure 3.195.1 Class Diagram
@@ -40956,7 +43034,40 @@ sequenceDiagram
   autonumber
   participant Hangfire
   participant SlotBackgroundJobs
-  Hangfire->>SlotBackgroundJobs: CheckInRetry(slotId)
+  participant AppDbContext
+  participant NotificationService
+  participant NotificationRepository
+  participant UnitOfWork
+  participant UserPushSubscriptionRepository
+  participant TaskProgressService
+  Hangfire->>SlotBackgroundJobs: SlotEnded(slotId)
+  opt Is(slot, ScheduleSlotStatus.InProgress)
+    SlotBackgroundJobs->>AppDbContext: SaveChanges()
+  end
+  opt HasAnySession(slotId)
+    SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
+      SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
+        NotificationService->>NotificationRepository: Add(notification)
+        NotificationService->>UnitOfWork: SaveChanges()
+        NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
+          NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
+          UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
+          loop each subscription in subscriptions
+            opt catch WebPushException ex
+              NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
+            end
+          end
+          opt removeExpired
+            NotificationService->>UnitOfWork: SaveChanges()
+          end
+  end
+  SlotBackgroundJobs->>AppDbContext: SaveChanges()
+  opt slot.TaskId is ( ) missedTaskId
+    SlotBackgroundJobs->>TaskProgressService: RefreshTask(taskId)
+    TaskProgressService-->>SlotBackgroundJobs: ProgressResult
+    SlotBackgroundJobs->>AppDbContext: SaveChanges()
+  end
+  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
 ```
 
 Figure 3.195.2 Sequence Diagram
@@ -40969,7 +43080,67 @@ Table 3.195.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
-| 1 | `CheckInRetry(Guid slotId)` | Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet. |
+| 1 | `SlotEnded(Guid slotId)` | Hangfire job that runs at the planned end. A running slot becomes Overrun and waits for Stop; a paused slot triggers a check-in notification; a slot that was never started becomes Missed, the task status is derived again and the user is notified. |
+| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
+| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
+| 4 | `private HasAnySession(Guid slotId) : bool` | Tells whether any focus session, personal or group, is linked to the slot. |
+| 5 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
+
+#### 3.195.3.b AppDbContext
+
+Table 3.195.3.b: AppDbContext Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
+
+#### 3.195.3.c NotificationService
+
+Table 3.195.3.c: NotificationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+
+#### 3.195.3.d NotificationRepository
+
+Table 3.195.3.d: NotificationRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
+
+#### 3.195.3.e UnitOfWork
+
+Table 3.195.3.e: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.195.3.f UserPushSubscriptionRepository
+
+Table 3.195.3.f: UserPushSubscriptionRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
+| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
+
+#### 3.195.3.g TaskProgressService
+
+Table 3.195.3.g: TaskProgressService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `RefreshTask(Guid taskId) : ProgressResult` | Derives the task status from the facts (sessions, slots, sub-tasks): Done when every sub-task is done, reopened when a sub-task is ToDo, otherwise InProgress, Scheduled or ToDo; then refreshes the milestone. A Skipped task is never changed. |
+| 2 | `private Load(Guid taskId) : Task` | Loads the task with its sub-tasks, schedule slots and focus sessions. |
+| 3 | `private DeriveLiveStatus(Task task, SubTask[] subTasks) : string` | Derives the status from the facts: InProgress when a session is running, a counted session exists or a sub-task is Done; Scheduled when a live slot exists; otherwise ToDo. |
+| 4 | `private CountsAsProgress(FocusSession session) : bool` | False for an AutoTimeout session that was not confirmed (or was discarded), so it does not count as work done. |
+| 5 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
+| 6 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
 ### 3.195.4 Methods Used
 
@@ -40977,14 +43148,271 @@ Table 3.195.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
+| 1 | SlotBackgroundJobs.SlotEnded | AppDbContext.SaveChanges |  |
+| 2 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
+| 3 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
+| 4 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
+| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
+| 6 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
+| 7 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
+| 8 | SlotBackgroundJobs.SlotEnded | ITaskProgressService.RefreshTask | TaskProgressService |
+
+Entities used: GroupTask, Notification, UserPushSubscription, ScheduleChangeLog.
 
 ---
 
-## 3.196 Auto-stop Overrun Session
+## 3.196 Remind Overrun
+
+Hangfire job that runs 15 minutes after the planned end. When the slot is Overrun and a session is still running it reminds the user to press Stop.
+
+### 3.196.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class SlotBackgroundJobs {
+    +OverrunReminder(Guid slotId) void
+    -GetSlot(Guid slotId) ScheduleSlot
+    -Is(ScheduleSlot slot, ScheduleSlotStatus expected) bool
+    -Notify(ScheduleSlot slot, string title, string message, string type) void
+  }
+  class INotificationService {
+    <<interface>>
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+  }
+  class NotificationService {
+    +Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId) void
+    -ToStoredType(string actionType) string
+    -SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId) void
+  }
+  class INotificationRepository {
+    <<interface>>
+    +Add(Notification notification) void
+  }
+  class NotificationRepository {
+    +Add(Notification notification) void
+  }
+  class IUnitOfWork {
+    <<interface>>
+    +SaveChanges() int
+  }
+  class UnitOfWork {
+    +SaveChanges() int
+  }
+  class IUserPushSubscriptionRepository {
+    <<interface>>
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class UserPushSubscriptionRepository {
+    +GetByUserId(Guid userId) UserPushSubscription[]
+    +Remove(UserPushSubscription subscription) void
+  }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
+  class Notification {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -Guid ScheduleSlotId
+    -Guid GroupId
+    -Guid GroupTaskId
+    -string Type
+    -string Title
+    -string Message
+    -DateTime ScheduledAt
+    -DateTime SentAt
+    -bool IsRead
+    -DateTime ReadAt
+  }
+  class UserPushSubscription {
+    <<Entity>>
+    -Guid Id
+    -Guid UserId
+    -string Endpoint
+    -string P256dh
+    -string Auth
+    -DateTimeOffset CreatedAt
+  }
+  SlotBackgroundJobs ..> INotificationService : uses
+  NotificationService ..> INotificationRepository : uses
+  NotificationService ..> IUnitOfWork : uses
+  NotificationService ..> IUserPushSubscriptionRepository : uses
+  INotificationService <|.. NotificationService : implements
+  INotificationRepository <|.. NotificationRepository : implements
+  IUnitOfWork <|.. UnitOfWork : implements
+  IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
+  NotificationService ..> Notification
+  NotificationRepository ..> Notification
+  UserPushSubscriptionRepository ..> UserPushSubscription
+```
+
+Figure 3.196.1 Class Diagram
+
+### 3.196.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Hangfire
+  participant SlotBackgroundJobs
+  participant NotificationService
+  participant NotificationRepository
+  participant UnitOfWork
+  participant UserPushSubscriptionRepository
+  Hangfire->>SlotBackgroundJobs: OverrunReminder(slotId)
+  SlotBackgroundJobs->>SlotBackgroundJobs: Notify(slot, title, message, type)
+    SlotBackgroundJobs->>NotificationService: Send(userId, title, message, type, scheduleSlotId, groupId, groupTaskId)
+      NotificationService->>NotificationRepository: Add(notification)
+      NotificationService->>UnitOfWork: SaveChanges()
+      NotificationService->>NotificationService: SendWebPush(userId, title, message, actionType, settings, groupId, groupTaskId)
+        NotificationService->>UserPushSubscriptionRepository: GetByUserId(userId)
+        UserPushSubscriptionRepository-->>NotificationService: UserPushSubscription list
+        loop each subscription in subscriptions
+          opt catch WebPushException ex
+            NotificationService->>UserPushSubscriptionRepository: Remove(subscription)
+          end
+        end
+        opt removeExpired
+          NotificationService->>UnitOfWork: SaveChanges()
+        end
+```
+
+Figure 3.196.2 Sequence Diagram
+
+### 3.196.3 Class Specification
+
+#### 3.196.3.a SlotBackgroundJobs
+
+Table 3.196.3.a: SlotBackgroundJobs Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `OverrunReminder(Guid slotId)` | Hangfire job that runs 15 minutes after the planned end. When the slot is Overrun and a session is still running it reminds the user to press Stop. |
+| 2 | `private GetSlot(Guid slotId) : ScheduleSlot` | Loads the slot with its task and project. |
+| 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
+| 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
+
+#### 3.196.3.b NotificationService
+
+Table 3.196.3.b: NotificationService Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Send(Guid userId, string title, string message, string type, Guid scheduleSlotId, Guid groupId, Guid groupTaskId)` | Writes a Notification row, then pushes it over SignalR and Web Push. A failure in either push channel is only logged so the background job is not retried and duplicated. |
+| 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
+| 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
+
+#### 3.196.3.c NotificationRepository
+
+Table 3.196.3.c: NotificationRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `Add(Notification notification)` | Adds a Notification to the context. |
+
+#### 3.196.3.d UnitOfWork
+
+Table 3.196.3.d: UnitOfWork Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
+
+#### 3.196.3.e UserPushSubscriptionRepository
+
+Table 3.196.3.e: UserPushSubscriptionRepository Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
+| 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
+
+### 3.196.4 Methods Used
+
+Table 3.196.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+| 1 | SlotBackgroundJobs.Notify | INotificationService.Send | NotificationService |
+| 2 | NotificationService.Send | INotificationRepository.Add | NotificationRepository |
+| 3 | NotificationService.Send | IUnitOfWork.SaveChanges | UnitOfWork |
+| 4 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.GetByUserId | UserPushSubscriptionRepository |
+| 5 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
+| 6 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
+
+Entities used: GroupTask, Notification, UserPushSubscription.
+
+---
+
+## 3.197 Retry Check-in (placeholder)
+
+Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet.
+
+### 3.197.1 Class Diagram
+
+```mermaid
+classDiagram
+  direction TB
+  class SlotBackgroundJobs {
+    +CheckInRetry(Guid slotId) void
+  }
+```
+
+Figure 3.197.1 Class Diagram
+
+### 3.197.2 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Hangfire
+  participant SlotBackgroundJobs
+  Hangfire->>SlotBackgroundJobs: CheckInRetry(slotId)
+```
+
+Figure 3.197.2 Sequence Diagram
+
+### 3.197.3 Class Specification
+
+#### 3.197.3.a SlotBackgroundJobs
+
+Table 3.197.3.a: SlotBackgroundJobs Description Table
+
+| No | Method | Description |
+|---|---|---|
+| 1 | `CheckInRetry(Guid slotId)` | Hangfire job reserved for asking the check-in question again. It currently does nothing, because the check-in answer is not stored anywhere yet. |
+
+### 3.197.4 Methods Used
+
+Table 3.197.4: Methods used by this function
+
+| No | Caller | Method called | Implemented by |
+|---|---|---|---|
+
+---
+
+## 3.198 Auto-stop Overrun Session
 
 Hangfire job for a session that ran more than twice the planned time. It ends the session as AutoTimeout (not confirmed), sets the slot Done, derives the task status again and asks the user to confirm the real time.
 
-### 3.196.1 Class Diagram
+### 3.198.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -41042,6 +43470,23 @@ classDiagram
     +GetByUserId(Guid userId) UserPushSubscription[]
     +Remove(UserPushSubscription subscription) void
   }
+  class GroupTask {
+    <<Entity>>
+    -Guid Id
+    -Guid GroupId
+    -Guid MilestoneId
+    -Guid AssigneeId
+    -string Title
+    -string Description
+    -string Priority
+    -string Status
+    -DateTime Deadline
+    -DateTime FixedStart
+    -DateTime FixedEnd
+    -int EstimatedMinutes
+    -DateTime CreatedAt
+    -DateTime CompletedAt
+  }
   class ScheduleChangeLog {
     <<Entity>>
     -Guid Id
@@ -41089,15 +43534,16 @@ classDiagram
   INotificationRepository <|.. NotificationRepository : implements
   IUnitOfWork <|.. UnitOfWork : implements
   IUserPushSubscriptionRepository <|.. UserPushSubscriptionRepository : implements
+  SlotBackgroundJobs ..> GroupTask
   TaskProgressService ..> ScheduleChangeLog
   NotificationService ..> Notification
   NotificationRepository ..> Notification
   UserPushSubscriptionRepository ..> UserPushSubscription
 ```
 
-Figure 3.196.1 Class Diagram
+Figure 3.198.1 Class Diagram
 
-### 3.196.2 Sequence Diagram
+### 3.198.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -41132,13 +43578,13 @@ sequenceDiagram
         end
 ```
 
-Figure 3.196.2 Sequence Diagram
+Figure 3.198.2 Sequence Diagram
 
-### 3.196.3 Class Specification
+### 3.198.3 Class Specification
 
-#### 3.196.3.a SlotBackgroundJobs
+#### 3.198.3.a SlotBackgroundJobs
 
-Table 3.196.3.a: SlotBackgroundJobs Description Table
+Table 3.198.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -41147,17 +43593,17 @@ Table 3.196.3.a: SlotBackgroundJobs Description Table
 | 3 | `private Is(ScheduleSlot slot, ScheduleSlotStatus expected) : bool` | Compares the slot status with an expected status. |
 | 4 | `private Notify(ScheduleSlot slot, string title, string message, string type)` | Sends a notification to the owner of the slot through NotificationService. |
 
-#### 3.196.3.b AppDbContext
+#### 3.198.3.b AppDbContext
 
-Table 3.196.3.b: AppDbContext Description Table
+Table 3.198.3.b: AppDbContext Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges` | Persists the pending changes directly (this service does not go through IUnitOfWork). |
 
-#### 3.196.3.c TaskProgressService
+#### 3.198.3.c TaskProgressService
 
-Table 3.196.3.c: TaskProgressService Description Table
+Table 3.198.3.c: TaskProgressService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -41168,9 +43614,9 @@ Table 3.196.3.c: TaskProgressService Description Table
 | 5 | `private CancelNotStartedSlots(Task task, ProgressResult result)` | Marks every not-started slot of the task Cancelled, adds a change log row for each and remembers the ids so their jobs can be removed after the commit. |
 | 6 | `private RefreshMilestoneCore(Guid milestoneId, bool taskAlreadyStarted)` | Moves a Planned milestone to InProgress when one of its tasks has started or is done; later steps (Delivered, InRevision, ...) are never changed automatically. |
 
-#### 3.196.3.d NotificationService
+#### 3.198.3.d NotificationService
 
-Table 3.196.3.d: NotificationService Description Table
+Table 3.198.3.d: NotificationService Description Table
 
 | No | Method | Description |
 |---|---|---|
@@ -41178,34 +43624,34 @@ Table 3.196.3.d: NotificationService Description Table
 | 2 | `private ToStoredType(string actionType) : string` | Maps the action type to the stored notification type (MissedSlot or SlotReminder). |
 | 3 | `private SendWebPush(Guid userId, string title, string message, string actionType, VapidSettings settings, Guid groupId, Guid groupTaskId)` | Sends the notification to every Web Push subscription of the user with the VAPID keys; subscriptions that are gone are removed. |
 
-#### 3.196.3.e NotificationRepository
+#### 3.198.3.e NotificationRepository
 
-Table 3.196.3.e: NotificationRepository Description Table
+Table 3.198.3.e: NotificationRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `Add(Notification notification)` | Adds a Notification to the context. |
 
-#### 3.196.3.f UnitOfWork
+#### 3.198.3.f UnitOfWork
 
-Table 3.196.3.f: UnitOfWork Description Table
+Table 3.198.3.f: UnitOfWork Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `SaveChanges() : int` | Persists every pending change of the current unit of work to the database and returns the number of rows affected. |
 
-#### 3.196.3.g UserPushSubscriptionRepository
+#### 3.198.3.g UserPushSubscriptionRepository
 
-Table 3.196.3.g: UserPushSubscriptionRepository Description Table
+Table 3.198.3.g: UserPushSubscriptionRepository Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `GetByUserId(Guid userId) : UserPushSubscription[]` | Returns every push subscription of the user. |
 | 2 | `Remove(UserPushSubscription subscription)` | Marks the UserPushSubscription for deletion. |
 
-### 3.196.4 Methods Used
+### 3.198.4 Methods Used
 
-Table 3.196.4: Methods used by this function
+Table 3.198.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|
@@ -41218,15 +43664,15 @@ Table 3.196.4: Methods used by this function
 | 7 | NotificationService.SendWebPush | IUserPushSubscriptionRepository.Remove | UserPushSubscriptionRepository |
 | 8 | NotificationService.SendWebPush | IUnitOfWork.SaveChanges | UnitOfWork |
 
-Entities used: ScheduleChangeLog, Notification, UserPushSubscription.
+Entities used: GroupTask, ScheduleChangeLog, Notification, UserPushSubscription.
 
 ---
 
-## 3.197 Log Unconfirmed Sessions of a Slot
+## 3.199 Log Unconfirmed Sessions of a Slot
 
 Hangfire job that runs 24 hours after the planned end. When the slot still has unconfirmed AutoTimeout sessions it only logs that the result is unknown (such sessions are not used for learning); no data is changed.
 
-### 3.197.1 Class Diagram
+### 3.199.1 Class Diagram
 
 ```mermaid
 classDiagram
@@ -41236,9 +43682,9 @@ classDiagram
   }
 ```
 
-Figure 3.197.1 Class Diagram
+Figure 3.199.1 Class Diagram
 
-### 3.197.2 Sequence Diagram
+### 3.199.2 Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -41248,21 +43694,21 @@ sequenceDiagram
   Hangfire->>SlotBackgroundJobs: MarkUnknown(slotId)
 ```
 
-Figure 3.197.2 Sequence Diagram
+Figure 3.199.2 Sequence Diagram
 
-### 3.197.3 Class Specification
+### 3.199.3 Class Specification
 
-#### 3.197.3.a SlotBackgroundJobs
+#### 3.199.3.a SlotBackgroundJobs
 
-Table 3.197.3.a: SlotBackgroundJobs Description Table
+Table 3.199.3.a: SlotBackgroundJobs Description Table
 
 | No | Method | Description |
 |---|---|---|
 | 1 | `MarkUnknown(Guid slotId)` | Hangfire job that runs 24 hours after the planned end. When the slot still has unconfirmed AutoTimeout sessions it only logs that the result is unknown (such sessions are not used for learning); no data is changed. |
 
-### 3.197.4 Methods Used
+### 3.199.4 Methods Used
 
-Table 3.197.4: Methods used by this function
+Table 3.199.4: Methods used by this function
 
 | No | Caller | Method called | Implemented by |
 |---|---|---|---|

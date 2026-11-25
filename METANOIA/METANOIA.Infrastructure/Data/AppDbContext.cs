@@ -655,6 +655,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.Task).WithMany(p => p.ScheduleSlots)
                 .HasForeignKey(d => d.TaskId)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("ScheduleSlot_TaskId_fkey");
         });
 

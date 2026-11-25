@@ -24,6 +24,7 @@ namespace METANOIA.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly GroupTaskProgress _progress;
         private readonly IGroupAvailabilityService _availability;
+        private readonly GroupSlotCleanup _slotCleanup;
 
         public GroupTaskService(
             IGroupWorkRepository work,
@@ -32,7 +33,8 @@ namespace METANOIA.Infrastructure.Services
             IGroupNotifier notifier,
             IUnitOfWork unitOfWork,
             GroupTaskProgress progress,
-            IGroupAvailabilityService availability)
+            IGroupAvailabilityService availability,
+            GroupSlotCleanup slotCleanup)
         {
             _work = work;
             _groups = groups;
@@ -41,6 +43,7 @@ namespace METANOIA.Infrastructure.Services
             _unitOfWork = unitOfWork;
             _progress = progress;
             _availability = availability;
+            _slotCleanup = slotCleanup;
         }
 
         // ================================================================ Việc
@@ -137,9 +140,14 @@ namespace METANOIA.Infrastructure.Services
             access.RequireLeader();
             access.RequireActive();
 
+            // Slot của việc bị xóa theo (kèm lịch sử đổi giờ); job nhắc được hủy sau khi lưu
+            var removedSlotIds = await _slotCleanup.StageDeleteSlotsOfTaskAsync(task.Id, cancellationToken);
+
             _work.RemoveTask(task);
             await _work.AddActivityAsync(GroupRules.Log(task.GroupId, userId, GroupEntityTypes.Task, task.Id, "Deleted", task.Title, null), cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _slotCleanup.FinishDeletedAsync(removedSlotIds);
         }
 
         public async Task<GroupTaskDto> ChangeTaskStatusAsync(Guid userId, Guid taskId, GroupTaskStatusRequestDto request, CancellationToken cancellationToken = default)
@@ -209,11 +217,15 @@ namespace METANOIA.Infrastructure.Services
             var oldAssignee = task.AssigneeId;
             task.AssigneeId = request.AssigneeId;
 
+            // Người cũ mất việc: dừng phiên đang chạy và hủy slot chưa bắt đầu của họ (người mới tự xếp lịch riêng)
+            var cleanup = await _slotCleanup.StageOrphanedOfTaskAsync(task, cancellationToken);
+
             var names = await _work.GetUserNamesAsync(new[] { oldAssignee, request.AssigneeId }.OfType<Guid>(), cancellationToken);
             await _work.AddActivityAsync(GroupRules.Log(task.GroupId, userId, GroupEntityTypes.Task, task.Id, "Assigned",
                 NameOf(names, oldAssignee), NameOf(names, request.AssigneeId)), cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _slotCleanup.FinishAsync(cleanup, ReassignedText(NameOf(names, request.AssigneeId)), cancellationToken);
             await NotifyAssignedAsync(access, request.AssigneeId, $"việc \"{task.Title}\"", task.Id, cancellationToken);
 
             return ToDto(task, NameOf(names, request.AssigneeId));
@@ -375,11 +387,14 @@ namespace METANOIA.Infrastructure.Services
             var oldAssignee = subTask.AssigneeId;
             subTask.AssigneeId = request.AssigneeId;
 
+            var cleanup = await _slotCleanup.StageOrphanedOfTaskAsync(task, cancellationToken);
+
             var names = await _work.GetUserNamesAsync(new[] { oldAssignee, request.AssigneeId }.OfType<Guid>(), cancellationToken);
             await _work.AddActivityAsync(GroupRules.Log(task.GroupId, userId, GroupEntityTypes.SubTask, subTask.Id, "Assigned",
                 NameOf(names, oldAssignee), NameOf(names, request.AssigneeId)), cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            await _slotCleanup.FinishAsync(cleanup, ReassignedText(NameOf(names, request.AssigneeId)), cancellationToken);
             await NotifyAssignedAsync(access, request.AssigneeId, $"việc con \"{subTask.Title}\" (việc \"{task.Title}\")", task.Id, cancellationToken);
 
             return ToDto(subTask, NameOf(names, request.AssigneeId));
@@ -478,6 +493,9 @@ namespace METANOIA.Infrastructure.Services
             await _notifier.NotifyAsync(id, GroupNotificationTypes.StatusChanged, "Status việc được thay đổi",
                 $"{actor} đổi {what} trong nhóm \"{access.Group.Name}\" từ {oldStatus} sang {newStatus}.", access.Group.Id, taskId);
         }
+
+        private static string ReassignedText(string? newAssigneeName) =>
+            newAssigneeName is null ? "Việc đã được bỏ giao." : $"Việc đã được giao cho {newAssigneeName}.";
 
         private static IEnumerable<Guid> Ids(Guid? id)
         {

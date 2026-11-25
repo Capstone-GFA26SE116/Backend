@@ -331,6 +331,59 @@ namespace METANOIA.Application.Dto
         public List<GroupMemberProgressDto> Members { get; set; } = new();
 
         public List<GroupMilestoneProgressDto> Milestones { get; set; } = new();
+
+        // Tín hiệu giúp Leader theo dõi: quá hạn, chưa có lịch, nguy cơ trễ, đứng yên (tính lúc xem, không lưu)
+        public GroupSignalsDto Signals { get; set; } = new();
+    }
+
+    // Chỉ tính cho việc đang mở (ToDo hoặc InProgress) và đã có người được giao (việc, hoặc một việc con giao riêng). Không lộ giờ hay
+    // tiêu đề lịch cá nhân của ai, chỉ có số phút và cờ
+    public class GroupSignalsDto
+    {
+        public int OverdueTasks { get; set; }
+
+        public int UnscheduledTasks { get; set; }
+
+        public int AtRiskTasks { get; set; }
+
+        public int StaleTasks { get; set; }
+
+        // Các việc có ít nhất một tín hiệu
+        public List<GroupTaskSignalDto> Tasks { get; set; } = new();
+    }
+
+    public class GroupTaskSignalDto
+    {
+        public Guid TaskId { get; set; }
+
+        public string Title { get; set; } = null!;
+
+        public Guid? AssigneeId { get; set; }
+
+        public string? AssigneeName { get; set; }
+
+        public string Status { get; set; } = null!;
+
+        public DateTimeOffset? Deadline { get; set; }
+
+        // Deadline đã qua mà việc chưa xong
+        public bool IsOverdue { get; set; }
+
+        // Có ít nhất một slot đang sống (Approved, Due, InProgress, Overrun) của việc hoặc các việc con
+        public bool HasSchedule { get; set; }
+
+        // Chưa quá hạn, deadline trong vài ngày tới và số phút còn phải làm lớn hơn tổng phút đã xếp (slot chưa diễn ra, kết thúc trước deadline)
+        public bool AtRisk { get; set; }
+
+        // Lần hoạt động cuối (nhật ký, bình luận, phiên bấm giờ, hoặc ngày tạo) đã quá vài ngày
+        public bool IsStale { get; set; }
+
+        // Tổng phút slot chưa diễn ra, kết thúc trước deadline (cùng cách tính với AtRisk)
+        public int ScheduledMinutes { get; set; }
+
+        public int? EstimatedMinutes { get; set; }
+
+        public DateTimeOffset LastActivityAt { get; set; }
     }
 
     public class GroupMemberProgressDto
@@ -351,6 +404,15 @@ namespace METANOIA.Application.Dto
 
         // Giờ làm thực tế của người này trong nhóm (phút, các phiên đã kết thúc)
         public double TrackedMinutes { get; set; }
+
+        // Số việc đang mở của người này có từng tín hiệu (xem GroupSignalsDto)
+        public int OverdueTasks { get; set; }
+
+        public int UnscheduledTasks { get; set; }
+
+        public int AtRiskTasks { get; set; }
+
+        public int StaleTasks { get; set; }
     }
 
     public class GroupMilestoneProgressDto
