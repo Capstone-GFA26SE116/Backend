@@ -28,7 +28,7 @@ public sealed class SlotBackgroundJobs(
         var start = DateTime.SpecifyKind(slot.StartTime, DateTimeKind.Utc);
         var minutes = Math.Max(1, (int)Math.Round((start - timeProvider.GetUtcNow().UtcDateTime).TotalMinutes));
         await Notify(slot, "Sắp đến giờ làm việc",
-            $"Công việc \"{slot.Task.Title}\" sẽ bắt đầu trong {minutes} phút nữa.", "PRE_START_REMINDER");
+            $"Công việc \"{SlotOverlap.TitleOf(slot)}\" sẽ bắt đầu trong {minutes} phút nữa.", "PRE_START_REMINDER");
     }
 
     // Đến giờ: KHÔNG tự bấm giờ giúp người dùng, chỉ đổi trạng thái và hiện nút Start
@@ -42,7 +42,7 @@ public sealed class SlotBackgroundJobs(
         await dbContext.SaveChangesAsync();
 
         await Notify(slot, "Đến giờ làm việc",
-            $"Đến giờ rồi! Bấm Start để bắt đầu \"{slot.Task.Title}\".", "START_PROMPT");
+            $"Đến giờ rồi! Bấm Start để bắt đầu \"{SlotOverlap.TitleOf(slot)}\".", "START_PROMPT");
     }
 
     // 20 phút sau giờ bắt đầu mà vẫn chưa ai bấm Start (và chưa làm phiên nào trước đó)
@@ -50,10 +50,10 @@ public sealed class SlotBackgroundJobs(
     {
         var slot = await GetSlotAsync(slotId);
         if (slot is null || !Is(slot, ScheduleSlotStatus.Due)) return;
-        if (await dbContext.FocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId)) return;
+        if (await HasAnySessionAsync(slotId)) return;
 
         await Notify(slot, "Bạn chưa bắt đầu",
-            $"Bạn vẫn chưa bắt đầu \"{slot.Task.Title}\". Bấm Start ngay nhé!", "NOT_STARTED");
+            $"Bạn vẫn chưa bắt đầu \"{SlotOverlap.TitleOf(slot)}\". Bấm Start ngay nhé!", "NOT_STARTED");
     }
 
     // Còn 10 phút là hết giờ dự kiến: chỉ nhắc khi đang có phiên chạy (slot ở trạng thái InProgress)
@@ -63,7 +63,7 @@ public sealed class SlotBackgroundJobs(
         if (slot is null || !Is(slot, ScheduleSlotStatus.InProgress)) return;
 
         await Notify(slot, "Sắp hết giờ",
-            $"\"{slot.Task.Title}\" còn khoảng 10 phút nữa là hết giờ dự kiến.", "NEAR_END");
+            $"\"{SlotOverlap.TitleOf(slot)}\" còn khoảng 10 phút nữa là hết giờ dự kiến.", "NEAR_END");
     }
 
     // Hết giờ dự kiến
@@ -83,11 +83,11 @@ public sealed class SlotBackgroundJobs(
 
         if (!Is(slot, ScheduleSlotStatus.Due) && !Is(slot, ScheduleSlotStatus.Approved)) return;
 
-        if (await dbContext.FocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId))
+        if (await HasAnySessionAsync(slotId))
         {
             // Đã làm một phần rồi tạm dừng nhưng chưa ghi nhận xong: hỏi lại người dùng, không coi là Missed
             await Notify(slot, "Công việc đã hết giờ",
-                $"Bạn đã tạm dừng \"{slot.Task.Title}\". Công việc đã xong chưa?", "CHECK_IN");
+                $"Bạn đã tạm dừng \"{SlotOverlap.TitleOf(slot)}\". Công việc đã xong chưa?", "CHECK_IN");
             return;
         }
 
@@ -96,12 +96,15 @@ public sealed class SlotBackgroundJobs(
         slot.Status = ScheduleSlotStatus.Missed.ToString();
         await dbContext.SaveChangesAsync();
 
-        // Slot Missed không còn là slot sống: Task có thể từ Scheduled về ToDo
-        await progress.RefreshTaskAsync(slot.TaskId);
-        await dbContext.SaveChangesAsync();
+        // Slot Missed không còn là slot sống: Task có thể từ Scheduled về ToDo (việc nhóm không có trạng thái Scheduled nên không cần)
+        if (slot.TaskId is { } missedTaskId)
+        {
+            await progress.RefreshTaskAsync(missedTaskId);
+            await dbContext.SaveChangesAsync();
+        }
 
         await Notify(slot, "Bạn đã bỏ lỡ công việc",
-            $"\"{slot.Task.Title}\" đã hết giờ mà bạn chưa bắt đầu.", NotificationService.MissedSlotAction);
+            $"\"{SlotOverlap.TitleOf(slot)}\" đã hết giờ mà bạn chưa bắt đầu.", NotificationService.MissedSlotAction);
     }
 
     // 15 phút sau khi hết giờ mà phiên vẫn chạy
@@ -109,10 +112,11 @@ public sealed class SlotBackgroundJobs(
     {
         var slot = await GetSlotAsync(slotId);
         if (slot is null || !Is(slot, ScheduleSlotStatus.Overrun)) return;
-        if (!await dbContext.FocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId && s.EndedAt == null)) return;
+        if (!await dbContext.FocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId && s.EndedAt == null)
+            && !await dbContext.GroupFocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId && s.EndedAt == null)) return;
 
         await Notify(slot, "Đã quá giờ dự kiến",
-            $"Bạn còn đang làm \"{slot.Task.Title}\"? Nhớ bấm Stop khi xong nhé.", "OVERRUN");
+            $"Bạn còn đang làm \"{SlotOverlap.TitleOf(slot)}\"? Nhớ bấm Stop khi xong nhé.", "OVERRUN");
     }
 
     // Chưa làm: hệ thống chưa lưu câu trả lời check-in ở đâu nên không biết người dùng đã trả lời hay chưa,
@@ -124,6 +128,9 @@ public sealed class SlotBackgroundJobs(
     {
         var slot = await GetSlotAsync(slotId);
         if (slot is null || (!Is(slot, ScheduleSlotStatus.InProgress) && !Is(slot, ScheduleSlotStatus.Overrun))) return;
+
+        // Phiên bấm giờ của nhóm không có AutoTimeout (tự cắt ở 12 giờ khi dừng)
+        if (slot.GroupTaskId is not null) return;
 
         var session = await dbContext.FocusSessions
             .FirstOrDefaultAsync(s => s.ScheduleSlotId == slotId && s.EndedAt == null);
@@ -140,11 +147,11 @@ public sealed class SlotBackgroundJobs(
         await dbContext.SaveChangesAsync();
 
         // Phiên chưa xác nhận không tính là "đã làm": Task suy lại (có thể về Scheduled hoặc ToDo cho tới khi người dùng xác nhận)
-        await progress.RefreshTaskAsync(slot.TaskId);
+        await progress.RefreshTaskAsync(slot.TaskId!.Value);
         await dbContext.SaveChangesAsync();
 
         await Notify(slot, "Phiên làm việc bị ngắt",
-            $"Phiên \"{slot.Task.Title}\" đã bị ngắt tự động vì chạy quá lâu. Hãy xác nhận thời gian làm thực tế.", "AUTO_TIMEOUT");
+            $"Phiên \"{SlotOverlap.TitleOf(slot)}\" đã bị ngắt tự động vì chạy quá lâu. Hãy xác nhận thời gian làm thực tế.", "AUTO_TIMEOUT");
     }
 
     // 24 giờ sau khi hết giờ. Phiên AutoTimeout chưa xác nhận đã tự bị loại khỏi việc học (IsConfirmed = false),
@@ -159,17 +166,37 @@ public sealed class SlotBackgroundJobs(
         }
     }
 
-    private Task<ScheduleSlot?> GetSlotAsync(Guid slotId)
+    // Slot nhóm chỉ còn "sống" khi nhóm chưa lưu trữ và việc (hoặc việc con) vẫn giao cho người đã xếp slot; không thì bỏ qua job
+    private async Task<ScheduleSlot?> GetSlotAsync(Guid slotId)
     {
-        return dbContext.ScheduleSlots
+        var slot = await dbContext.ScheduleSlots
             .Include(s => s.Task)
-            .ThenInclude(t => t.Project)
+            .ThenInclude(t => t!.Project)
+            .Include(s => s.GroupTask).ThenInclude(t => t!.Group)
+            .Include(s => s.GroupSubTask)
             .FirstOrDefaultAsync(s => s.Id == slotId);
+
+        if (slot is { GroupTask: { } groupTask }
+            && (groupTask.Group.Status != GroupStatuses.Active
+                || (slot.GroupSubTask?.AssigneeId ?? groupTask.AssigneeId) != slot.UserId))
+        {
+            return null;
+        }
+
+        return slot;
+    }
+
+    // Slot đã có phiên làm việc nào chưa (phiên cá nhân hoặc phiên của nhóm)
+    private async Task<bool> HasAnySessionAsync(Guid slotId)
+    {
+        return await dbContext.FocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId)
+            || await dbContext.GroupFocusSessions.AnyAsync(s => s.ScheduleSlotId == slotId);
     }
 
     private Task Notify(ScheduleSlot slot, string title, string message, string type)
     {
-        return notification.SendAsync(slot.Task.Project.UserId, title, message, type, slot.Id);
+        // Slot nhóm: người nhận là người đã xếp slot (UserId); slot cá nhân: chủ dự án
+        return notification.SendAsync(slot.UserId ?? slot.Task!.Project.UserId, title, message, type, slot.Id);
     }
 
     private static bool Is(ScheduleSlot slot, ScheduleSlotStatus expected)

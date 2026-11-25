@@ -25,19 +25,22 @@ namespace METANOIA.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IScheduleJobService _jobService;
         private readonly ITaskProgressService _progress;
+        private readonly IGroupScheduleService _groupSchedule;
 
         public ScheduleSlotService(
             IScheduleSlotRepository slotRepository,
             IScheduleChangeLogRepository logRepository,
             IUnitOfWork unitOfWork,
             IScheduleJobService jobService,
-            ITaskProgressService progress)
+            ITaskProgressService progress,
+            IGroupScheduleService groupSchedule)
         {
             _slotRepository = slotRepository;
             _logRepository = logRepository;
             _unitOfWork = unitOfWork;
             _jobService = jobService;
             _progress = progress;
+            _groupSchedule = groupSchedule;
         }
 
         public async Task<IReadOnlyList<ScheduleSlotDto>> GetSlotsAsync(Guid userId, Guid taskId, CancellationToken cancellationToken = default)
@@ -105,8 +108,15 @@ namespace METANOIA.Infrastructure.Services
         public async Task<ScheduleSlotDto> UpdateSlotAsync(Guid userId, Guid slotId, ScheduleSlotRequestDto request, CancellationToken cancellationToken = default)
         {
             var slot = await GetOwnedSlotAsync(userId, slotId, cancellationToken);
+
+            // Slot của việc nhóm: luật riêng (quyền theo vai trò trong nhóm, không có việc cá nhân để suy lại trạng thái)
+            if (slot.GroupTaskId is not null)
+            {
+                return await _groupSchedule.UpdateSlotAsync(userId, slot, request, cancellationToken);
+            }
+
             ValidateRequest(request);
-            await ValidateReferencesAsync(userId, slot.TaskId, request, cancellationToken);
+            await ValidateReferencesAsync(userId, slot.TaskId!.Value, request, cancellationToken);
 
             // Chuyển trạng thái phải theo bảng luật (không gửi status thì giữ nguyên)
             if (!string.IsNullOrWhiteSpace(request.Status))
@@ -145,7 +155,7 @@ namespace METANOIA.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 // Slot đổi trạng thái có thể làm Task đổi giữa ToDo, Scheduled và InProgress
-                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId, cancellationToken));
+                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId!.Value, cancellationToken));
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
@@ -157,6 +167,12 @@ namespace METANOIA.Infrastructure.Services
         public async Task<ScheduleSlotDto> CancelSlotAsync(Guid userId, Guid slotId, CancellationToken cancellationToken = default)
         {
             var slot = await GetOwnedSlotAsync(userId, slotId, cancellationToken);
+
+            if (slot.GroupTaskId is not null)
+            {
+                return await _groupSchedule.CancelSlotAsync(userId, slot, cancellationToken);
+            }
+
             if (slot.Status == CancelledStatus)
             {
                 throw new UserFriendlyException("Slot này đã bị hủy trước đó.");
@@ -176,7 +192,7 @@ namespace METANOIA.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 // Hủy hết slot sống thì Task không còn Scheduled
-                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId, cancellationToken));
+                result.Merge(await _progress.RefreshTaskAsync(slot.TaskId!.Value, cancellationToken));
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
             }, cancellationToken);
 
@@ -310,23 +326,7 @@ namespace METANOIA.Infrastructure.Services
 
         private static ScheduleSlotDto ToDto(ScheduleSlot slot)
         {
-            return new ScheduleSlotDto
-            {
-                Id = slot.Id,
-                TaskId = slot.TaskId,
-                SubTaskId = slot.SubTaskId,
-                ScheduleProposalId = slot.ScheduleProposalId,
-                StartTime = UtcTime.ToApi(slot.StartTime),
-                EndTime = UtcTime.ToApi(slot.EndTime),
-                OriginalStartTime = UtcTime.ToApi(slot.OriginalStartTime),
-                IsManualOverride = slot.IsManualOverride,
-                ProposedMinutes = slot.ProposedMinutes,
-                KbiasUsed = slot.KbiasUsed,
-                Explanation = slot.Explanation,
-                Status = slot.Status,
-                GoogleEventId = slot.GoogleEventId,
-                SyncFailed = slot.SyncFailed
-            };
+            return SlotMapper.ToDto(slot);
         }
     }
 }

@@ -9,6 +9,7 @@ using METANOIA.Application.Interfaces.Repositories;
 using METANOIA.Application.Interfaces.Services;
 using METANOIA.Domain.Entities;
 using METANOIA.Infrastructure.Data;
+using METANOIA.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -172,7 +173,7 @@ namespace METANOIA.Infrastructure.Services
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 // Slot vừa được duyệt đưa Task từ ToDo lên Scheduled
-                foreach (var taskId in toApprove.Select(s => s.TaskId).Distinct())
+                foreach (var taskId in toApprove.Where(s => s.TaskId != null).Select(s => s.TaskId!.Value).Distinct())
                 {
                     result.Merge(await _progress.RefreshTaskAsync(taskId, cancellationToken));
                 }
@@ -290,8 +291,9 @@ namespace METANOIA.Infrastructure.Services
             var existing = await _context.ScheduleSlots
                 .AsNoTracking()
                 .Include(s => s.Task)
-                .Where(s => s.Task.Project.UserId == userId
-                    && liveStatuses.Contains(s.Status)
+                .Include(s => s.GroupTask)
+                .OwnedBy(userId)
+                .Where(s => liveStatuses.Contains(s.Status)
                     && s.StartTime < to
                     && s.EndTime > from)
                 .ToListAsync(cancellationToken);
@@ -306,7 +308,7 @@ namespace METANOIA.Infrastructure.Services
                 }
 
                 result.Add(new ProposalSlotOverlapDto(
-                    slot.Id, slot.TaskId, slot.Task?.Title ?? string.Empty, UtcTime.ToApi(slot.StartTime), UtcTime.ToApi(slot.EndTime), SlotOverlap.ToDto(hit)));
+                    slot.Id, slot.TaskId, SlotOverlap.TitleOf(slot), UtcTime.ToApi(slot.StartTime), UtcTime.ToApi(slot.EndTime), SlotOverlap.ToDto(hit)));
             }
 
             return result;
@@ -439,22 +441,7 @@ namespace METANOIA.Infrastructure.Services
 
         private static ScheduleSlotDto ToSlotDto(ScheduleSlot s)
         {
-            return new ScheduleSlotDto
-            {
-                Id = s.Id,
-                TaskId = s.TaskId,
-                SubTaskId = s.SubTaskId,
-                ScheduleProposalId = s.ScheduleProposalId,
-                StartTime = UtcTime.ToApi(s.StartTime),
-                EndTime = UtcTime.ToApi(s.EndTime),
-                ProposedMinutes = s.ProposedMinutes,
-                Explanation = s.Explanation,
-                Status = s.Status,
-                OriginalStartTime = UtcTime.ToApi(s.OriginalStartTime),
-                IsManualOverride = s.IsManualOverride,
-                GoogleEventId = s.GoogleEventId,
-                SyncFailed = s.SyncFailed
-            };
+            return SlotMapper.ToDto(s);
         }
     }
 }

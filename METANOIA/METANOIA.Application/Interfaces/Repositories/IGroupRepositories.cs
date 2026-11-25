@@ -118,6 +118,13 @@ namespace METANOIA.Application.Interfaces.Repositories
         // Việc con giao cho người này trong các nhóm đang hoạt động, kèm việc cha và nhóm
         Task<IReadOnlyList<GroupSubTask>> GetSubTasksAssignedToAsync(Guid userId, CancellationToken cancellationToken = default);
 
+        // ---- Tín hiệu tiến độ
+        // Slot đang sống (Approved, Due, InProgress, Overrun) của các việc trong nhóm, không theo dõi
+        Task<IReadOnlyList<ScheduleSlot>> GetLiveSlotsOfGroupAsync(Guid groupId, CancellationToken cancellationToken = default);
+
+        // Lần hoạt động cuối của từng việc: nhật ký (của việc và việc con), bình luận, phiên bấm giờ. Việc không có gì thì không có khóa
+        Task<Dictionary<Guid, DateTime>> GetLastActivityByTaskAsync(Guid groupId, CancellationToken cancellationToken = default);
+
         // ---- Phiên bấm giờ (đợt 2)
         Task AddFocusSessionAsync(GroupFocusSession session, CancellationToken cancellationToken = default);
 
@@ -126,6 +133,9 @@ namespace METANOIA.Application.Interfaces.Repositories
 
         // Phiên đang chạy của người này (EndedAt rỗng), kèm việc, nhóm và việc con; null nếu không có
         Task<GroupFocusSession?> GetRunningFocusSessionAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        // Các phiên đang chạy (EndedAt rỗng) trên một việc, theo dõi để dừng
+        Task<IReadOnlyList<GroupFocusSession>> GetRunningFocusSessionsOfTaskAsync(Guid taskId, CancellationToken cancellationToken = default);
 
         // Mọi phiên của một việc (kể cả đang chạy), kèm người làm, cũ trước
         Task<IReadOnlyList<GroupFocusSession>> GetFocusSessionsOfTaskAsync(Guid taskId, CancellationToken cancellationToken = default);

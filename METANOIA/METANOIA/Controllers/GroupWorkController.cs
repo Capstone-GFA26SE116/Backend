@@ -16,17 +16,20 @@ namespace METANOIA.Controllers
         private readonly IGroupTaskService _tasks;
         private readonly IGroupCommentService _comments;
         private readonly IGroupProgressService _progress;
+        private readonly IGroupScheduleService _schedule;
 
         public GroupWorkController(
             IGroupMilestoneService milestones,
             IGroupTaskService tasks,
             IGroupCommentService comments,
-            IGroupProgressService progress)
+            IGroupProgressService progress,
+            IGroupScheduleService schedule)
         {
             _milestones = milestones;
             _tasks = tasks;
             _comments = comments;
             _progress = progress;
+            _schedule = schedule;
         }
 
         private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -230,6 +233,24 @@ namespace METANOIA.Controllers
         {
             await _comments.DeleteCommentAsync(CurrentUserId, commentId, cancellationToken);
             return NoContent();
+        }
+
+        // ================================================================ Lịch làm việc (dùng chung ScheduleSlot)
+
+        // Member tự xếp giờ làm cho việc (hoặc việc con) được giao cho mình. Chồng giờ với slot khác của chính mình thì 409 SLOT_OVERLAP.
+        // Sửa và hủy slot dùng PUT và DELETE /api/schedule-slots/{slotId}; lịch của mình xem ở GET /api/calendar
+        [HttpPost("api/group-tasks/{taskId:guid}/schedule-slots")]
+        public async Task<ActionResult<GroupSlotDto>> CreateSlot(Guid taskId, [FromBody] GroupSlotRequestDto request, CancellationToken cancellationToken)
+        {
+            var slot = await _schedule.CreateSlotAsync(CurrentUserId, taskId, request, cancellationToken);
+            return CreatedAtAction(nameof(GetSlots), new { taskId }, slot);
+        }
+
+        // Slot của việc (kể cả các việc con), kèm người xếp. Mọi thành viên xem được
+        [HttpGet("api/group-tasks/{taskId:guid}/schedule-slots")]
+        public async Task<ActionResult<IReadOnlyList<GroupSlotDto>>> GetSlots(Guid taskId, [FromQuery] bool includeCancelled, CancellationToken cancellationToken)
+        {
+            return Ok(await _schedule.GetSlotsAsync(CurrentUserId, taskId, includeCancelled, cancellationToken));
         }
 
         // ================================================================ Việc của tôi

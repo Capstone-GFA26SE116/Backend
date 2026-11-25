@@ -26,7 +26,8 @@ namespace METANOIA.Infrastructure.Repositories
         public Task<ScheduleChangeLog?> GetByIdForUserAsync(Guid logId, Guid userId, CancellationToken cancellationToken = default)
         {
             return _context.ScheduleChangeLogs
-                .FirstOrDefaultAsync(l => l.Id == logId && l.ScheduleSlot.Task.Project.UserId == userId, cancellationToken);
+                .FirstOrDefaultAsync(l => l.Id == logId
+                    && (l.ScheduleSlot.UserId == userId || (l.ScheduleSlot.TaskId != null && l.ScheduleSlot.Task!.Project.UserId == userId)), cancellationToken);
         }
 
         public async Task AddAsync(ScheduleChangeLog log, CancellationToken cancellationToken = default)

@@ -158,6 +158,23 @@ namespace METANOIA.Application.Interfaces.Services
         Task DeleteCommentAsync(Guid userId, Guid commentId, CancellationToken cancellationToken = default);
     }
 
+    // Member tự xếp giờ làm cho việc (hoặc việc con) được giao cho mình, dùng chung bảng ScheduleSlot với nhánh cá nhân.
+    // Slot nhóm thuộc người đã xếp (ScheduleSlot.UserId) và hiện trên lịch gộp của người đó (GET /api/calendar)
+    public interface IGroupScheduleService
+    {
+        // Chỉ người được giao việc (hoặc việc con của mình); việc có việc con thì phải chọn việc con; nhóm đang hoạt động; việc chưa Done hoặc Skipped.
+        // Slot chiếm giờ (Approved) không được chồng lên slot chiếm giờ khác của người đó: SlotOverlapException (409)
+        Task<GroupSlotDto> CreateSlotAsync(Guid userId, Guid taskId, GroupSlotRequestDto request, CancellationToken cancellationToken = default);
+
+        // Slot của việc (kể cả các việc con), mọi thành viên xem được. Mặc định không gồm slot đã hủy
+        Task<IReadOnlyList<GroupSlotDto>> GetSlotsAsync(Guid userId, Guid taskId, bool includeCancelled, CancellationToken cancellationToken = default);
+
+        // Sửa và hủy slot nhóm: được gọi từ ScheduleSlotService khi PUT hoặc DELETE /api/schedule-slots/{id} trúng slot nhóm
+        Task<ScheduleSlotDto> UpdateSlotAsync(Guid userId, ScheduleSlot slot, ScheduleSlotRequestDto request, CancellationToken cancellationToken = default);
+
+        Task<ScheduleSlotDto> CancelSlotAsync(Guid userId, ScheduleSlot slot, CancellationToken cancellationToken = default);
+    }
+
     public interface IGroupProgressService
     {
         Task<GroupProgressDto> GetProgressAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default);

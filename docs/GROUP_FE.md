@@ -116,7 +116,7 @@ Tách khỏi `/api/focus` của nhánh cá nhân. Phiên ghi giờ của **một
 
 | API | Ghi chú |
 |---|---|
-| `POST /api/group-tasks/{taskId}/focus/start` | Body `{ "subTaskId": "guid" \| null }`. `201` trả `{ sessionId, startedAt, taskStatus, subTaskStatus }`. Việc có việc con thì **bắt buộc** gửi `subTaskId` (`400` nếu thiếu) |
+| `POST /api/group-tasks/{taskId}/focus/start` | Body `{ "subTaskId": "guid" \| null, "scheduleSlotId": "guid" \| null }` (`scheduleSlotId` xem mục 11). `201` trả `{ sessionId, startedAt, taskStatus, subTaskStatus, scheduleSlotId }`. Việc có việc con thì **bắt buộc** gửi `subTaskId` (`400` nếu thiếu) |
 | `POST /api/group-focus/{sessionId}/stop` | Body `{ "stopReason": "Completed" \| "Interrupted" \| "Blocked" \| "Other", "note": "..." }`. `note` bắt buộc với `Blocked` và `Other`. Trả `{ sessionMinutes, myTaskMinutes, taskTotalMinutes, taskStatus, subTaskStatus, wasCapped }` |
 | `GET /api/group-focus/current` | Phiên đang chạy của tôi (kèm `groupName`, `taskTitle`, `subTaskTitle`, `elapsedSeconds`, `serverTime`, `estimatedMinutes`); `204` nếu không có |
 | `GET /api/group-tasks/{taskId}/time` | Giờ làm thực tế: `totalMinutes`, `estimatedMinutes`, `byUser[]`, `bySubTask[]`, `sessions[]`. Mọi thành viên (kể cả Viewer) xem được |
@@ -175,6 +175,55 @@ Member không tự sửa giờ của việc đã giao. Người được giao vi
 Cột `Notification.Type` dài 20 ký tự: `GroupChangeRequested` đúng 20 ký tự. Cần chạy bước 4 của `006_group_phase2.sql` để nới CHECK; chưa chạy thì đề xuất vẫn hoạt động, chỉ thiếu thông báo. Nhật ký hoạt động có thêm `entityType` `FocusSession` (`Started`, `Stopped`) và `ChangeRequest` (`ChangeRequested`, `ChangeApproved`, `ChangeRejected`, `ChangeCancelled`).
 
 ---
+
+# Đợt 3: lên lịch cho việc nhóm và tín hiệu tiến độ
+
+SQL: `docs/sql/009_group_schedule_slot.sql`. **Chạy trước khi chạy backend mới** (backend đọc các cột mới của `ScheduleSlot` ở mọi truy vấn slot).
+
+## 11. Member tự xếp lịch cho việc nhóm (dùng chung `ScheduleSlot`)
+
+Leader giao việc, đặt deadline và ước lượng như cũ. **Người được giao tự xếp giờ làm vào lịch của mình.** Slot nhóm nằm cùng bảng với slot cá nhân nên dùng chung nhắc việc, đồng bộ Google Calendar, lịch gộp và luật không chồng giờ.
+
+| API | Ghi chú |
+|---|---|
+| `POST /api/group-tasks/{taskId}/schedule-slots` | Body `{ "subTaskId": "guid" \| null, "startTime": "ISO", "endTime": "ISO", "explanation": "..." \| null, "status": "Approved" \| "Proposed" }` (`status` mặc định `Approved`). `201` trả `GroupSlotDto` |
+| `GET /api/group-tasks/{taskId}/schedule-slots?includeCancelled=false` | Slot của việc và các việc con, kèm người xếp. **Mọi thành viên (kể cả Viewer) xem được** |
+| `PUT /api/schedule-slots/{slotId}` | Sửa giờ hoặc status, dùng lại API slot cá nhân. Chỉ người xếp slot sửa được |
+| `DELETE /api/schedule-slots/{slotId}` | Hủy slot (thành `Cancelled`) |
+| `GET /api/calendar` | Lịch gộp của tôi **có cả slot nhóm** (xem bên dưới) |
+
+Luật tạo slot:
+- Chỉ **người được giao** (việc, hoặc việc con được giao cho mình, hoặc việc con chưa giao khi mình được giao việc cha). Người khác `403` `GROUP_FORBIDDEN`; người ngoài nhóm `404`; Viewer `403`.
+- Việc có việc con thì **phải chọn `subTaskId`** (`400` nếu thiếu). Việc hoặc việc con đã `Done`/`Skipped` thì `400`, phải mở lại trước. Nhóm đã lưu trữ `400`.
+- `endTime` phải lớn hơn `startTime` (`400`).
+- **Không chồng giờ** với slot đang chiếm giờ khác của chính mình (kể cả slot cá nhân): `409` `SLOT_OVERLAP`, `details.overlaps[]` cùng dạng như slot cá nhân (có `groupTaskId` khi bên kia là slot nhóm). Slot `Proposed` không chặn.
+- Không kiểm tra lịch Google khi tạo (giống slot cá nhân tạo tay).
+- Slot nhóm **không đổi status của việc nhóm** (việc nhóm chỉ có ToDo/InProgress/Done/Skipped).
+
+Slot trong `GET /api/calendar`: phần tử có `taskId = null`, `groupId`, `groupName`, `groupTaskId`, `groupSubTaskId`; các trường dự án, khách hàng, loại công việc là `null`. Dùng `groupName` và tiêu đề việc để hiển thị. Đồng bộ Google: tiêu đề là `Việc [- Việc con]`, mô tả `Nhóm: tên nhóm`. Nhắc việc gửi cho người đã xếp slot.
+
+`ScheduleSlotDto` (mọi API slot) đổi: **`taskId` có thể `null`** (slot nhóm); thêm `groupTaskId`, `groupSubTaskId`, `userId`. FE phải chịu được `taskId = null`.
+
+**Bấm giờ theo slot:** `scheduleSlotId` khi Start là tùy chọn. Slot phải của chính mình, đúng việc (và đúng việc con nếu slot có việc con) và đang `Approved`, `Due`, `InProgress`, `Missed` hoặc `Postponed`; slot sang `InProgress`. Sai thì `404` (không phải của mình) hoặc `400`. Stop: `Completed` làm slot `Done`; `Blocked` làm slot `Postponed`; lý do khác làm slot `Due` (làm tiếp được). Không gắn slot thì bấm giờ như cũ.
+
+**Khi việc giao cho người khác hoặc người làm rời nhóm** (không còn là người được giao hiệu lực của việc hoặc việc con):
+- Slot chưa bắt đầu của người cũ (`Proposed`, `Approved`, `Due`) tự thành `Cancelled`; slot đang chạy (`InProgress`, `Overrun`) thì phiên bấm giờ dừng với lý do `Other` (giờ đã làm vẫn tính cho người cũ), slot về `Due` rồi `Cancelled`. Slot đã `Done`, `Missed`, `Postponed`, `Skipped`, `Cancelled` giữ làm lịch sử.
+- Người cũ nhận thông báo `GroupStatusChanged` (có `groupId`, `groupTaskId`) nói rõ việc đã giao cho ai và bao nhiêu slot bị hủy. Người mới không thừa hưởng slot, tự xếp lịch.
+- Áp dụng khi: giao lại việc, giao lại việc con, xóa thành viên, hạ thành viên xuống Viewer, thành viên tự rời nhóm (rời thì không gửi thông báo). Xóa việc nhóm thì xóa luôn slot của việc.
+- FE nên làm mới lịch khi nhận thông báo loại này.
+
+## 12. Tín hiệu trong báo cáo tiến độ
+
+`GET /api/groups/{id}/progress` có thêm `signals` và bốn bộ đếm trong mỗi `members[]`. Tính lúc xem, không lưu trong DB. Chỉ xét việc **đang mở** (`ToDo`, `InProgress`) và **đã có người được giao**; tính cho người được giao việc (hoặc việc con đang mở).
+
+| Tín hiệu | Điều kiện |
+|---|---|
+| Quá hạn (`isOverdue`) | Có deadline và đã qua |
+| Chưa có lịch (`hasSchedule = false`) | Không có slot nào đang sống (`Proposed`, `Approved`, `Due`, `InProgress`, `Overrun`) của việc hoặc các việc con |
+| Nguy cơ trễ (`atRisk`) | Chưa quá hạn, deadline trong **3 ngày** tới, có ước lượng (của việc, rỗng thì cộng các việc con), và số phút còn phải làm (ước lượng trừ giờ đã làm) lớn hơn tổng phút slot chưa diễn ra kết thúc trước deadline |
+| Đứng yên (`isStale`) | Lần hoạt động cuối (nhật ký nhóm, bình luận, phiên bấm giờ hoặc ngày tạo việc) cách đây quá **3 ngày** |
+
+`signals.tasks[]` chỉ chứa việc có ít nhất một tín hiệu, sắp xếp: quá hạn, nguy cơ trễ, rồi theo deadline. Chỉ hiện số phút và cờ, **không lộ giờ hay tiêu đề lịch cá nhân**. Admin (`/api/admin/groups/{id}`) chỉ thấy bốn bộ đếm, `signals.tasks` luôn rỗng.
 
 # Phụ lục: cấu trúc dữ liệu (DTO)
 
@@ -284,6 +333,17 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | Trường | Kiểu | Ghi chú |
 |---|---|---|
 | `subTaskId?` | string (uuid) | Bắt buộc khi việc có việc con (giờ làm tính cho việc con đó). Bỏ trống khi bấm giờ cho cả việc không có việc con |
+| `scheduleSlotId?` | string (uuid) | Gắn phiên với một slot của mình (xem mục 11). Bỏ trống thì bấm giờ không gắn slot |
+
+### GroupSlotRequestDto
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `subTaskId?` | string (uuid) | Bắt buộc khi việc có việc con |
+| `startTime` | string (ISO 8601) |  |
+| `endTime` | string (ISO 8601) | Lớn hơn `startTime` |
+| `explanation?` | string | Tối đa 1000 ký tự |
+| `status?` | string | `Approved` (mặc định) hoặc `Proposed` |
 
 ### GroupFocusStopRequestDto
 
@@ -490,6 +550,35 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `completedPercent` | number | Done trên (tổng trừ Skipped), làm tròn 1 chữ số thập phân; 0 khi chưa có việc |
 | `members` | GroupMemberProgressDto[] |  |
 | `milestones` | GroupMilestoneProgressDto[] |  |
+| `signals` | GroupSignalsDto | Tín hiệu (mục 12) |
+
+### GroupSignalsDto
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `overdueTasks` | number | Số việc quá hạn |
+| `unscheduledTasks` | number | Số việc chưa có lịch |
+| `atRiskTasks` | number | Số việc có nguy cơ trễ |
+| `staleTasks` | number | Số việc đứng yên |
+| `tasks` | GroupTaskSignalDto[] | Việc có ít nhất một tín hiệu |
+
+### GroupTaskSignalDto
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `taskId` | string (uuid) |  |
+| `title` | string |  |
+| `assigneeId?` | string (uuid) |  |
+| `assigneeName?` | string |  |
+| `status` | string |  |
+| `deadline?` | string (ISO 8601) |  |
+| `isOverdue` | boolean |  |
+| `hasSchedule` | boolean |  |
+| `atRisk` | boolean |  |
+| `isStale` | boolean |  |
+| `scheduledMinutes` | number | Tổng phút slot chưa diễn ra, kết thúc trước deadline |
+| `estimatedMinutes?` | number |  |
+| `lastActivityAt?` | string (ISO 8601) |  |
 
 ### GroupMemberProgressDto
 
@@ -503,6 +592,10 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `assignedSubTasks` | number |  |
 | `doneSubTasks` | number |  |
 | `trackedMinutes` | number | Giờ làm thực tế của người này trong nhóm (phút, các phiên đã kết thúc) |
+| `overdueTasks` | number | Số việc của người này quá hạn |
+| `unscheduledTasks` | number | Số việc chưa có lịch |
+| `atRiskTasks` | number | Số việc có nguy cơ trễ |
+| `staleTasks` | number | Số việc đứng yên |
 
 ### GroupMilestoneProgressDto
 
@@ -558,6 +651,7 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `startedAt` | string (ISO 8601) |  |
 | `taskStatus` | string | Status sau khi bắt đầu: việc con ToDo thành InProgress, việc cha tự suy lại |
 | `subTaskStatus?` | string |  |
+| `scheduleSlotId?` | string (uuid) | Slot đã gắn khi Start |
 
 ### GroupFocusStopResponseDto
 
@@ -587,6 +681,7 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `isRunning` | boolean |  |
 | `stopReason?` | string |  |
 | `note?` | string |  |
+| `scheduleSlotId?` | string (uuid) |  |
 
 ### GroupFocusCurrentDto
 
@@ -603,6 +698,7 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `elapsedSeconds` | number |  |
 | `serverTime` | string (ISO 8601) |  |
 | `estimatedMinutes?` | number | Ước lượng của việc, để FE hiện "đã làm / ước lượng" |
+| `scheduleSlotId?` | string (uuid) | Slot đang gắn với phiên (nếu có) |
 
 ### GroupTaskTimeDto
 
@@ -658,6 +754,17 @@ Sinh trực tiếp từ code (`METANOIA.Application/Dto/GroupDto.cs`, `GroupPhas
 | `assignedMinutes` | number | Tổng phút ước lượng của các việc nhóm chưa xong của người này có deadline trong 7 ngày kết thúc ở deadline, cộng việc đang xét |
 | `capacityMinutes` | number | Số phút làm việc của một tuần theo cài đặt giờ làm của người nhận |
 | `isOverloaded` | boolean |  |
+
+### GroupSlotDto
+
+Gồm mọi trường của `ScheduleSlotDto` (với `taskId = null`, có `groupTaskId`, `groupSubTaskId`, `userId` là người xếp) và thêm:
+
+| Trường | Kiểu | Ghi chú |
+|---|---|---|
+| `groupId` | string (uuid) |  |
+| `userName` | string | Người xếp slot |
+| `taskTitle` | string |  |
+| `subTaskTitle?` | string |  |
 
 ### NotificationDto
 

@@ -8,6 +8,11 @@ namespace METANOIA.Infrastructure.Services
     // (xem docs/GROUP_FEATURE.md mục 5). Đặt lại đúng trạng thái đang có luôn hợp lệ.
     internal static class GroupRules
     {
+        // Tín hiệu tiến độ nhóm (GroupProgressService): việc có deadline trong vòng này mà chưa đủ lịch thì "nguy cơ trễ"; việc không có hoạt động
+        // quá số ngày này thì "đứng yên"
+        public const int RiskWindowDays = 3;
+        public const int StaleAfterDays = 3;
+
         private const string ToDo = GroupWorkStatuses.ToDo;
         private const string InProgress = GroupWorkStatuses.InProgress;
         private const string Done = GroupWorkStatuses.Done;
@@ -101,6 +106,14 @@ namespace METANOIA.Infrastructure.Services
                 subTask.CompletedById = null;
             }
         }
+
+        // Người được giao hiệu lực: việc con giao riêng thì người đó, không thì người được giao việc cha
+        public static Guid? EffectiveAssigneeId(GroupTask task, GroupSubTask? subTask) =>
+            subTask is not null ? subTask.AssigneeId ?? task.AssigneeId : task.AssigneeId;
+
+        // Việc (hoặc việc con) này có đang giao cho người này không: việc con của mình, hoặc việc con chưa giao riêng mà việc cha giao cho mình
+        public static bool IsAssignedTo(GroupTask task, GroupSubTask? subTask, Guid userId) =>
+            EffectiveAssigneeId(task, subTask) == userId;
 
         public static GroupActivityLog Log(
             Guid groupId, Guid actorId, string entityType, Guid? entityId, string action, string? oldValue = null, string? newValue = null)

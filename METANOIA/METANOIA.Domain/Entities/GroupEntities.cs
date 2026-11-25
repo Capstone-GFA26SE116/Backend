@@ -247,9 +247,14 @@ public partial class GroupFocusSession
 
     public string CaptureMethod { get; set; } = "Timer";
 
+    // Slot đã xếp mà phiên này làm theo (tùy chọn); xóa slot thì để rỗng
+    public Guid? ScheduleSlotId { get; set; }
+
     public virtual GroupTask GroupTask { get; set; } = null!;
 
     public virtual GroupSubTask? GroupSubTask { get; set; }
+
+    public virtual ScheduleSlot? ScheduleSlot { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

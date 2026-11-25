@@ -19,17 +19,20 @@ namespace METANOIA.Infrastructure.Services
         private readonly IGroupWorkRepository _work;
         private readonly IGroupAccessService _access;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly GroupSlotCleanup _slotCleanup;
 
         public GroupService(
             IGroupRepository groups,
             IGroupWorkRepository work,
             IGroupAccessService access,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            GroupSlotCleanup slotCleanup)
         {
             _groups = groups;
             _work = work;
             _access = access;
             _unitOfWork = unitOfWork;
+            _slotCleanup = slotCleanup;
         }
 
         public async Task<IReadOnlyList<GroupDto>> GetMyGroupsAsync(Guid userId, bool includeArchived, CancellationToken cancellationToken = default)
@@ -129,14 +132,21 @@ namespace METANOIA.Infrastructure.Services
 
                 member.Role = request.Role;
 
-                // Viewer không được nhận việc: việc đang giao cho họ về chưa giao
+                // Viewer không được nhận việc: việc đang giao cho họ về chưa giao, slot chưa bắt đầu của họ bị hủy
+                GroupSlotCleanup.Result? cleanup = null;
                 if (request.Role == GroupRoles.Viewer)
                 {
                     await _groups.ClearAssignmentsAsync(groupId, memberUserId, cancellationToken);
+                    cleanup = await _slotCleanup.StageAllOfUserInGroupAsync(groupId, memberUserId, cancellationToken);
                 }
 
                 await _work.AddActivityAsync(GroupRules.Log(groupId, userId, GroupEntityTypes.Member, memberUserId, "RoleChanged", oldRole, request.Role), cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                if (cleanup is not null)
+                {
+                    await _slotCleanup.FinishAsync(cleanup, "Vai trò của bạn trong nhóm đã đổi thành Viewer.", cancellationToken);
+                }
             }
 
             var members = await _groups.GetMembersAsync(groupId, cancellationToken);
@@ -222,10 +232,26 @@ namespace METANOIA.Infrastructure.Services
                 running.Note = "Tự dừng vì người làm không còn trong nhóm.";
             }
 
+            // Người rời nhóm không còn thấy việc của nhóm: hủy các slot chưa bắt đầu của họ trong nhóm
+            var cleanup = await _slotCleanup.StageAllOfUserInGroupAsync(groupId, memberUserId, cancellationToken);
+
             _groups.RemoveMember(member);
             await _work.AddActivityAsync(GroupRules.Log(groupId, actorId, GroupEntityTypes.Member, memberUserId, action,
                 member.Role, cleared > 0 ? $"{cleared} việc về chưa giao" : null), cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Người tự rời nhóm không cần thông báo; người bị xóa thì được báo lịch đã bị hủy
+            if (actorId != memberUserId)
+            {
+                await _slotCleanup.FinishAsync(cleanup, "Bạn đã bị xóa khỏi nhóm.", cancellationToken);
+            }
+            else
+            {
+                foreach (var slot in cleanup.Cancelled)
+                {
+                    await _slotCleanup.FinishDeletedAsync(new[] { slot.SlotId });
+                }
+            }
         }
 
         private static void ValidateRequest(GroupRequestDto request)

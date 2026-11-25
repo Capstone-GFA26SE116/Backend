@@ -255,6 +255,13 @@ namespace METANOIA.Infrastructure.Repositories
                 .FirstOrDefaultAsync(s => s.UserId == userId && s.EndedAt == null, cancellationToken);
         }
 
+        public async Task<IReadOnlyList<GroupFocusSession>> GetRunningFocusSessionsOfTaskAsync(Guid taskId, CancellationToken cancellationToken = default)
+        {
+            return await _context.GroupFocusSessions
+                .Where(s => s.GroupTaskId == taskId && s.EndedAt == null)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<IReadOnlyList<GroupFocusSession>> GetFocusSessionsOfTaskAsync(Guid taskId, CancellationToken cancellationToken = default)
         {
             return await _context.GroupFocusSessions
@@ -272,6 +279,80 @@ namespace METANOIA.Infrastructure.Repositories
                 .AsNoTracking()
                 .Where(s => s.GroupTask.GroupId == groupId && s.EndedAt != null)
                 .ToListAsync(cancellationToken);
+        }
+
+        // ---------------------------------------------------------------- Tín hiệu tiến độ
+        private static readonly string[] LiveSlotStatuses = { "Approved", "Due", "InProgress", "Overrun" };
+
+        public async Task<IReadOnlyList<ScheduleSlot>> GetLiveSlotsOfGroupAsync(Guid groupId, CancellationToken cancellationToken = default)
+        {
+            return await _context.ScheduleSlots
+                .AsNoTracking()
+                .Where(s => s.GroupTask != null && s.GroupTask.GroupId == groupId && LiveSlotStatuses.Contains(s.Status))
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<Guid, DateTime>> GetLastActivityByTaskAsync(Guid groupId, CancellationToken cancellationToken = default)
+        {
+            var result = new Dictionary<Guid, DateTime>();
+
+            void Add(Guid taskId, DateTime at)
+            {
+                if (!result.TryGetValue(taskId, out var current) || at > current)
+                {
+                    result[taskId] = at;
+                }
+            }
+
+            // Nhật ký của việc (EntityId là id việc) và của việc con (EntityId là id việc con, đổi sang việc cha)
+            var taskLogs = await _context.GroupActivityLogs.AsNoTracking()
+                .Where(l => l.GroupId == groupId && l.EntityType == GroupEntityTypes.Task && l.EntityId != null)
+                .GroupBy(l => l.EntityId!.Value)
+                .Select(g => new { Id = g.Key, At = g.Max(l => l.CreatedAt) })
+                .ToListAsync(cancellationToken);
+            foreach (var row in taskLogs)
+            {
+                Add(row.Id, row.At);
+            }
+
+            var subTaskToTask = await _context.GroupSubTasks.AsNoTracking()
+                .Where(s => s.GroupTask.GroupId == groupId)
+                .Select(s => new { s.Id, s.GroupTaskId })
+                .ToDictionaryAsync(s => s.Id, s => s.GroupTaskId, cancellationToken);
+            var subTaskLogs = await _context.GroupActivityLogs.AsNoTracking()
+                .Where(l => l.GroupId == groupId && l.EntityType == GroupEntityTypes.SubTask && l.EntityId != null)
+                .GroupBy(l => l.EntityId!.Value)
+                .Select(g => new { Id = g.Key, At = g.Max(l => l.CreatedAt) })
+                .ToListAsync(cancellationToken);
+            foreach (var row in subTaskLogs)
+            {
+                if (subTaskToTask.TryGetValue(row.Id, out var taskId))
+                {
+                    Add(taskId, row.At);
+                }
+            }
+
+            var comments = await _context.GroupTaskComments.AsNoTracking()
+                .Where(c => c.GroupTask.GroupId == groupId)
+                .GroupBy(c => c.GroupTaskId)
+                .Select(g => new { Id = g.Key, At = g.Max(c => c.CreatedAt) })
+                .ToListAsync(cancellationToken);
+            foreach (var row in comments)
+            {
+                Add(row.Id, row.At);
+            }
+
+            var sessions = await _context.GroupFocusSessions.AsNoTracking()
+                .Where(s => s.GroupTask.GroupId == groupId)
+                .GroupBy(s => s.GroupTaskId)
+                .Select(g => new { Id = g.Key, At = g.Max(s => s.EndedAt ?? s.StartedAt) })
+                .ToListAsync(cancellationToken);
+            foreach (var row in sessions)
+            {
+                Add(row.Id, row.At);
+            }
+
+            return result;
         }
 
         // ---------------------------------------------------------------- Đề xuất đổi giờ (đợt 2)

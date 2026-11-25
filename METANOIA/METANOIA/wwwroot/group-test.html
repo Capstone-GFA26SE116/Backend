@@ -229,11 +229,26 @@
     <p class="muted">Chỉ người được giao bấm được. Việc có việc con thì chọn việc con. Mỗi người một phiên chạy một lúc (kể cả phiên cá nhân).</p>
     <div class="card"><b>Phiên đang chạy của tài khoản này:</b>
       <div id="currentSession" class="muted">Không có.</div></div>
+    <h3>Lên lịch cho việc đang chọn (slot của chính mình)</h3>
+    <p class="muted">Chỉ người được giao xếp được. Việc có việc con thì chọn việc con ở ô bên dưới. Slot không được chồng giờ với slot khác của bạn (409 SLOT_OVERLAP). Đổi giờ: sửa bằng PUT /api/schedule-slots/{id}; hủy: nút Hủy. Giao lại việc hoặc rời nhóm thì slot chưa bắt đầu tự hủy.</p>
+    <div class="row3">
+      <label>Bắt đầu <input id="slStart" type="datetime-local" /></label>
+      <label>Kết thúc <input id="slEnd" type="datetime-local" /></label>
+      <label>Trạng thái <select id="slStatus"><option>Approved</option><option>Proposed</option></select></label>
+    </div>
+    <div class="row3">
+      <label>Ghi chú (tùy chọn) <input id="slNote" /></label>
+      <div><button class="good" onclick="createSlot()">Tạo slot</button> <button class="secondary" onclick="loadSlots()">Tải lại</button></div>
+    </div>
+    <table id="slotTable"><thead><tr><th>Người xếp</th><th>Việc con</th><th>Bắt đầu</th><th>Kết thúc</th><th>Phút</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+
+    <h3>Bấm giờ</h3>
     <div class="row3">
       <label>Việc (đang chọn ở mục 5) <input id="focusTask" disabled /></label>
       <label>Việc con (bắt buộc nếu việc có việc con) <select id="focusSub"></select></label>
-      <div><button class="good" onclick="startFocus()">Start</button></div>
+      <label>Gắn slot (tùy chọn, slot của tôi) <select id="focusSlot"></select></label>
     </div>
+    <div class="row3"><div><button class="good" onclick="startFocus()">Start</button></div></div>
     <div class="row3">
       <label>Lý do dừng <select id="stopReason"><option>Completed</option><option>Interrupted</option><option>Blocked</option><option>Other</option></select></label>
       <label>Ghi chú (bắt buộc với Blocked và Other) <input id="stopNote" /></label>
@@ -517,7 +532,7 @@
   }
 
   function clearGroupViews() {
-    for (const id of ['memberTable', 'milestoneTable', 'taskTable', 'subTable', 'activityTable', 'groupInviteTable', 'crTable']) $(id).querySelector('tbody').innerHTML = '';
+    for (const id of ['memberTable', 'milestoneTable', 'taskTable', 'subTable', 'activityTable', 'groupInviteTable', 'crTable', 'slotTable']) $(id).querySelector('tbody').innerHTML = '';
     $('commentList').innerHTML = ''; $('progress').textContent = 'Chọn một nhóm.'; $('timeReport').textContent = 'Chọn một việc ở mục 5.';
   }
 
@@ -626,7 +641,7 @@
       <td>${t.fixedStart ? fmt(t.fixedStart) + '<br>→ ' + fmt(t.fixedEnd) : ''}</td><td>${fmt(t.deadline)}</td><td>${t.estimatedMinutes ?? ''}</td><td>${t.subTaskDoneCount}/${t.subTaskCount}</td>
       <td><button class="small" onclick="pickTask('${t.id}')">Chọn</button></td></tr>`).join('') || '<tr><td colspan="9" class="muted">Chưa có việc.</td></tr>';
     renderSelectedTask();
-    await Promise.all([loadSubs(), loadComments(), loadTime(), loadChangeRequests()]);
+    await Promise.all([loadSubs(), loadComments(), loadTime(), loadChangeRequests(), loadSlots()]);
   }
 
   function pickTask(id) {
@@ -758,9 +773,38 @@
     };
     draw(); state.timer = setInterval(draw, 1000);
   }
+  // ================================================================ Lên lịch (slot dùng chung với lịch cá nhân)
+  async function loadSlots() {
+    const body = $('slotTable').querySelector('tbody');
+    if (!state.selTask) { body.innerHTML = '<tr><td colspan="7" class="muted">Chọn một việc ở mục 5.</td></tr>'; $('focusSlot').innerHTML = '<option value="">(không gắn slot)</option>'; return; }
+    const r = await api('GET', `/api/group-tasks/${state.selTask.id}/schedule-slots`);
+    const slots = r.ok ? r.data : [];
+    body.innerHTML = slots.map((s) => `<tr><td>${esc(s.userName || '')}</td><td>${esc(s.subTaskTitle || '—')}</td><td>${fmt(s.startTime)}</td><td>${fmt(s.endTime)}</td><td>${s.proposedMinutes}</td><td>${badge(s.status)}</td>
+      <td>${['Cancelled', 'Done'].includes(s.status) ? '' : `<button class="small danger" onclick="cancelSlot('${s.id}')">Hủy</button>`}</td></tr>`).join('')
+      || `<tr><td colspan="7" class="muted">${r.ok ? 'Chưa có slot nào.' : 'HTTP ' + r.status}</td></tr>`;
+    // chỉ slot của tài khoản đang chọn và còn làm được mới chọn để Start
+    const me = who(state.active) && who(state.active).userId;
+    const mine = slots.filter((s) => s.userId === me && ['Approved', 'Due', 'InProgress', 'Missed', 'Postponed'].includes(s.status));
+    const prev = $('focusSlot').value;
+    $('focusSlot').innerHTML = '<option value="">(không gắn slot)</option>' + mine.map((s) => `<option value="${s.id}">${fmt(s.startTime)} - ${fmt(s.endTime)} (${s.status})</option>`).join('');
+    $('focusSlot').value = prev;
+  }
+  async function createSlot() {
+    if (!needTask()) return;
+    if (!$('slStart').value || !$('slEnd').value) return notify('Nhập giờ bắt đầu và kết thúc.', 'warn');
+    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/schedule-slots`, {
+      subTaskId: pick('focusSub'), startTime: isoOf($('slStart').value), endTime: isoOf($('slEnd').value), explanation: $('slNote').value || null, status: $('slStatus').value });
+    if (r.status === 409) { return notify(`${r.data.message || 'Slot chồng giờ.'} (${r.data.code || ''})`, 'warn'); }
+    if (!r.ok) return fail(r, 'Tạo slot');
+    ok('Đã tạo slot ' + r.data.status + '.'); await Promise.all([loadSlots(), loadProgress()]);
+  }
+  async function cancelSlot(id) {
+    const r = await api('DELETE', `/api/schedule-slots/${id}`);
+    if (!r.ok) return fail(r, 'Hủy slot'); ok('Đã hủy slot.'); await Promise.all([loadSlots(), loadProgress()]);
+  }
   async function startFocus() {
     if (!needTask()) return;
-    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/focus/start`, { subTaskId: pick('focusSub') });
+    const r = await api('POST', `/api/group-tasks/${state.selTask.id}/focus/start`, { subTaskId: pick('focusSub'), scheduleSlotId: pick('focusSlot') });
     if (r.status === 409) { const d = r.data.details || {}; return notify(`${r.data.message} (nguồn: ${d.source || '?'})`, 'warn'); }
     if (!r.ok) return fail(r, 'Start');
     ok(`Đã Start. Việc: ${r.data.taskStatus}${r.data.subTaskStatus ? ', việc con: ' + r.data.subTaskStatus : ''}.`); await refreshAll();
@@ -816,13 +860,22 @@
   }
 
   // ================================================================ 10. Tiến độ, nhật ký, việc của tôi
+  function signalsHtml(sg) {
+    if (!sg) return '';
+    const flag = (v, text, cls) => (v ? `<span class="badge ${cls}">${text}</span> ` : '');
+    return `<h3>Tín hiệu</h3><div>Quá hạn: <b>${sg.overdueTasks}</b> - Chưa có lịch: <b>${sg.unscheduledTasks}</b> - Nguy cơ trễ: <b>${sg.atRiskTasks}</b> - Đứng yên: <b>${sg.staleTasks}</b></div>
+      <table><thead><tr><th>Việc</th><th>Người làm</th><th>Hạn</th><th>Tín hiệu</th><th>Đã xếp / ước lượng</th><th>Hoạt động cuối</th></tr></thead><tbody>${(sg.tasks || []).map((t) => `<tr><td>${esc(t.title)}</td><td>${esc(t.assigneeName || '—')}</td><td>${t.deadline ? fmt(t.deadline) : ''}</td>
+        <td>${flag(t.isOverdue, 'Quá hạn', 'Low')}${flag(!t.hasSchedule, 'Chưa có lịch', 'Pending')}${flag(t.atRisk, 'Nguy cơ trễ', 'Medium')}${flag(t.isStale, 'Đứng yên', 'Viewer')}</td>
+        <td>${t.scheduledMinutes} / ${t.estimatedMinutes ?? '?'} phút</td><td>${fmt(t.lastActivityAt)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">Không có việc nào cần chú ý (admin không thấy danh sách này).</td></tr>'}</tbody></table>`;
+  }
   async function loadProgress() {
     const r = await api('GET', `/api/groups/${gid()}/progress`);
     if (!r.ok) { $('progress').innerHTML = `<span class="fail">HTTP ${r.status}</span>`; return; }
     const p = r.data; $('progress').className = '';
     $('progress').innerHTML = `<b>${p.completedPercent}% hoàn thành</b> - ${p.totalTasks} việc: ${Object.entries(p.tasksByStatus).map(([k, v]) => `${badge(k)} ${v}`).join(' ')} - còn lại ${p.remainingTasks}, chưa giao ${p.unassignedTasks}
       <div class="bar"><div style="width:${p.completedPercent}%"></div></div>Giờ làm thực tế cả nhóm: <b>${p.totalTrackedMinutes}</b> phút / ước lượng ${p.totalEstimatedMinutes} phút
-      <table><thead><tr><th>Thành viên</th><th>Vai trò</th><th>Việc (xong)</th><th>Việc con (xong)</th><th>Giờ làm</th></tr></thead><tbody>${p.members.map((m) => `<tr><td>${esc(m.fullName)}</td><td>${badge(m.role)}</td><td>${m.assignedTasks} (${m.doneTasks})</td><td>${m.assignedSubTasks} (${m.doneSubTasks})</td><td>${m.trackedMinutes} phút</td></tr>`).join('')}</tbody></table>
+      <table><thead><tr><th>Thành viên</th><th>Vai trò</th><th>Việc (xong)</th><th>Việc con (xong)</th><th>Giờ làm</th><th>Quá hạn</th><th>Chưa có lịch</th><th>Nguy cơ trễ</th><th>Đứng yên</th></tr></thead><tbody>${p.members.map((m) => `<tr><td>${esc(m.fullName)}</td><td>${badge(m.role)}</td><td>${m.assignedTasks} (${m.doneTasks})</td><td>${m.assignedSubTasks} (${m.doneSubTasks})</td><td>${m.trackedMinutes} phút</td><td>${m.overdueTasks}</td><td>${m.unscheduledTasks}</td><td>${m.atRiskTasks}</td><td>${m.staleTasks}</td></tr>`).join('')}</tbody></table>
+      ${signalsHtml(p.signals)}
       <table><thead><tr><th>Giai đoạn</th><th>Status</th><th>Hạn</th><th>Việc (xong)</th></tr></thead><tbody>${p.milestones.map((m) => `<tr><td>${esc(m.name)}</td><td>${badge(m.status)}</td><td>${m.dueDate || ''}</td><td>${m.totalTasks} (${m.doneTasks})</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Chưa có giai đoạn.</td></tr>'}</tbody></table>`;
   }
   async function loadActivity() {

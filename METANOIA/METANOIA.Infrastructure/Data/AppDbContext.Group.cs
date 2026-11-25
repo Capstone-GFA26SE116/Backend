@@ -39,6 +39,29 @@ public partial class AppDbContext
                 .HasConstraintName("ChatConversation_GroupId_fkey");
         });
 
+        // Slot nhóm: các cột thêm vào bảng ScheduleSlot có sẵn (docs/sql/009_group_schedule_slot.sql). TaskId cho phép rỗng
+        modelBuilder.Entity<ScheduleSlot>(entity =>
+        {
+            entity.HasIndex(e => new { e.UserId, e.StartTime }, "IX_ScheduleSlot_UserId_StartTime");
+            entity.HasIndex(e => e.GroupTaskId, "IX_ScheduleSlot_GroupTaskId");
+            entity.HasIndex(e => e.GroupSubTaskId, "IX_ScheduleSlot_GroupSubTaskId");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("ScheduleSlot_UserId_fkey");
+
+            entity.HasOne(d => d.GroupTask).WithMany()
+                .HasForeignKey(d => d.GroupTaskId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("ScheduleSlot_GroupTaskId_fkey");
+
+            entity.HasOne(d => d.GroupSubTask).WithMany()
+                .HasForeignKey(d => d.GroupSubTaskId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("ScheduleSlot_GroupSubTaskId_fkey");
+        });
+
         modelBuilder.Entity<WorkGroup>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("WorkGroup_pkey");
@@ -225,6 +248,7 @@ public partial class AppDbContext
             entity.ToTable("GroupFocusSession");
             entity.HasIndex(e => e.GroupTaskId, "IX_GroupFocusSession_GroupTaskId");
             entity.HasIndex(e => new { e.UserId, e.StartedAt }, "IX_GroupFocusSession_UserId");
+            entity.HasIndex(e => e.ScheduleSlotId, "IX_GroupFocusSession_ScheduleSlotId");
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.StopReason).HasMaxLength(15);
@@ -239,6 +263,11 @@ public partial class AppDbContext
                 .HasForeignKey(d => d.GroupSubTaskId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("GroupFocusSession_GroupSubTaskId_fkey");
+
+            entity.HasOne(d => d.ScheduleSlot).WithMany()
+                .HasForeignKey(d => d.ScheduleSlotId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("GroupFocusSession_ScheduleSlotId_fkey");
 
             entity.HasOne(d => d.User).WithMany()
                 .HasForeignKey(d => d.UserId)

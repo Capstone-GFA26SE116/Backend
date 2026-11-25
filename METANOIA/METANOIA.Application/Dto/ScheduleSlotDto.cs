@@ -4,9 +4,16 @@ namespace METANOIA.Application.Dto
     {
         public Guid Id { get; set; }
 
-        public Guid TaskId { get; set; }
+        // Slot cá nhân: TaskId. Slot nhóm: TaskId rỗng, có GroupTaskId (và GroupSubTaskId), UserId là người đã xếp slot
+        public Guid? TaskId { get; set; }
 
         public Guid? SubTaskId { get; set; }
+
+        public Guid? GroupTaskId { get; set; }
+
+        public Guid? GroupSubTaskId { get; set; }
+
+        public Guid? UserId { get; set; }
 
         public Guid? ScheduleProposalId { get; set; }
 

@@ -176,7 +176,17 @@ Chỉ role Admin. Hai thao tác ghi bắt buộc header `X-Admin-Reason` (chữ 
 - Lưu trữ hoặc khôi phục ghi nhật ký admin, ghi vào nhật ký nhóm kèm lý do và gửi thông báo `GroupStatusChanged` cho mọi Leader. Thiếu lý do `400`; nhóm đã ở trạng thái đó `400`; không tồn tại `404`.
 - Chưa có: đổi Leader bằng quyền Admin, xóa hẳn nhóm.
 
-## 10. Danh sách việc cho FE (checklist)
+## 10. Slot dùng chung cho việc nhóm, tín hiệu tiến độ (mới)
+SQL `docs/sql/009_group_schedule_slot.sql` phải chạy **trước** backend mới. Chi tiết API: [GROUP_FE.md](GROUP_FE.md) mục 11 và 12.
+
+- **`taskId` của slot có thể `null`** trong mọi API slot và `GET /api/calendar` (slot của việc nhóm). Slot nhóm có thêm `groupTaskId`, `groupSubTaskId`, `userId`. Trong lịch gộp thêm `groupId`, `groupName`; các trường dự án, khách hàng, loại công việc là `null` với slot nhóm. Màn lịch và chi tiết slot phải xử lý trường hợp này (không điều hướng sang trang task cá nhân).
+- API mới: `POST` và `GET /api/group-tasks/{taskId}/schedule-slots`. Sửa và hủy slot nhóm dùng lại `PUT` và `DELETE /api/schedule-slots/{id}`.
+- Slot nhóm cũng bị luật không chồng giờ: `409 SLOT_OVERLAP`, `details.overlaps[]` có `groupTaskId` khi bên chồng là slot nhóm.
+- `POST /api/group-tasks/{id}/focus/start` nhận thêm `scheduleSlotId`; phản hồi Start và `GET /api/group-focus/current` trả lại `scheduleSlotId`.
+- Việc giao lại hoặc người làm rời nhóm: slot chưa bắt đầu của người cũ tự hủy kèm thông báo `GroupStatusChanged`; FE làm mới lịch khi nhận thông báo.
+- `GET /api/groups/{id}/progress` thêm `signals` và bốn bộ đếm mỗi thành viên (`overdueTasks`, `unscheduledTasks`, `atRiskTasks`, `staleTasks`).
+
+## 11. Danh sách việc cho FE (checklist)
 - [ ] Đăng nhập: đọc `isNewUser`; chưa onboarding thì không vào home.
 - [ ] Màn hình onboarding gửi đủ `timeZone`, `workDayStart`, `workDayEnd`, `worksOnWeekend`, `defaultBufferMinutes`, `reminderLeadMinutes`; xử lý `400`.
 - [ ] Hỏi `overrunLevel` cùng bước chọn loại công việc, chỉ khi đã chọn loại công việc.
@@ -185,3 +195,6 @@ Chỉ role Admin. Hai thao tác ghi bắt buộc header `X-Admin-Reason` (chữ 
 - [ ] Xóa mọi màn hình và lời gọi API hoàn tiền; sửa báo cáo doanh thu (bỏ 4 trường).
 - [ ] Bỏ `focusTrackId` khi bấm giờ; xóa màn hình admin thư viện nhạc.
 - [ ] (Admin) thêm màn quản trị nhóm theo mục 9.
+- [ ] Chịu được `taskId = null` ở slot và lịch gộp; hiển thị slot nhóm bằng `groupName` và tiêu đề việc.
+- [ ] Màn việc nhóm: tạo, xem, hủy slot (mục 10); chọn slot khi Start; bắt `409 SLOT_OVERLAP`.
+- [ ] Màn tiến độ nhóm: hiển thị `signals` (quá hạn, chưa có lịch, nguy cơ trễ, đứng yên).

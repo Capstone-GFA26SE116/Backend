@@ -18,7 +18,8 @@ namespace METANOIA.Infrastructure.Repositories
             Guid userId, DateTime from, DateTime to, bool includeCancelled, CancellationToken cancellationToken = default)
         {
             var query = _context.ScheduleSlots
-                .Where(s => s.Task.Project.UserId == userId && s.StartTime < to && s.EndTime > from);
+                .OwnedBy(userId)
+                .Where(s => s.StartTime < to && s.EndTime > from);
 
             if (!includeCancelled)
             {
@@ -33,6 +34,10 @@ namespace METANOIA.Infrastructure.Repositories
                     Id = s.Id,
                     TaskId = s.TaskId,
                     SubTaskId = s.SubTaskId,
+                    GroupId = s.GroupTask != null ? s.GroupTask.GroupId : null,
+                    GroupName = s.GroupTask != null ? s.GroupTask.Group.Name : null,
+                    GroupTaskId = s.GroupTaskId,
+                    GroupSubTaskId = s.GroupSubTaskId,
                     StartTime = s.StartTime,
                     EndTime = s.EndTime,
                     Status = s.Status,
@@ -40,15 +45,15 @@ namespace METANOIA.Infrastructure.Repositories
                     Explanation = s.Explanation,
                     IsManualOverride = s.IsManualOverride,
                     SyncFailed = s.SyncFailed,
-                    TaskTitle = s.Task.Title,
-                    TaskType = s.Task.TaskType,
-                    TaskStatus = s.Task.Status,
-                    TaskDeadline = s.Task.Deadline,
-                    SubTaskTitle = s.SubTask != null ? s.SubTask.Title : null,
-                    ProjectId = s.Task.ProjectId,
-                    ProjectName = s.Task.Project.Name,
-                    ClientName = s.Task.Project.Client != null ? s.Task.Project.Client.Name : null,
-                    DomainName = s.Task.Domain.Name
+                    TaskTitle = s.Task != null ? s.Task.Title : s.GroupTask!.Title,
+                    TaskType = s.Task != null ? s.Task.TaskType : null,
+                    TaskStatus = s.Task != null ? s.Task.Status : s.GroupTask!.Status,
+                    TaskDeadline = s.Task != null ? s.Task.Deadline : s.GroupTask!.Deadline,
+                    SubTaskTitle = s.SubTask != null ? s.SubTask.Title : (s.GroupSubTask != null ? s.GroupSubTask.Title : null),
+                    ProjectId = s.Task != null ? s.Task.ProjectId : null,
+                    ProjectName = s.Task != null ? s.Task.Project.Name : null,
+                    ClientName = s.Task != null && s.Task.Project.Client != null ? s.Task.Project.Client.Name : null,
+                    DomainName = s.Task != null ? s.Task.Domain.Name : null
                 })
                 .ToListAsync(cancellationToken);
         }

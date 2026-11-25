@@ -7,6 +7,9 @@ namespace METANOIA.Application.Dto
     {
         // Bắt buộc khi việc có việc con (giờ làm tính cho việc con đó). Bỏ trống khi bấm giờ cho cả việc không có việc con
         public Guid? SubTaskId { get; set; }
+
+        // Tùy chọn: bấm giờ theo một slot đã xếp (slot của mình, đúng việc và việc con). Slot sang InProgress; Stop đổi slot theo lý do dừng
+        public Guid? ScheduleSlotId { get; set; }
     }
 
     public class GroupFocusStopRequestDto
@@ -31,6 +34,8 @@ namespace METANOIA.Application.Dto
         public string TaskStatus { get; set; } = null!;
 
         public string? SubTaskStatus { get; set; }
+
+        public Guid? ScheduleSlotId { get; set; }
     }
 
     public class GroupFocusStopResponseDto
@@ -57,6 +62,8 @@ namespace METANOIA.Application.Dto
     public class GroupFocusSessionDto
     {
         public Guid Id { get; set; }
+
+        public Guid? ScheduleSlotId { get; set; }
 
         public Guid GroupTaskId { get; set; }
 
@@ -104,6 +111,8 @@ namespace METANOIA.Application.Dto
 
         // Ước lượng của việc, để FE hiện "đã làm / ước lượng"
         public int? EstimatedMinutes { get; set; }
+
+        public Guid? ScheduleSlotId { get; set; }
     }
 
     // Giờ làm thực tế của một việc, chia theo từng người và từng việc con

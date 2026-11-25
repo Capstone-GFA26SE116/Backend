@@ -475,14 +475,26 @@ namespace METANOIA.Infrastructure.Services
 
         private static Event ToGoogleEvent(ScheduleSlot slot, string eventId)
         {
-            var title = slot.SubTask is null ? slot.Task.Title : $"{slot.Task.Title} - {slot.SubTask.Title}";
+            string title;
+            string description;
+            if (slot.GroupTask is { } groupTask)
+            {
+                // Slot của việc nhóm: tiêu đề là việc (và việc con), mô tả ghi tên nhóm
+                title = slot.GroupSubTask is null ? groupTask.Title : $"{groupTask.Title} - {slot.GroupSubTask.Title}";
+                description = $"Nhóm: {groupTask.Group.Name}\nTạo bởi METANOIA.";
+            }
+            else
+            {
+                title = slot.SubTask is null ? slot.Task!.Title : $"{slot.Task!.Title} - {slot.SubTask.Title}";
+                description = $"Dự án: {slot.Task.Project.Name}\nTạo bởi METANOIA.";
+            }
 
             return new Event
             {
                 Id = eventId,
                 Status = "confirmed",
                 Summary = title,
-                Description = $"Dự án: {slot.Task.Project.Name}\nTạo bởi METANOIA.",
+                Description = description,
                 Start = new EventDateTime { DateTimeDateTimeOffset = AsUtc(slot.StartTime) },
                 End = new EventDateTime { DateTimeDateTimeOffset = AsUtc(slot.EndTime) },
                 ExtendedProperties = new Event.ExtendedPropertiesData

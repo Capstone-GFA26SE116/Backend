@@ -47,6 +47,15 @@ namespace METANOIA.Application.Dto
 
         public Guid? SubTaskId { get; set; }
 
+        // Slot của việc nhóm (TaskId và các trường dự án rỗng)
+        public Guid? GroupId { get; set; }
+
+        public string? GroupName { get; set; }
+
+        public Guid? GroupTaskId { get; set; }
+
+        public Guid? GroupSubTaskId { get; set; }
+
         // null nếu slot dành cho cả task, không riêng subtask nào
         public string? SubTaskTitle { get; set; }
 
